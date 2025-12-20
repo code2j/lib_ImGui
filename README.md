@@ -33,9 +33,10 @@ workspace/
 <br>
 
 ## 설치
-* 프로젝트 루트에서 git clone을 실행합니다
+* 예시로, 3rdparty에 git clone을 실행합니다
 ```shell
-  git clone --branch imgui --single-branch https://github.com/Min-J6/3rdparty.git
+  mkdir 3rdparty && cd 3rdparty
+  git clone https://github.com/Min-J6/lib_ImGui.git
 ```
 
 <br>
