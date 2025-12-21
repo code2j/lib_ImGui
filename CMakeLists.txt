@@ -5,7 +5,6 @@ project(ImGui)
 
 
 # 옵션
-set(EXAMPLE_IMGUI TRUE)
 set(OpenGL_GL_PREFERENCE GLVND)
 
 
@@ -69,7 +68,7 @@ target_link_libraries(lib_imgui PUBLIC
 
 
 # 예제 코드
-if (EXAMPLE_IMGUI)
+if (PROJECT_IS_TOP_LEVEL)
     add_executable(example_imgui example_main.cpp)
     target_link_libraries(example_imgui lib_imgui)
 endif()
