@@ -8,10 +8,6 @@
 
 <br>
 
-> 참고: Example을 비활성화 하려면 CMakeLists.txt에서 EXAMPLE_IMGUI를 FALSE로 설정하세요.
-
-<br>
-
 ## 프로젝트 구조
 ```text
 workspace/
@@ -33,10 +29,10 @@ workspace/
 <br>
 
 ## 설치
-* 예시로, 3rdparty에 git clone을 실행합니다
+* 예시는 3rdparty디렉토리에서 git clone을 실행합니다
 ```shell
   mkdir 3rdparty && cd 3rdparty
-  git clone https://github.com/Min-J6/lib_ImGui.git
+  git clone https://github.com/code2j/lib_ImGui.git
 ```
 
 <br>
@@ -46,15 +42,44 @@ workspace/
 ```cmake
 add_subdirectory(3rdparty/imgui)
 
-target_link_libraries(your_target PRIVATE lib_imgui)
+target_link_libraries(your_target PRIVATE libimgui)
+```
+
+```c++
+#include "imgui.h"
+#include <iostream>
+#include <string>
+
+int main() 
+{
+    // 컨텍스트 생성 및 시작
+    std::string title = "DEMO";
+    ImVec2 size = ImVec2(1280, 720);
+    ImGui::start(title, size);
+    
+    // 메인 루프
+    while (ImGui::isRunning()) {
+        ImGui::context([&]() {
+            /*
+            이곳에 ImGui를 사용하는 어떠한 코드든 작성하세요. 
+            */
+            ImGui::ShowDemoWindow();
+        });
+    }
+    
+    // 리소스 정리
+    ImGui::stop();
+    
+    return 0;
+}
 ```
 
 <br>
 
 ## 이 프로젝트는 다음 오픈소스 라이브러리를 사용합니다
 - **ImGui** (MIT License): Dear ImGui 라이브러리 (https://github.com/ocornut/imgui)
-- **ImPlot** (MIT License): ImGui 기반 플로팅 라이브러리 (https://github.com/epezent/implot)
-- **ImPlot3D** (MIT License): 3D 플로팅 라이브러리 (https://github.com/brenocq/implot3d)
+- **ImPlot** (MIT License): ImGui 플로팅 라이브러리 (https://github.com/epezent/implot)
+- **ImPlot3D** (MIT License): ImGui 3D 플로팅 라이브러리 (https://github.com/brenocq/implot3d)
 - **ImCoolBar** (MIT License): ImGui 툴바 컴포넌트 (https://github.com/aiekick/ImCoolBar)
 
 각 라이브러리의 라이선스는 해당 라이브러리의 LICENSE 파일을 참조하세요. 이 프로젝트의 전체 라이선스는 [LICENSE.txt](LICENSE.txt)를 확인하세요.

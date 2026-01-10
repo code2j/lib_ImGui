@@ -6,7 +6,7 @@
 #include <ostream>
 #include <string>
 
-#include "backends/imgui_impl_opengl3_loader.h"
+#include "imgui_impl_opengl3_loader.h"
 
 namespace ImGui
 {
