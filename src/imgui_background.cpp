@@ -167,7 +167,7 @@ bool ImGuiBackground::init() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-
+    ImGui::GetIO().IniFilename = "../config/imgui.ini";
 
 
     // Imgui 스타일 설정
