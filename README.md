@@ -42,7 +42,7 @@ workspace/
 ```cmake
 add_subdirectory(3rdparty/imgui)
 
-target_link_libraries(your_target PRIVATE libimgui)
+target_link_libraries(your_target PRIVATE imgui)
 ```
 
 ```c++
