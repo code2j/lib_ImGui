@@ -35,14 +35,26 @@
 // Setup Emscripten default if not specified.
 #if defined(__EMSCRIPTEN__) && !defined(IMGUI_IMPL_WEBGPU_BACKEND_DAWN) && !defined(IMGUI_IMPL_WEBGPU_BACKEND_WGPU)
 #include <emscripten/version.h>
+
+#ifdef __EMSCRIPTEN_MAJOR__
+#if (__EMSCRIPTEN_MAJOR__ >= 5) || ((__EMSCRIPTEN_MAJOR__ >= 4) && (__EMSCRIPTEN_MINOR__ >= 0) && (__EMSCRIPTEN_TINY__ >= 10))
+#define IMGUI_IMPL_WEBGPU_BACKEND_DAWN
+#else
+#define IMGUI_IMPL_WEBGPU_BACKEND_WGPU
+#endif
+#else
 #if (__EMSCRIPTEN_major__ >= 4) && (__EMSCRIPTEN_minor__ >= 0) && (__EMSCRIPTEN_tiny__ >= 10)
 #define IMGUI_IMPL_WEBGPU_BACKEND_DAWN
 #else
 #define IMGUI_IMPL_WEBGPU_BACKEND_WGPU
 #endif
 #endif
+#endif
 
 #include <webgpu/webgpu.h>
+#if defined(IMGUI_IMPL_WEBGPU_BACKEND_WGPU) && !defined(__EMSCRIPTEN__)
+#include <webgpu/wgpu.h>        // WGPULogLevel
+#endif
 
 // Initialization data, for ImGui_ImplWGPU_Init()
 struct ImGui_ImplWGPU_InitInfo
@@ -71,7 +83,7 @@ IMGUI_IMPL_API void ImGui_ImplWGPU_RenderDrawData(ImDrawData* draw_data, WGPURen
 IMGUI_IMPL_API bool ImGui_ImplWGPU_CreateDeviceObjects();
 IMGUI_IMPL_API void ImGui_ImplWGPU_InvalidateDeviceObjects();
 
-// (Advanced) Use e.g. if you need to precisely control the timing of texture updates (e.g. for staged rendering), by setting ImDrawData::Textures = NULL to handle this manually.
+// (Advanced) Use e.g. if you need to precisely control the timing of texture updates (e.g. for staged rendering), by setting ImDrawData::Textures = nullptr to handle this manually.
 IMGUI_IMPL_API void ImGui_ImplWGPU_UpdateTexture(ImTextureData* tex);
 
 // [BETA] Selected render state data shared with callbacks.
@@ -82,5 +94,39 @@ struct ImGui_ImplWGPU_RenderState
     WGPUDevice                  Device;
     WGPURenderPassEncoder       RenderPassEncoder;
 };
+
+//-------------------------------------------------------------------------
+// Internal Helpers
+// Those are currently used by our example applications.
+//-------------------------------------------------------------------------
+
+// (Optional) Helper to wrap some of the Dawn/WGPU/Emscripten quirks
+bool        ImGui_ImplWGPU_IsSurfaceStatusError(WGPUSurfaceGetCurrentTextureStatus status);
+bool        ImGui_ImplWGPU_IsSurfaceStatusSubOptimal(WGPUSurfaceGetCurrentTextureStatus status);    // Return whether the texture is suboptimal and may need to be recreated.
+
+// (Optional) Helper for debugging/logging
+void        ImGui_ImplWGPU_DebugPrintAdapterInfo(const WGPUAdapter& adapter);
+const char* ImGui_ImplWGPU_GetBackendTypeName(WGPUBackendType type);
+const char* ImGui_ImplWGPU_GetAdapterTypeName(WGPUAdapterType type);
+#if defined(IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
+const char* ImGui_ImplWGPU_GetDeviceLostReasonName(WGPUDeviceLostReason type);
+const char* ImGui_ImplWGPU_GetErrorTypeName(WGPUErrorType type);
+#elif defined(IMGUI_IMPL_WEBGPU_BACKEND_WGPU) && !defined(__EMSCRIPTEN__)
+const char* ImGui_ImplWGPU_GetLogLevelName(WGPULogLevel level);
+#endif
+
+// (Optional) Helper to create a surface on macOS/Wayland/X11/Window
+#ifndef __EMSCRIPTEN__
+struct ImGui_ImplWGPU_CreateSurfaceInfo
+{
+    WGPUInstance    Instance;
+    const char*     System;      // "cocoa"   | "wayland"   | "x11"     | "win32"
+    void*           RawWindow;   // NSWindow* | 0           | Window    | HWND
+    void*           RawDisplay;  // 0         | wl_display* | Display*  | 0
+    void*           RawSurface;  //           | wl_surface* | 0         | 0
+    void*           RawInstance; // 0         | 0           | 0         | HINSTANCE
+};
+WGPUSurface ImGui_ImplWGPU_CreateWGPUSurfaceHelper(ImGui_ImplWGPU_CreateSurfaceInfo* info);
+#endif // #ifndef __EMSCRIPTEN__
 
 #endif // #ifndef IMGUI_DISABLE

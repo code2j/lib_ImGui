@@ -10,6 +10,9 @@
 
 namespace ImGui
 {
+
+        inline ImFont* Regular = NULL;
+        inline ImFont* Bold = NULL;
     // ------------------------------
     // 기본
     // ------------------------------
