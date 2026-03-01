@@ -8,9 +8,8 @@ project(ImGui)
 set(OpenGL_GL_PREFERENCE GLVND)
 
 
-
-# lib_ImGui 소스 코드
-add_library(libimgui
+# 소스
+add_library(imgui
         src/imgui.cpp
         src/imgui_draw.cpp
         src/imgui_widgets.cpp
@@ -33,15 +32,16 @@ add_library(libimgui
 )
 
 
-# include 경로 설정
-target_include_directories(libimgui PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/backends
+# 헤더
+target_include_directories(imgui
+        PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        include
+        backends
 )
 
 
-# 외부 라이브러리 연결 (ImGui 백엔드용)
+# 필요 라이브러리
 find_package(glfw3 QUIET)
 if(NOT glfw3_FOUND)
         message(FATAL_ERROR "\n"
@@ -54,14 +54,13 @@ if(NOT glfw3_FOUND)
         )
 endif()
 
-
-# 라이브러리 찾기
 find_package(OpenGL REQUIRED)
 find_package(X11 REQUIRED)
 
 
-# libimgui에 필요한 라이브러리 연결
-target_link_libraries(libimgui PUBLIC
+# 링크
+target_link_libraries(imgui
+        PUBLIC
         glfw
         OpenGL::GL
         X11::X11
@@ -71,5 +70,5 @@ target_link_libraries(libimgui PUBLIC
 # 예제 코드
 if (PROJECT_IS_TOP_LEVEL)
         add_executable(example_imgui example/example_main.cpp)
-        target_link_libraries(example_imgui libimgui)
+        target_link_libraries(example_imgui imgui)
 endif()
