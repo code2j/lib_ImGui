@@ -167,7 +167,7 @@ bool ImGuiBackground::init() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    ImGui::GetIO().IniFilename = "../config/imgui.ini";
+    ImGui::GetIO().IniFilename = config_path_.c_str();
 
 
     // Imgui 스타일 설정
@@ -598,6 +598,10 @@ void ImGuiBackground::show_titlebar() {
     ImGui::PopStyleColor(1);
 }
 
+void ImGuiBackground::set_config_path(const std::string& path)
+{
+    getInstance().config_path_ = path;
+}
 
 
 void ImGuiBackground::_start_background() {
@@ -726,6 +730,10 @@ namespace ImGui
         return ImGuiBackground::is_running();
     }
 
+    void set_config_path(const std::string& path)
+    {
+        ImGuiBackground::set_config_path(path);
+    }
 
     Image_::~Image_()
     {

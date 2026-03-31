@@ -38,6 +38,8 @@ public:
     // OpenGL 컨텍스트에 작업 푸시
     static void context_push(std::function<void()> func);
 
+    static void set_config_path(const std::string& path);
+
 
 private:
     // 초기화
@@ -76,6 +78,8 @@ private:
 
     std::thread render_thread;
     std::atomic<bool> _is_running{false};
+
+    std::string config_path_ = "../config/imgui.ini";
 };
 
 

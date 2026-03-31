@@ -20,6 +20,7 @@ namespace ImGui
     void stop();
     void context(std::function<void()> func);
     bool isRunning();
+    void set_config_path(const std::string& path);
 
 
     // ------------------------------
