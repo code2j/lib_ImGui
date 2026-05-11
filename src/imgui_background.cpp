@@ -1,84 +1,48 @@
 #include "imgui_background.h"
 
-
+// glfw
 #define GLFW_EXPOSE_NATIVE_X11
 #include <algorithm>
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-
+// imgui
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-
+// font
 #include "font.cpp"
 #include "font_bold.cpp"
 #include "icon.h"
 #include "icon.cpp"
 
+// 3rdparty imgui
 #include "ImNotification.h"
 #include "implot.h"
 #include "implot3d.h"
 
-
+// stb
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
-
-// 윈도우 크기
-std::string TITLE               = "DEMO";
-float WINDOW_WIDTH              = 1280;
-float WINDOW_HEIGHT             = 720;
-
-
-const ImVec4 CLEAR_COLOR        = ImVec4(0.1f, 0.1f, 0.1f, 0.7f);
-const float DOCKSPACE_MARGIN    = 1.0f;
-const float TITLEBAR_HEIGHT     = 30.0f;
-
-
-// 폰트 관련 상수
-const float FONST_SIZE          = 16.0f;
-const float ICON_SIZE           = 20.0f;
-const ImVec2 GLYPH_OFFSET       = ImVec2(0.5f, 3.f);
-
-
-// 타이틀바 관련 상수
-const ImVec2 TITLEBAR_PADDING       = ImVec2(0, 6.0f);
-const ImVec2 TITLEBAR_BUTTON_OFFSET = ImVec2(-33.0f, 5.0f);
-const ImVec2 TITLEBAR_BUTTON_SIZE   = ImVec2(25.f, 20.f);
-
-
-
-// 도킹 위치 이동 및 크기 조절 변수
-ImVec2 docking_size             = ImVec2(WINDOW_WIDTH - DOCKSPACE_MARGIN, WINDOW_HEIGHT - DOCKSPACE_MARGIN);
-ImVec2 prev_docking_size        = docking_size;
-ImVec2 docking_pos              = ImVec2(0, 0);
-
-
-// 타이틀바 드래깅관련 변수
-bool is_dragging_titlebar       = false;
-double drag_offset_x            = 0.0;
-double drag_offset_y            = 0.0;
-
 
 GLFWwindow* window;
 
 
 
-ImGuiBackground& ImGuiBackground::getInstance() {
+ImGuiBackground& ImGuiBackground::getInstance()
+{
     static ImGuiBackground instance;
     return instance;
 }
 
-
-
-void ImGuiBackground::show_imgui(std::function<void()> func) {
+void ImGuiBackground::context(std::function<void()> func)
+{
     std::lock_guard<std::mutex> lock(getInstance().callback_mutex);
     getInstance().render_callback = func;
 }
 
-
-
-void ImGuiBackground::start_background(const std::string& title, const ImVec2& size) {
+void ImGuiBackground::init(const std::string& title, const ImVec2& size)
+{
     TITLE = title;
     WINDOW_WIDTH = size.x;
     WINDOW_HEIGHT = size.y;
@@ -95,28 +59,23 @@ void ImGuiBackground::start_background(const std::string& title, const ImVec2& s
     }
 }
 
-
-
-void ImGuiBackground::stop_background() {
-    getInstance().stopBackground();
+void ImGuiBackground::destroy()
+{
+    getInstance()._stop_background();
 }
 
-
-
-bool ImGuiBackground::is_running() {
+bool ImGuiBackground::is_running()
+{
     return getInstance()._is_running.load();
 }
 
-
-
-bool ImGuiBackground::init() {
+bool ImGuiBackground::_init()
+{
     // GLFW 초기화
     if (!glfwInit()) {
         std::cout << "[Error] [ImGui App]: GLFW 초기화 실패\n";
         return false;
     }
-
-
 
 
     // 윈도우 힌트 설정
@@ -127,17 +86,12 @@ bool ImGuiBackground::init() {
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
 
-
-
-
     // 윈도우 생성
     window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, TITLE.c_str(), NULL, NULL);
     if (window == NULL) {
         std::cout << "[Error] [ImGui App]: GLFW 윈도우 생성 실패\n";
         return false;
     }
-
-
 
 
     // 윈도우 창이 화면 가운데에 뜨도록 설정
@@ -148,14 +102,9 @@ bool ImGuiBackground::init() {
     glfwSetWindowPos(window, window_pos_x, window_pos_y);
 
 
-
-
     // glfw 컨택스트 생성
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
-
-
-
 
 
     // ImGui 초기화
@@ -173,6 +122,7 @@ bool ImGuiBackground::init() {
     // Imgui 스타일 설정
     ImGuiStyle& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
+
 
     // Base colors for a pleasant and modern dark theme with dark accents
     colors[ImGuiCol_Text] = ImVec4(0.92f, 0.93f, 0.94f, 1.00f);                  // Light grey text for readability
@@ -229,6 +179,7 @@ bool ImGuiBackground::init() {
     colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);     // Dim background for windowing
     colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);      // Dim background for modal windows
 
+
     // Style adjustments
     style.WindowPadding = ImVec2(8.00f, 8.00f);
     style.FramePadding = ImVec2(5.00f, 2.00f);
@@ -252,7 +203,6 @@ bool ImGuiBackground::init() {
     style.GrabRounding = 3;
     style.LogSliderDeadzone = 4;
     style.TabRounding = 4;
-
 
 
     // 폰트 추가
@@ -305,18 +255,16 @@ bool ImGuiBackground::init() {
     }
 
 
-
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
-
-
 
     return true;
 }
 
 
 
-bool ImGuiBackground::run() {
+bool ImGuiBackground::_imgui_rendering_loop()
+{
     _is_running.store(true);
 
     while (!glfwWindowShouldClose(window) && _is_running.load()) {
@@ -329,24 +277,17 @@ bool ImGuiBackground::run() {
         ImGui::NewFrame();
 
 
-
-
-        ImGuiViewport* viewport = ImGui::GetMainViewport();
-
         // 독스페이스 중앙 정렬을 위한 위치 계산
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
         docking_pos = ImVec2(
             viewport->Pos.x + (viewport->Size.x - docking_size.x) * 0.5f,
             viewport->Pos.y + (viewport->Size.y - docking_size.y) * 0.5f
         );
 
 
-
-
         // 커스텀 GUI 렌더링
-        show_titlebar();
-        show_dockspace();
-
-
+        _show_titlebar();
+        _show_dockspace();
 
 
         // 렌더링 콜백 실행 (매 프레임마다)
@@ -369,7 +310,6 @@ bool ImGuiBackground::run() {
         ImGui::NotificationCenter();
 
 
-
         // ImGui 렌더링
         ImGui::Render();
         int display_w, display_h;
@@ -377,15 +317,11 @@ bool ImGuiBackground::run() {
         glViewport(0, 0, display_w, display_h);
 
 
-
-
         // 화면 지우기
         glClearColor(CLEAR_COLOR.x * CLEAR_COLOR.w, CLEAR_COLOR.y * CLEAR_COLOR.w, CLEAR_COLOR.z * CLEAR_COLOR.w, CLEAR_COLOR.w);
         glClear(GL_COLOR_BUFFER_BIT);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-
 
 
         // 멀티 뷰포트 처리
@@ -396,8 +332,6 @@ bool ImGuiBackground::run() {
             ImGui::RenderPlatformWindowsDefault();
             glfwMakeContextCurrent(backup_current_context);
         }
-
-
 
         // 버퍼 스왑
         glfwSwapBuffers(window);
@@ -422,9 +356,8 @@ bool ImGuiBackground::run() {
     return false;
 }
 
-
-
-void ImGuiBackground::show_dockspace() {
+void ImGuiBackground::_show_dockspace()
+{
     // 도킹 크기와 위치 계산
     ImVec2 docking_content_pos = ImVec2(docking_pos.x, docking_pos.y + TITLEBAR_HEIGHT + 1.5f);
     ImVec2 docking_content_size = ImVec2(docking_size.x, docking_size.y - TITLEBAR_HEIGHT);
@@ -435,13 +368,10 @@ void ImGuiBackground::show_dockspace() {
     ImGui::SetNextWindowBgAlpha(0.0f); // 도킹 공간을 담는 창 자체는 투명하게 유지
 
 
-
-
     // 도킹창 플래그 설정
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
     window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove;
     window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
 
 
     // 도킹창 스타일 설정
@@ -450,12 +380,9 @@ void ImGuiBackground::show_dockspace() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
 
-
     // 도킹창
     ImGui::Begin("##Main Dockspace", nullptr, window_flags);
     ImGui::PopStyleVar(3);
-
-
 
 
     // 독스페이스
@@ -463,14 +390,10 @@ void ImGuiBackground::show_dockspace() {
     ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 
 
-
-
     // 현재 윈도우 크기 가져오기
     ImVec2 current_window_size = ImGui::GetWindowSize();
     // 전체 도킹 크기 (타이틀바 포함)
     ImVec2 total_docking_size = ImVec2(current_window_size.x, current_window_size.y + TITLEBAR_HEIGHT);
-
-
 
 
     // 도킹 윈도우 크기가 변경되었는지 확인
@@ -487,7 +410,6 @@ void ImGuiBackground::show_dockspace() {
     }
 
 
-
     // 현재 크기를 다음 프레임을 위해 저장
     prev_docking_size = total_docking_size;
     ImGui::End();
@@ -495,7 +417,8 @@ void ImGuiBackground::show_dockspace() {
 
 
 
-void ImGuiBackground::show_titlebar() {
+void ImGuiBackground::_show_titlebar()
+{
     // X11 Display 가져오기
     Display* display = glfwGetX11Display();
 
@@ -515,7 +438,6 @@ void ImGuiBackground::show_titlebar() {
     ImGui::Begin("##TITLE_BAR", nullptr, titlebar_flags);
 
 
-
     // 타이틀 텍스트 (중앙 정렬)
     float text_width = ImGui::CalcTextSize(TITLE.c_str()).x;
     float title_pos_x = (docking_size.x - text_width) * 0.5f;
@@ -525,7 +447,6 @@ void ImGuiBackground::show_titlebar() {
     ImGui::PopFont();
 
 
-
     // 닫기 버튼 (오른쪽 정렬)
     ImGui::SameLine(docking_size.x + TITLEBAR_BUTTON_OFFSET.x);
     ImGui::SetCursorPosY(TITLEBAR_BUTTON_OFFSET.y);
@@ -533,8 +454,6 @@ void ImGuiBackground::show_titlebar() {
     {
         glfwSetWindowShouldClose(window, GLFW_TRUE); // GLFW 윈도우 종료 시그널
     }
-
-
 
 
     // 타이틀바 드래그 처리 (스크린 절대 좌표 사용)
@@ -560,7 +479,6 @@ void ImGuiBackground::show_titlebar() {
         drag_offset_x = root_x - window_x;
         drag_offset_y = root_y - window_y;
     }
-
 
 
     // 타이틀바 윈도우 드래깅 상태일 때
@@ -592,7 +510,6 @@ void ImGuiBackground::show_titlebar() {
     }
 
 
-
     ImGui::End();
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(1);
@@ -604,7 +521,8 @@ void ImGuiBackground::set_config_path(const std::string& path)
 }
 
 
-void ImGuiBackground::_start_background() {
+void ImGuiBackground::_start_background()
+{
     if (render_thread.joinable()) {
         std::cout << "[Error] [ImGui App]: 에러\n";
         return;
@@ -612,15 +530,16 @@ void ImGuiBackground::_start_background() {
 
 
     render_thread = std::thread([this]() {
-        if (init()) {
-            run();
+        if (_init()) {
+            _imgui_rendering_loop();
         }
     });
 }
 
 
 
-void ImGuiBackground::stopBackground() {
+void ImGuiBackground::_stop_background()
+{
     _is_running.store(false);
     if (render_thread.joinable()) {
         render_thread.join();
@@ -707,25 +626,25 @@ void ImGuiBackground::context_push(std::function<void()> func)
 
 namespace ImGui
 {
-    void start(const char* title, const ImVec2& size)
+    void init(const char* title, const ImVec2& size)
     {
-        ImGuiBackground::start_background(title, size);
+        ImGuiBackground::init(title, size);
     }
 
 
-    void stop()
+    void destroy()
     {
-        ImGuiBackground::stop_background();
+        ImGuiBackground::destroy();
     }
 
 
     void context(std::function<void()> render_callback)
     {
-        ImGuiBackground::show_imgui(render_callback);
+        ImGuiBackground::context(render_callback);
     }
 
 
-    bool isRunning()
+    bool is_running()
     {
         return ImGuiBackground::is_running();
     }
