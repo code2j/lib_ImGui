@@ -8,8 +8,6 @@
 #include <vector>
 #include <string>
 #include <chrono>
-// #include "font_awesome_5.h"
-// #include "fa_solid_900.h"
 #include "imgui.h"
 
 #define NOTIFY_MAX_MSG_LENGTH			4096		// Max message content length
@@ -99,13 +97,13 @@ public:
 			case ImGuiToastType_None:
 				return NULL;
 			case ImGuiToastType_Success:
-				return "Success";
+				return "성공";
 			case ImGuiToastType_Warning:
-				return "Warning";
+				return "경고";
 			case ImGuiToastType_Error:
-				return "Error";
+				return "에러";
 			case ImGuiToastType_Info:
-				return "Info";
+				return "정보";
 			default:
 				return NULL;
 			}
@@ -346,22 +344,6 @@ namespace ImGui
 			End();
 		}
 	}
-
-	/// <summary>
-	/// Adds font-awesome font, must be called ONCE on initialization
-	/// <param name="FontDataOwnedByAtlas">Fonts are loaded from read-only memory, should be set to false!</param>
-	/// </summary>
-	// NOTIFY_INLINE void MergeIconsWithLatestFont(float font_size, bool FontDataOwnedByAtlas = false)
-	// {
-	// 	static const ImWchar icons_ranges[] = { MD_MIN_FA, ICON_MAX_FA, 0 };
-	//
-	// 	ImFontConfig icons_config;
-	// 	icons_config.MergeMode = true;
-	// 	icons_config.PixelSnapH = true;
-	// 	icons_config.FontDataOwnedByAtlas = FontDataOwnedByAtlas;
-	//
-	// 	GetIO().Fonts->AddFontFromMemoryTTF((void*)fa_solid_900, sizeof(fa_solid_900), font_size, &icons_config, icons_ranges);
-	// }
 }
 
 #endif

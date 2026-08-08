@@ -42,41 +42,47 @@ void ImGuiLogWindow::clear()
 
 void ImGuiLogWindow::draw(const char *title, bool *p_open)
 {
+    const ImVec2 BUTTON_SIZE = ImVec2(35, 35);
+
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin(title)) {
         ImGui::End();
         return;
     }
 
-    // ---------------------------------------------------------------
-    // 1. 로그 지우기 버튼 (+ 툴팁)
-    // ---------------------------------------------------------------
-    if (ImGui::Button(ICON_MD_DELETE)) clear();
+    // 왼쪽 사이드바 너비 지정 (버튼 크기 + 약간의 여백)
+    float sidebar_width = BUTTON_SIZE.x + 0.0f;
 
-    // 버튼 위에 마우스가 있을 때 툴팁 표시
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("로그 지우기");
+    // ===============================================================
+    // 1. 왼쪽 패널: 아이콘 버튼들 (세로 배치)
+    // ===============================================================
+    ImGui::BeginChild("Sidebar", ImVec2(sidebar_width, 0), false);
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
+    // 로그 지우기 버튼
+    if (ImGui::Button(ICON_MD_DELETE, BUTTON_SIZE)) {
+        clear();
     }
 
-    ImGui::SameLine();
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("모드 삭제");
+    }
 
 
-    // ---------------------------------------------------------------
-    // 2. 오토 스크롤 토글 버튼 (+ 툴팁)
-    // ---------------------------------------------------------------
+    // 오토 스크롤 토글 버튼
     if (auto_scroll) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_Text]);
     } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
     }
 
-    if (ImGui::Button(ICON_MD_VERTICAL_ALIGN_BOTTOM)) {
+    if (ImGui::Button(ICON_MD_VERTICAL_ALIGN_BOTTOM, BUTTON_SIZE)) {
         auto_scroll = !auto_scroll;
     }
 
-    ImGui::PopStyleColor(2);
+    ImGui::PopStyleColor(); // 텍스트 색상 Pop
 
     if (ImGui::IsItemHovered()) {
         if (auto_scroll) {
@@ -86,13 +92,24 @@ void ImGuiLogWindow::draw(const char *title, bool *p_open)
         }
     }
 
-    ImGui::Separator();
+    // 스타일 복구
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
 
-    // 스크롤 가능한 로그 텍스트 영역
+    ImGui::EndChild(); // 왼쪽 패널 종료
+
+
+    ImGui::SameLine();
+
     ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-    // 텍스트 렌더링
-    ImGui::TextUnformatted(buf.begin(), buf.end());
+    ImGui::Dummy(ImVec2(0.0f, 5.0f));
+
+    ImGui::Indent(10.0f);
+    ImGui::TextUnformatted(buf.begin(), buf.end()); // 텍스트 렌더링
+    ImGui::Unindent(10.0f);
+
+    ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
     // 자동 스크롤 로직
     if (auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {

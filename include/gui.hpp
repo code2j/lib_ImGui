@@ -24,6 +24,7 @@
 #include "gui_log.h"
 #include "imgui_internal.h"
 #include "gui_notify.hpp"
+#include "gui_toggle.hpp"
 
 namespace ImRay
 {
@@ -51,8 +52,8 @@ namespace ImRay
 
     // 폰트 설정
     const float  FONT_SIZE   = 18;
-    const float  ICON_SIZE   = 20;
-    const ImVec2 ICON_OFFSET = ImVec2(0, 2);
+    const float  ICON_SIZE   = 28;
+    const ImVec2 ICON_OFFSET = ImVec2(0, 6);
 
 
     // 3d 카메라 정의
@@ -68,12 +69,12 @@ namespace ImRay
     // 상태 플래그
     bool show_3d_viewport = false; // 3d 뷰포트 보이기 여부
     bool should_close_app = false; // 앱 닫기 여부
+    bool show_log_window  = true;  // 로거 표시 여부
 
 
 
     // log window
     ImGuiLogWindow loggr;
-    bool show_log_window = true;
 }
 
 
@@ -126,6 +127,15 @@ namespace ImGui
         buf->appendf("\n");
     }
     // --- 설정 핸들러 콜백 함수 끝 ---
+
+
+
+
+    // =====================================================
+    // --- 토글 버튼 시작 ---
+    // =====================================================
+    void ToggleButton(const char* str_id, bool* v);
+    // --- 토글 버튼 끝 ---
 }
 
 
@@ -155,7 +165,7 @@ namespace ImGui
         // ---------------------------------------------------------------
         // ImGui & raylib 초기화
         // ---------------------------------------------------------------
-        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE);
+        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE ); // FLAG_WINDOW_TRANSPARENT
         InitWindow(width, height, title);
         SetTargetFPS(60);
         SetExitKey(0); // esc로 인한 종료 방지
@@ -192,7 +202,7 @@ namespace ImGui
 
         colors[ImGuiCol_Text]                  = ImVec4(0.92, 0.93, 0.94, 1.00); // 가독성을 위한 밝은 회색 Text
         colors[ImGuiCol_TextDisabled]          = ImVec4(0.50, 0.52, 0.54, 1.00); // 비활성화된 Text를 위한 옅은 회색
-        colors[ImGuiCol_WindowBg]              = ImVec4(0.14, 0.14, 0.16, 0.50); // 약간 푸른빛이 도는 어두운 Background
+        colors[ImGuiCol_WindowBg]              = ImVec4(0.14, 0.14, 0.16, 0.7); // 약간 푸른빛이 도는 어두운 Background
         colors[ImGuiCol_ChildBg]               = ImVec4(0.16, 0.16, 0.18, 1.00); // Child 요소를 위한 약간 더 밝은 색상
         colors[ImGuiCol_PopupBg]               = ImVec4(0.18, 0.18, 0.20, 1.00); // Popup Background
         colors[ImGuiCol_Border]                = ImVec4(0.28, 0.29, 0.30, 0.60); // 부드러운 Border 색상
@@ -557,7 +567,7 @@ namespace ImGui
                 // 6. 사용자 콘텐츠 렌더링 (Raylib 텍스처 + 사용자 ImGui UI)
                 // ---------------------------------------------------------------
                 BeginTextureMode(ImRay::view_texture);
-                ClearBackground(RAYWHITE);
+                ClearBackground(BLANK);
 
                 // 뷰포트 조작시 마우스 커서 숨김
                 if (ImGui::is_viewport_hovered()) {
@@ -578,6 +588,7 @@ namespace ImGui
                 DrawGrid(20, 1.0f);
                 rlPopMatrix();
                 EndMode3D();
+                ImGui::PopStyleVar();
 
                 // 사용자 람다 콜백 실행
                 if (func) {
@@ -585,6 +596,7 @@ namespace ImGui
                 }
 
                 EndTextureMode();
+
             }
             else
             {
@@ -593,7 +605,6 @@ namespace ImGui
             }
 
             ImGui::End();
-            ImGui::PopStyleVar();
         }
         else
         {
@@ -624,7 +635,7 @@ namespace ImGui
         ImGui::Render();
 
         BeginDrawing();
-            ClearBackground(BLACK);
+            ClearBackground(BLANK);
 
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
