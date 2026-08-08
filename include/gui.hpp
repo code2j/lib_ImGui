@@ -86,6 +86,9 @@ namespace ImRay
     // 스카이 박스
     // ==================================================
     Model skybox;
+
+
+
 }
 
 
@@ -161,7 +164,7 @@ namespace ImGui
         // ---------------------------------------------------------------
         // ImGui & raylib 초기화
         // ---------------------------------------------------------------
-        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE ); // FLAG_WINDOW_TRANSPARENT
+        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT ); // FLAG_WINDOW_TRANSPARENT
         InitWindow(width, height, title);
         SetTargetFPS(60);
         SetExitKey(0); // esc로 인한 종료 방지
