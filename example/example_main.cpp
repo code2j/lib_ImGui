@@ -3,17 +3,18 @@
 #include <bits/this_thread_sleep.h>
 
 
+
+
 int main() {
     ImGui::init("ImGui 예제", 1280, 720);
 
-
-    std::cout << "Application Started!" << std::endl;
-    std::cout << "Waiting for user input..." << std::endl;
 
 
     while (ImGui::is_running()) {
 
         ImGui::context([&]() {
+
+
 
             ImGui::Begin("테스트 창");
                 if (ImGui::Button("Test")) {
@@ -30,6 +31,8 @@ int main() {
                 static bool is_test_button_pressed = false;
                 ImGui::ToggleButton("테스트 버튼", &is_test_button_pressed   );
             ImGui::End();
+
+
 
         });
     }

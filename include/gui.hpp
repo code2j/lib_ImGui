@@ -625,11 +625,13 @@ namespace ImGui
                         rlEnableDepthMask();
 #endif                  // 스카이박스 end
 
-
-
-
+                        // 그리드
                         DrawGrid(10, 1);
+
+                        // 월드 축
                         DrawWorldAxesThick(0.5, 0.01);
+
+                        // 외부 함수
                         func();
                     EndMode3D();
                     DrawFPS(10, 10);
