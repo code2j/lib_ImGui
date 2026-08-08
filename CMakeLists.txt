@@ -59,6 +59,15 @@ target_link_libraries(imgui
 
 
 # ==================================================================
+# 컴파일 정의
+# ==================================================================
+target_compile_definitions(main
+        PUBLIC
+        "IMGUI_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\""
+)
+
+
+# ==================================================================
 # 예제 빌드
 # ==================================================================
 project(main)
@@ -72,9 +81,6 @@ target_link_libraries(main
         imgui
 )
 
-target_compile_definitions(main
-        PRIVATE
-        "IMGUI_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\""
-)
+
 
 endif ()
