@@ -67,5 +67,9 @@ target_link_libraries(main
         imgui
 )
 
+target_compile_definitions(main
+        PRIVATE
+        "IMGUI_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\""
+)
 
 

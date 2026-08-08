@@ -25,6 +25,10 @@
 #include "imgui_internal.h"
 #include "gui_notify.hpp"
 #include "gui_toggle.hpp"
+#include "gui_skybox_loader.h"
+
+
+#define SKYBOX_ON 1  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
 
 namespace ImRay
 {
@@ -58,9 +62,9 @@ namespace ImRay
 
     // 3d 카메라 정의
     Camera camera = {
-        { 1.0, -2.0, 1.0 },      // position
+        { 1.0, 0.5, 2.0 },      // position
         { 0.0, 0.0, 0.0 },       // target
-        { 0.0, 0.0, 1.0 },       // up
+        { 0.0, 1.0, 0.0 },       // up
         45.0f,                   // fovy
         CAMERA_PERSPECTIVE       // projection
     };
@@ -72,9 +76,15 @@ namespace ImRay
     bool show_log_window  = true;  // 로거 표시 여부
 
 
-
-    // log window
+    // ==================================================
+    // 로그 윈도우
+    // ==================================================
     ImGuiLogWindow loggr;
+
+    // ==================================================
+    // 스카이 박스
+    // ==================================================
+    Model skybox;
 }
 
 
@@ -316,10 +326,30 @@ namespace ImGui
         ImGui_ImplOpenGL3_Init("#version 130");
 
         ImRay::view_texture = LoadRenderTexture((int) ImRay::VIEWPORT_INTERNAL_W, (int) ImRay::VIEWPORT_INTERNAL_H);
+
+
+        // ---------------------------------------------------------------
+        // 스카이 박스
+        // ---------------------------------------------------------------
+#if(SKYBOX_ON)
+        ImRay::skybox = load_skybox(
+            IMGUI_ROOT "data/shaders/skybox.vs",
+            IMGUI_ROOT "data/shaders/skybox.fs",
+            IMGUI_ROOT "data/skybox/skybox.png"
+        );
+#endif
     }
+
 
     void destroy()
     {
+#if(SKYBOX_ON)
+        // 스카이 박스 해제
+        UnloadShader(ImRay::skybox.materials[0].shader);
+        UnloadTexture(ImRay::skybox.materials[0].maps[MATERIAL_MAP_CUBEMAP].texture);
+        UnloadModel(ImRay::skybox);
+#endif
+
         UnloadRenderTexture(ImRay::view_texture);
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
@@ -449,9 +479,9 @@ namespace ImGui
         // 설정 팝업 정의 (팝업 위치도 동일하게 조정)
         ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - closeBtnWidth - maxBtnWidth - settingsBtnWidth, viewport->Pos.y + ImRay::TITLEBAR_HEIGHT));
         if (ImGui::BeginPopup("SettingsPopup")) {
-            ImGui::Text("설정 메뉴");
+            ImGui::Text("설정");
             ImGui::Separator();
-            ImGui::Checkbox("3D 뷰어", &ImRay::show_3d_viewport);
+            ImGui::Checkbox("3D 뷰포트", &ImRay::show_3d_viewport);
             ImGui::Checkbox("로그", &ImRay::show_log_window);
             ImGui::EndPopup();
         }
@@ -532,7 +562,7 @@ namespace ImGui
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
             // Begin의 리턴값을 받되, End()는 if문 밖에서 무조건 호출해야 합니다.
-            bool is_viewport_visible = ImGui::Begin("3D Viewport", &ImRay::show_3d_viewport);
+            bool is_viewport_visible = ImGui::Begin("3D 뷰포트");
 
             if (is_viewport_visible)
             {
@@ -569,30 +599,51 @@ namespace ImGui
                 BeginTextureMode(ImRay::view_texture);
                 ClearBackground(BLANK);
 
-                // 뷰포트 조작시 마우스 커서 숨김
-                if (ImGui::is_viewport_hovered()) {
+                // 커서가 숨겨져 있을 때 (카메라 조작 중)
+                if (IsCursorHidden()) {
+                    // 뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구
                     if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                        if (IsCursorHidden()) EnableCursor();
-                        else DisableCursor();
+                        EnableCursor();
+                    }
+                    // 카메라 업데이트 수행
+                    UpdateCamera(&ImRay::camera, CAMERA_FREE);
+                }
+                // 커서가 보일 때 (일반 UI 조작 중)
+                else {
+                    // 뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)
+                    if (ImGui::is_viewport_hovered()) {
+                        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+                            DisableCursor();
+                        }
                     }
                 }
 
-                if (IsCursorHidden()) {
-                    UpdateCamera(&ImRay::camera, CAMERA_FREE);
-                }
 
-                BeginMode3D(ImRay::camera);
-                DrawWorldAxesThick(0.5, 0.01);
-                rlPushMatrix();
-                rlRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-                DrawGrid(20, 1.0f);
-                rlPopMatrix();
-                EndMode3D();
+
                 ImGui::PopStyleVar();
 
                 // 사용자 람다 콜백 실행
                 if (func) {
-                    func();
+                    BeginMode3D(ImRay::camera);
+
+#if(SKYBOX_ON)
+                        rlDisableBackfaceCulling();
+                        rlDisableDepthMask();
+
+                        DrawModel(ImRay::skybox, (Vector3){0, 0, 0}, 1.0f, WHITE);
+
+                        rlEnableBackfaceCulling();
+                        rlEnableDepthMask();
+#endif                  // 스카이박스 end
+
+
+
+
+                        DrawGrid(10, 1);
+                        DrawWorldAxesThick(0.5, 0.01);
+                        func();
+                    EndMode3D();
+                    DrawFPS(10, 10);
                 }
 
                 EndTextureMode();
