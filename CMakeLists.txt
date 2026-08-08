@@ -30,6 +30,10 @@ add_library(imgui
         src/implot3d_meshes.cpp
         # My code
         src/gui_log.cpp
+        src/gui_axis.cpp
+        src/gui_notify.cpp
+        src/gui_toggle.cpp
+        src/gui_skybox_loader.cpp
 )
 
 
@@ -59,6 +63,7 @@ target_link_libraries(imgui
 # ==================================================================
 project(main)
 
+if(${PROJECT_IS_TOP_LEVEL})
 add_executable(main
         example/example_main.cpp
 )
@@ -72,4 +77,4 @@ target_compile_definitions(main
         "IMGUI_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\""
 )
 
-
+endif ()

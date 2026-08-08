@@ -23,8 +23,8 @@
 
 #include "gui_log.h"
 #include "imgui_internal.h"
-#include "gui_notify.hpp"
-#include "gui_toggle.hpp"
+#include "gui_notify.h"
+#include "gui_toggle.h"
 #include "gui_skybox_loader.h"
 #include "gui_axis.h"
 
@@ -277,6 +277,8 @@ namespace ImGui
         style.LogSliderDeadzone = 4;                  // Logarithmic Slider의 데드존(Deadzone) 크기
         style.TabRounding       = 4;                  // Tab 모서리 둥글기 (Rounding)
 
+        style.WindowMenuButtonPosition = ImGuiDir_None; // 탭 최소화 버튼 제거
+
 
         // ---------------------------------------------------------------
         // 폰트 설정
@@ -460,13 +462,17 @@ namespace ImGui
         ImGui::SameLine(viewport->Size.x - closeBtnWidth - maxBtnWidth - settingsBtnWidth);
         ImGui::SetCursorPosY(0.0f);
 
+
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
         if (ImGui::Button(ICON_MD_SETTINGS, ImVec2(settingsBtnWidth, ImRay::TITLEBAR_HEIGHT))) {
             ImGui::OpenPopup("SettingsPopup");
         }
         ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(1);
 
         // 설정 팝업 정의 (팝업 위치도 동일하게 조정)
         ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - closeBtnWidth - maxBtnWidth - settingsBtnWidth, viewport->Pos.y + ImRay::TITLEBAR_HEIGHT));
@@ -485,6 +491,7 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
         // 창 상태에 따라 아이콘 텍스트 분기 처리
         const char* maxIcon = IsWindowMaximized() ? ICON_MD_FULLSCREEN_EXIT : ICON_MD_FULLSCREEN;
@@ -497,6 +504,7 @@ namespace ImGui
             }
         }
         ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(1);
 
         // --- 닫기(X) 버튼 ---
         ImGui::SameLine(viewport->Size.x - closeBtnWidth);
@@ -505,10 +513,13 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.2f, 0.2f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
         if (ImGui::Button(ICON_MD_CLOSE, ImVec2(closeBtnWidth, ImRay::TITLEBAR_HEIGHT))) {
             ImRay::should_close_app = true;
         }
         ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar(1);
 
         ImGui::End();
         ImGui::PopStyleColor();

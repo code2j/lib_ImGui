@@ -67,7 +67,7 @@ void ImGuiLogWindow::draw(const char *title, bool *p_open)
     }
 
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("모드 삭제");
+        ImGui::SetTooltip("모두 삭제");
     }
 
 

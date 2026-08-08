@@ -1,7 +1,9 @@
-#pragma once
+#include "gui_toggle.h"
 #include "imgui_internal.h"
 
-namespace ImGui {
+
+namespace ImGui
+{
 
 void ToggleButton(const char* str_id, bool* v)
 {
