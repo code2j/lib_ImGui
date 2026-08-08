@@ -29,7 +29,7 @@ add_library(imgui
         src/implot3d_items.cpp
         src/implot3d_meshes.cpp
         # My code
-
+        src/gui_log.cpp
 )
 
 

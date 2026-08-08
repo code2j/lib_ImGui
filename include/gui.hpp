@@ -21,24 +21,9 @@
 #include "src/icon.cpp"
 #include "src/font.cpp"
 
-
-namespace ImGui
-{
-    // 시스템 제어
-    void init(const char* title, int width = 1280, int height = 720);
-    void destroy();
-    bool is_running();
-
-    // 통합 컨텍스트 렌더링 함수
-    void context(std::function<void()> func);
-
-    // 설정 함수
-    void load_config(const std::string& path);
-
-    // 뷰포트 마우스 및 상태 유틸리티
-    Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
-    bool    is_viewport_hovered();
-}
+#include "gui_log.h"
+#include "imgui_internal.h"
+#include "gui_notify.hpp"
 
 namespace ImRay
 {
@@ -83,9 +68,69 @@ namespace ImRay
     // 상태 플래그
     bool show_3d_viewport = false; // 3d 뷰포트 보이기 여부
     bool should_close_app = false; // 앱 닫기 여부
+
+
+
+    // log window
+    ImGuiLogWindow loggr;
+    bool show_log_window = true;
 }
 
-inline void DrawWorldAxesThick(float length, float thickness) {
+
+
+namespace ImGui
+{
+    // 시스템 제어
+    void init(const char* title, int width = 1280, int height = 720);
+    void destroy();
+    bool is_running();
+
+    // 통합 컨텍스트 렌더링 함수
+    void context(std::function<void()> func);
+
+    // 설정 함수
+    void load_config(const std::string& path);
+
+    // 뷰포트 마우스 및 상태 유틸리티
+    Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
+    bool    is_viewport_hovered();
+
+
+
+    // =====================================================
+    // --- 설정 핸들러 콜백 함수 시작 ---
+    // =====================================================
+    static void* SettingsHandler_ReadOpen(ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name)
+    {
+        return (void*)1;
+    }
+
+    static void SettingsHandler_ReadLine(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line)
+    {
+        // ini 파일에서 우리가 정의한 섹션의 각 줄을 읽어올 때 호출
+        int val;
+        if (sscanf(line, "ShowLogWindow=%d", &val) == 1) {
+            ImRay::show_log_window = (val != 0);
+        }
+        else if (sscanf(line, "Show3DViewport=%d", &val) == 1) {
+            ImRay::show_3d_viewport = (val != 0);
+        }
+    }
+
+    static void SettingsHandler_WriteAll(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf)
+    {
+        // 프로그램 종료 시 또는 ini 파일 저장 시 호출
+        buf->appendf("[%s][Main]\n", handler->TypeName);
+        buf->appendf("ShowLogWindow=%d\n", ImRay::show_log_window ? 1 : 0);
+        buf->appendf("Show3DViewport=%d\n", ImRay::show_3d_viewport ? 1 : 0);
+        buf->appendf("\n");
+    }
+    // --- 설정 핸들러 콜백 함수 끝 ---
+}
+
+
+inline void DrawWorldAxesThick(float length, float thickness)
+{
     Vector3 origin = { 0.0f, 0.0f, 0.0f };
 
     // 원기둥의 면 개수
@@ -120,6 +165,14 @@ namespace ImGui
         ImGui::CreateContext();
         ImPlot::CreateContext();
         ImPlot3D::CreateContext();
+
+        ImGuiSettingsHandler ini_handler;
+        ini_handler.TypeName = "ImRaySettings"; // ini 파일에 기록될 섹션 이름
+        ini_handler.TypeHash = ImHashStr("ImRaySettings");
+        ini_handler.ReadOpenFn = SettingsHandler_ReadOpen;
+        ini_handler.ReadLineFn = SettingsHandler_ReadLine;
+        ini_handler.WriteAllFn = SettingsHandler_WriteAll;
+        ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
 
         // 플래그 설정
         ImGuiIO& io = ImGui::GetIO();
@@ -389,6 +442,7 @@ namespace ImGui
             ImGui::Text("설정 메뉴");
             ImGui::Separator();
             ImGui::Checkbox("3D 뷰어", &ImRay::show_3d_viewport);
+            ImGui::Checkbox("로그", &ImRay::show_log_window);
             ImGui::EndPopup();
         }
 
@@ -456,6 +510,8 @@ namespace ImGui
         ImGuiID dockspace_id = ImGui::GetID("MainRootDockSpace");
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
         ImGui::End();
+
+
 
 
         // ---------------------------------------------------------------
@@ -544,6 +600,22 @@ namespace ImGui
             // 3D 뷰포트가 아예 꺼져있을 때도 사용자 UI 루프가 돌도록 처리
             if (func) func();
         }
+
+        // ---------------------------------------------------------------
+        // ImGui log 렌더링
+        // ---------------------------------------------------------------
+        if (ImRay::show_log_window)
+            ImRay::loggr.draw("로그", &ImRay::show_log_window);
+
+
+        // ---------------------------------------------------------------
+        // ImGui notiy 렌더링
+        // ---------------------------------------------------------------
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.f);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(43.f / 255.f, 43.f / 255.f, 43.f / 255.f, 100.f / 255.f)); // Background color
+        ImGui::RenderNotifications();
+        ImGui::PopStyleVar(1);
+        ImGui::PopStyleColor(1);
 
 
         // ---------------------------------------------------------------
