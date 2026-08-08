@@ -27,6 +27,7 @@
 #include "gui_toggle.h"
 #include "gui_skybox_loader.h"
 #include "gui_axis.h"
+#include "gui_texture_loader.h"
 
 
 #define SKYBOX_ON 1  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
@@ -145,11 +146,7 @@ namespace ImGui
 
 
 
-    // =====================================================
-    // --- 토글 버튼 시작 ---
-    // =====================================================
-    void ToggleButton(const char* str_id, bool* v);
-    // --- 토글 버튼 끝 ---
+
 }
 
 
@@ -199,63 +196,93 @@ namespace ImGui
         ImGuiStyle& style = ImGui::GetStyle();
         ImVec4* colors = style.Colors;
 
+        // Backgrounds
+        colors[ImGuiCol_WindowBg]             = ImVec4(0.12f, 0.13f, 0.15f, 1.00f); // Dark grey base
+        colors[ImGuiCol_ChildBg]              = ImVec4(0.14f, 0.15f, 0.17f, 1.00f);
+        colors[ImGuiCol_PopupBg]              = ImVec4(0.10f, 0.10f, 0.12f, 0.95f);
+        colors[ImGuiCol_Border]               = ImVec4(0.30f, 0.33f, 0.42f, 0.40f);
+
+        // Headers
+        colors[ImGuiCol_Header]               = ImVec4(0.36f, 0.42f, 0.55f, 0.60f);
+        colors[ImGuiCol_HeaderHovered]        = ImVec4(0.44f, 0.50f, 0.68f, 0.80f);
+        colors[ImGuiCol_HeaderActive]         = ImVec4(0.46f, 0.55f, 0.75f, 1.00f);
+
+        // Buttons
+        colors[ImGuiCol_Button]               = ImVec4(0.28f, 0.34f, 0.48f, 0.70f);
+        colors[ImGuiCol_ButtonHovered]        = ImVec4(0.36f, 0.45f, 0.65f, 0.85f);
+        colors[ImGuiCol_ButtonActive]         = ImVec4(0.40f, 0.50f, 0.70f, 1.00f);
+
+        // Frames
+        colors[ImGuiCol_FrameBg]              = ImVec4(0.20f, 0.22f, 0.28f, 1.00f);
+        colors[ImGuiCol_FrameBgHovered]       = ImVec4(0.28f, 0.32f, 0.42f, 1.00f);
+        colors[ImGuiCol_FrameBgActive]        = ImVec4(0.32f, 0.38f, 0.50f, 1.00f);
+
+        // Tabs
+        colors[ImGuiCol_Tab]                  = ImVec4(0.26f, 0.30f, 0.42f, 0.80f);
+        colors[ImGuiCol_TabHovered]           = ImVec4(0.36f, 0.42f, 0.58f, 1.00f);
+        colors[ImGuiCol_TabActive]            = ImVec4(0.42f, 0.50f, 0.68f, 1.00f);
+        colors[ImGuiCol_TabUnfocused]         = ImVec4(0.20f, 0.24f, 0.32f, 0.80f);
+        colors[ImGuiCol_TabUnfocusedActive]   = ImVec4(0.30f, 0.36f, 0.50f, 1.00f);
+
+        // Text
         colors[ImGuiCol_Text]                  = ImVec4(0.92, 0.93, 0.94, 1.00); // 가독성을 위한 밝은 회색 Text
         colors[ImGuiCol_TextDisabled]          = ImVec4(0.50, 0.52, 0.54, 1.00); // 비활성화된 Text를 위한 옅은 회색
-        colors[ImGuiCol_WindowBg]              = ImVec4(0.14, 0.14, 0.16, 0.7); // 약간 푸른빛이 도는 어두운 Background
-        colors[ImGuiCol_ChildBg]               = ImVec4(0.16, 0.16, 0.18, 1.00); // Child 요소를 위한 약간 더 밝은 색상
-        colors[ImGuiCol_PopupBg]               = ImVec4(0.18, 0.18, 0.20, 1.00); // Popup Background
-        colors[ImGuiCol_Border]                = ImVec4(0.28, 0.29, 0.30, 0.60); // 부드러운 Border 색상
-        colors[ImGuiCol_BorderShadow]          = ImVec4(0.00, 0.00, 0.00, 0.00); // Border Shadow 없음
-        colors[ImGuiCol_FrameBg]               = ImVec4(0.20, 0.22, 0.24, 1.00); // Frame Background
-        colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.22, 0.24, 0.26, 1.00); // Frame Hover 효과
-        colors[ImGuiCol_FrameBgActive]         = ImVec4(0.24, 0.26, 0.28, 1.00); // Active Frame Background
+        colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.24, 0.34, 0.44, 0.35); // 선택된 Text Background
+
+        // Title
         colors[ImGuiCol_TitleBg]               = ImVec4(0.14, 0.14, 0.16, 1.00); // Title Background
         colors[ImGuiCol_TitleBgActive]         = ImVec4(0.16, 0.16, 0.18, 1.00); // Active Title Background
         colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.14, 0.14, 0.16, 1.00); // Collapsed Title Background
-        colors[ImGuiCol_MenuBarBg]             = ImVec4(0.20, 0.20, 0.22, 1.00); // Menu Bar Background
+
+        // Scroll
         colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.16, 0.16, 0.18, 1.00); // Scrollbar Background
         colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.24, 0.26, 0.28, 1.00); // Scrollbar Grab을 위한 어두운 강조색
         colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.28, 0.30, 0.32, 1.00); // Scrollbar Grab Hover
         colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.32, 0.34, 0.36, 1.00); // Scrollbar Grab Active
-        colors[ImGuiCol_CheckMark]             = ImVec4(0.46, 0.56, 0.66, 1.00); // 짙은 파란색 Checkmark
+
+        // Slider
         colors[ImGuiCol_SliderGrab]            = ImVec4(0.36, 0.46, 0.56, 1.00); // 짙은 파란색 Slider Grab
         colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.40, 0.50, 0.60, 1.00); // Active Slider Grab
-        colors[ImGuiCol_Button]                = ImVec4(0.24, 0.34, 0.44, 1.00); // 짙은 파란색 Button
-        colors[ImGuiCol_ButtonHovered]         = ImVec4(0.28, 0.38, 0.48, 1.00); // Button Hover 효과
-        colors[ImGuiCol_ButtonActive]          = ImVec4(0.32, 0.42, 0.52, 1.00); // Active Button
-        colors[ImGuiCol_Header]                = ImVec4(0.24, 0.34, 0.44, 1.00); // Button과 비슷한 Header 색상
-        colors[ImGuiCol_HeaderHovered]         = ImVec4(0.28, 0.38, 0.48, 1.00); // Header Hover 효과
-        colors[ImGuiCol_HeaderActive]          = ImVec4(0.32, 0.42, 0.52, 1.00); // Active Header
+
+        // Separator
         colors[ImGuiCol_Separator]             = ImVec4(0.28, 0.29, 0.30, 1.00); // Separator 색상
         colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00); // Separator Hover 효과
         colors[ImGuiCol_SeparatorActive]       = ImVec4(0.46, 0.56, 0.66, 1.00); // Active Separator
+
+        // Resize Grip
         colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 1.00); // Resize Grip
         colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00); // Resize Grip Hover 효과
         colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00); // Active Resize Grip
-        colors[ImGuiCol_Tab]                   = ImVec4(0.20, 0.22, 0.24, 1.00); // 비활성 Tab
-        colors[ImGuiCol_TabHovered]            = ImVec4(0.28, 0.38, 0.48, 1.00); // Tab Hover 효과
-        colors[ImGuiCol_TabActive]             = ImVec4(0.24, 0.34, 0.44, 1.00); // Active Tab 색상
-        colors[ImGuiCol_TabUnfocused]          = ImVec4(0.20, 0.22, 0.24, 1.00); // 포커스를 잃은(Unfocused) Tab
-        colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.24, 0.34, 0.44, 1.00); // Active 상태지만 포커스를 잃은 Tab
+
+        // Plot
         colors[ImGuiCol_PlotLines]             = ImVec4(0.46, 0.56, 0.66, 1.00); // Plot Lines
         colors[ImGuiCol_PlotLinesHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00); // Plot Lines Hover 효과
         colors[ImGuiCol_PlotHistogram]         = ImVec4(0.36, 0.46, 0.56, 1.00); // Histogram 색상
         colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(0.40, 0.50, 0.60, 1.00); // Histogram Hover 효과
+
+        // Table
         colors[ImGuiCol_TableHeaderBg]         = ImVec4(0.20, 0.22, 0.24, 1.00); // Table Header Background
         colors[ImGuiCol_TableBorderStrong]     = ImVec4(0.28, 0.29, 0.30, 1.00); // Table을 위한 짙은 Border
         colors[ImGuiCol_TableBorderLight]      = ImVec4(0.24, 0.25, 0.26, 1.00); // Table을 위한 옅은 Border
         colors[ImGuiCol_TableRowBg]            = ImVec4(0.20, 0.22, 0.24, 1.00); // Table Row Background
         colors[ImGuiCol_TableRowBgAlt]         = ImVec4(0.22, 0.24, 0.26, 1.00); // 교차(Alternate) Row Background
-        colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.24, 0.34, 0.44, 0.35); // 선택된 Text Background
         colors[ImGuiCol_DragDropTarget]        = ImVec4(0.46, 0.56, 0.66, 0.90); // Drag and Drop Target
+
+        // Nav
         colors[ImGuiCol_NavHighlight]          = ImVec4(0.46, 0.56, 0.66, 1.00); // Navigation Highlight
         colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00, 1.00, 1.00, 0.70); // Windowing Highlight
         colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80, 0.80, 0.80, 0.20); // Windowing을 위한 어두운(Dim) Background
+
         colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80, 0.80, 0.80, 0.35); // Modal Window를 위한 어두운(Dim) Background
+        colors[ImGuiCol_BorderShadow]          = ImVec4(0.00, 0.00, 0.00, 0.00); // Border Shadow 없음
+        colors[ImGuiCol_CheckMark]             = ImVec4(0.46, 0.56, 0.66, 1.00); // 짙은 파란색 Checkmark
+        colors[ImGuiCol_MenuBarBg]             = ImVec4(0.14f, 0.15f, 0.17f, 1.00f);
+
+
 
         // Style adjustments
         style.WindowPadding     = ImVec2(8.00, 8.00); // Window 내측 여백 (Padding)
-        style.FramePadding      = ImVec2(5.00, 2.00); // Frame 내측 여백 (Padding)
+        style.FramePadding      = ImVec2(5.00, 6.00); // Frame 내측 여백 (Padding)
         style.CellPadding       = ImVec2(6.00, 6.00); // Table Cell 내측 여백 (Padding)
         style.ItemSpacing       = ImVec2(6.00, 6.00); // Item 간의 간격 (Spacing)
         style.ItemInnerSpacing  = ImVec2(6.00, 6.00); // Item 내부 요소 간의 간격 (Inner Spacing)
@@ -316,7 +343,7 @@ namespace ImGui
         ImRay::skybox = load_skybox(
             IMGUI_ROOT "data/shaders/skybox.vs",
             IMGUI_ROOT "data/shaders/skybox.fs",
-            IMGUI_ROOT "data/skybox/skybox.png"
+            IMGUI_ROOT "data/textures/skybox/skybox.png"
         );
 #endif
 
@@ -422,6 +449,10 @@ namespace ImGui
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
+
         ImGui::Begin("CustomTitleBar", nullptr, titleFlags);
 
         if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0)) {
@@ -466,13 +497,11 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
         if (ImGui::Button(ICON_MD_SETTINGS, ImVec2(settingsBtnWidth, ImRay::TITLEBAR_HEIGHT))) {
             ImGui::OpenPopup("SettingsPopup");
         }
         ImGui::PopStyleColor(3);
-        ImGui::PopStyleVar(1);
 
         // 설정 팝업 정의 (팝업 위치도 동일하게 조정)
         ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - closeBtnWidth - maxBtnWidth - settingsBtnWidth, viewport->Pos.y + ImRay::TITLEBAR_HEIGHT));
@@ -491,7 +520,6 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
         // 창 상태에 따라 아이콘 텍스트 분기 처리
         const char* maxIcon = IsWindowMaximized() ? ICON_MD_FULLSCREEN_EXIT : ICON_MD_FULLSCREEN;
@@ -504,7 +532,7 @@ namespace ImGui
             }
         }
         ImGui::PopStyleColor(3);
-        ImGui::PopStyleVar(1);
+
 
         // --- 닫기(X) 버튼 ---
         ImGui::SameLine(viewport->Size.x - closeBtnWidth);
@@ -513,23 +541,23 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.2f, 0.2f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
         if (ImGui::Button(ICON_MD_CLOSE, ImVec2(closeBtnWidth, ImRay::TITLEBAR_HEIGHT))) {
             ImRay::should_close_app = true;
         }
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(1);
-
         ImGui::End();
         ImGui::PopStyleColor();
-        ImGui::PopStyleVar();
+        ImGui::PopStyleVar(3);
 
 
         // ---------------------------------------------------------------
         // 4. 독스페이스
         // ---------------------------------------------------------------
-        ImVec2 dockPos = ImVec2(viewport->Pos.x, viewport->Pos.y + ImRay::TITLEBAR_HEIGHT);
+        const float up_offset = 1.1; // 타이틀바 라운딩으로 생긴 여백 지우기 용
+
+        ImVec2 dockPos = ImVec2(viewport->Pos.x, viewport->Pos.y + ImRay::TITLEBAR_HEIGHT-up_offset);
         ImVec2 dockSize = ImVec2(viewport->Size.x, viewport->Size.y - ImRay::TITLEBAR_HEIGHT);
 
         ImGui::SetNextWindowPos(dockPos);
@@ -564,101 +592,93 @@ namespace ImGui
         {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-            // Begin의 리턴값을 받되, End()는 if문 밖에서 무조건 호출해야 합니다.
-            bool is_viewport_visible = ImGui::Begin("3D 뷰포트");
+            ImGui::Begin(" " ICON_MD_DEPLOYED_CODE " 3D 뷰포트 ");
 
-            if (is_viewport_visible)
-            {
-                ImVec2 availSize = ImGui::GetContentRegionAvail();
-                float targetAspect = ImRay::VIEWPORT_INTERNAL_W / ImRay::VIEWPORT_INTERNAL_H;
-                float availAspect = availSize.x / availSize.y;
+            ImVec2 availSize = ImGui::GetContentRegionAvail();
+            float targetAspect = ImRay::VIEWPORT_INTERNAL_W / ImRay::VIEWPORT_INTERNAL_H;
+            float availAspect = availSize.x / availSize.y;
 
-                ImVec2 imageSize;
-                if (availAspect > targetAspect) {
-                    imageSize.y = availSize.y;
-                    imageSize.x = imageSize.y * targetAspect;
-                } else {
-                    imageSize.x = availSize.x;
-                    imageSize.y = imageSize.x / targetAspect;
+            ImVec2 imageSize;
+            if (availAspect > targetAspect) {
+                imageSize.y = availSize.y;
+                imageSize.x = imageSize.y * targetAspect;
+            } else {
+                imageSize.x = availSize.x;
+                imageSize.y = imageSize.x / targetAspect;
+            }
+
+            ImVec2 cursorStartPos = ImGui::GetCursorScreenPos();
+            float offsetX = (availSize.x - imageSize.x) * 0.5f;
+            float offsetY = (availSize.y - imageSize.y) * 0.5f;
+            ImVec2 imagePos = ImVec2(cursorStartPos.x + offsetX, cursorStartPos.y + offsetY);
+            ImGui::SetCursorScreenPos(imagePos);
+
+            ImTextureID tex_id = (ImTextureID)(intptr_t) ImRay::view_texture.texture.id;
+            ImGui::Image(tex_id, imageSize, ImVec2(0, 1), ImVec2(1, 0));
+
+            ImRay::is_viewport_hovered = ImGui::IsItemHovered();
+            ImVec2 imMousePosGlobal = ImGui::GetMousePos();
+            ImRay::viewport_mouse_pos.x = (imMousePosGlobal.x - imagePos.x) * (ImRay::VIEWPORT_INTERNAL_W / imageSize.x);
+            ImRay::viewport_mouse_pos.y = (imMousePosGlobal.y - imagePos.y) * (ImRay::VIEWPORT_INTERNAL_H / imageSize.y);
+
+            // ---------------------------------------------------------------
+            // 6. 사용자 콘텐츠 렌더링 (Raylib 텍스처 + 사용자 ImGui UI)
+            // ---------------------------------------------------------------
+            BeginTextureMode(ImRay::view_texture);
+            ClearBackground(BLANK);
+
+            // 커서가 숨겨져 있을 때 (카메라 조작 중)
+            if (IsCursorHidden()) {
+                // 뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구
+                if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+                    EnableCursor();
                 }
-
-                ImVec2 cursorStartPos = ImGui::GetCursorScreenPos();
-                float offsetX = (availSize.x - imageSize.x) * 0.5f;
-                float offsetY = (availSize.y - imageSize.y) * 0.5f;
-                ImVec2 imagePos = ImVec2(cursorStartPos.x + offsetX, cursorStartPos.y + offsetY);
-                ImGui::SetCursorScreenPos(imagePos);
-
-                ImTextureID tex_id = (ImTextureID)(intptr_t) ImRay::view_texture.texture.id;
-                ImGui::Image(tex_id, imageSize, ImVec2(0, 1), ImVec2(1, 0));
-
-                ImRay::is_viewport_hovered = ImGui::IsItemHovered();
-                ImVec2 imMousePosGlobal = ImGui::GetMousePos();
-                ImRay::viewport_mouse_pos.x = (imMousePosGlobal.x - imagePos.x) * (ImRay::VIEWPORT_INTERNAL_W / imageSize.x);
-                ImRay::viewport_mouse_pos.y = (imMousePosGlobal.y - imagePos.y) * (ImRay::VIEWPORT_INTERNAL_H / imageSize.y);
-
-                // ---------------------------------------------------------------
-                // 6. 사용자 콘텐츠 렌더링 (Raylib 텍스처 + 사용자 ImGui UI)
-                // ---------------------------------------------------------------
-                BeginTextureMode(ImRay::view_texture);
-                ClearBackground(BLANK);
-
-                // 커서가 숨겨져 있을 때 (카메라 조작 중)
-                if (IsCursorHidden()) {
-                    // 뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구
+                // 카메라 업데이트 수행
+                UpdateCamera(&ImRay::camera, CAMERA_FREE);
+            }
+            // 커서가 보일 때 (일반 UI 조작 중)
+            else {
+                // 뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)
+                if (ImGui::is_viewport_hovered()) {
                     if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                        EnableCursor();
-                    }
-                    // 카메라 업데이트 수행
-                    UpdateCamera(&ImRay::camera, CAMERA_FREE);
-                }
-                // 커서가 보일 때 (일반 UI 조작 중)
-                else {
-                    // 뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)
-                    if (ImGui::is_viewport_hovered()) {
-                        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                            DisableCursor();
-                        }
+                        DisableCursor();
                     }
                 }
+            }
 
 
+            ImGui::PopStyleVar();
 
-                ImGui::PopStyleVar();
-
-                // 사용자 람다 콜백 실행
-                if (func) {
-                    BeginMode3D(ImRay::camera);
+            // 사용자 람다 콜백 실행
+            if (func) {
+                BeginMode3D(ImRay::camera);
 
 #if(SKYBOX_ON)
-                        rlDisableBackfaceCulling();
-                        rlDisableDepthMask();
+                    rlDisableBackfaceCulling();
+                    rlDisableDepthMask();
 
-                        DrawModel(ImRay::skybox, (Vector3){0, 0, 0}, 1.0f, WHITE);
+                    DrawModel(ImRay::skybox, (Vector3){0, 0, 0}, 1.0f, WHITE);
 
-                        rlEnableBackfaceCulling();
-                        rlEnableDepthMask();
+                    rlEnableBackfaceCulling();
+                    rlEnableDepthMask();
 #endif                  // 스카이박스 end
 
-                        // 그리드
-                        DrawGrid(10, 1);
+                    // 그리드
+                    DrawGrid(10, 1);
 
-                        // 월드 축
-                        DrawWorldAxesThick(0.5, 0.01);
+                    // 월드 축
+                    DrawWorldAxesThick(0.5, 0.01);
 
-                        // 외부 함수
-                        func();
-                    EndMode3D();
-                    DrawFPS(10, 10);
-                }
-
-                EndTextureMode();
-
+                    // 외부 함수
+                    func();
+                EndMode3D();
+                DrawFPS(10, 10);
             }
-            else
-            {
-                // 창이 접혀있을 때도 사용자가 정의한 다른 ImGui 창들이 렌더링되도록 콜백 유지
-                if (func) func();
-            }
+
+            EndTextureMode();
+
+
+
 
             ImGui::End();
         }
@@ -672,7 +692,7 @@ namespace ImGui
         // ImGui log 렌더링
         // ---------------------------------------------------------------
         if (ImRay::show_log_window)
-            ImRay::loggr.draw("로그", &ImRay::show_log_window);
+            ImRay::loggr.draw(" " ICON_MD_EDIT_DOCUMENT " 로그 ", &ImRay::show_log_window);
 
 
         // ---------------------------------------------------------------

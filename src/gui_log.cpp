@@ -85,11 +85,7 @@ void ImGuiLogWindow::draw(const char *title, bool *p_open)
     ImGui::PopStyleColor(); // 텍스트 색상 Pop
 
     if (ImGui::IsItemHovered()) {
-        if (auto_scroll) {
-            ImGui::SetTooltip("자동 스크롤 (현재: 켜짐)");
-        } else {
-            ImGui::SetTooltip("자동 스크롤 (현재: 꺼짐)");
-        }
+        ImGui::SetTooltip("자동 스크롤");
     }
 
     // 스타일 복구
