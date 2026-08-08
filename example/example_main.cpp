@@ -1,13 +1,11 @@
 #include "gui.hpp"
 #include <iostream>
-
-
-
-
+#include <bits/this_thread_sleep.h>
 
 
 int main() {
     ImGui::init("ImGui 예제", 1280, 720);
+
 
     std::cout << "Application Started!" << std::endl;
     std::cout << "Waiting for user input..." << std::endl;

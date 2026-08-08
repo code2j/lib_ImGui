@@ -26,6 +26,7 @@
 #include "gui_notify.hpp"
 #include "gui_toggle.hpp"
 #include "gui_skybox_loader.h"
+#include "gui_axis.h"
 
 
 #define SKYBOX_ON 1  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
@@ -149,22 +150,7 @@ namespace ImGui
 }
 
 
-inline void DrawWorldAxesThick(float length, float thickness)
-{
-    Vector3 origin = { 0.0f, 0.0f, 0.0f };
 
-    // 원기둥의 면 개수
-    int sides = 8;
-
-    // X축 (빨강)
-    DrawCylinderEx(origin, (Vector3){ length, 0.0f, 0.0f }, thickness, thickness, sides, RED);
-
-    // Y축 (녹색)
-    DrawCylinderEx(origin, (Vector3){ 0.0f, length, 0.0f }, thickness, thickness, sides, GREEN);
-
-    // Z축 (파랑)
-    DrawCylinderEx(origin, (Vector3){ 0.0f, 0.0f, length }, thickness, thickness, sides, BLUE);
-}
 
 namespace ImGui
 {
@@ -319,16 +305,6 @@ namespace ImGui
 
 
         // ---------------------------------------------------------------
-        // 윈도우 및 뷰포트 텍스쳐 생성
-        // ---------------------------------------------------------------
-        GLFWwindow* window = glfwGetCurrentContext();
-        ImGui_ImplGlfw_InitForOpenGL(window, true);
-        ImGui_ImplOpenGL3_Init("#version 130");
-
-        ImRay::view_texture = LoadRenderTexture((int) ImRay::VIEWPORT_INTERNAL_W, (int) ImRay::VIEWPORT_INTERNAL_H);
-
-
-        // ---------------------------------------------------------------
         // 스카이 박스
         // ---------------------------------------------------------------
 #if(SKYBOX_ON)
@@ -338,6 +314,19 @@ namespace ImGui
             IMGUI_ROOT "data/skybox/skybox.png"
         );
 #endif
+
+
+        // ---------------------------------------------------------------
+        // 윈도우 및 뷰포트 텍스쳐 생성
+        // ---------------------------------------------------------------
+        GLFWwindow* window = glfwGetCurrentContext();
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplOpenGL3_Init("#version 130");
+
+        ImRay::view_texture = LoadRenderTexture((int) ImRay::VIEWPORT_INTERNAL_W, (int) ImRay::VIEWPORT_INTERNAL_H);
+
+
+
     }
 
 
