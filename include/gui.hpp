@@ -1,21 +1,22 @@
 #pragma once
+#include <string>
+#include <functional>
+#include <GLFW/glfw3.h>
 
+//
 #include "raylib.h"
 #include "raymath.h"
 #include "rlgl.h"
 
 // ImGui 핵심 헤더
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "implot3d.h"
 #include "implot.h"
 
-// Raylib의 내부 GLFW 윈도우 접근용
-#include <GLFW/glfw3.h>
 
-#include <string>
-#include <functional>
 
 #include "icon.h"
 #include "src/icon.cpp"
@@ -23,7 +24,6 @@
 #include "src/font2.cpp"
 
 #include "gui_log.h"
-#include "imgui_internal.h"
 #include "gui_notify.h"
 #include "gui_toggle.h"
 #include "gui_skybox_loader.h"
