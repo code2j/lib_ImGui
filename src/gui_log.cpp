@@ -42,6 +42,17 @@ void ImGuiLogWindow::clear()
     buf.clear();
 }
 
+void ImGuiLogWindow::load_font()
+{
+    D2Cording = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
+        font2_compressed_data,
+        font2_compressed_size,
+        20,
+        NULL,
+        ImGui::GetIO().Fonts->GetGlyphRangesKorean()
+    );
+}
+
 void ImGuiLogWindow::draw(const char *title, bool *p_open)
 {
     const ImVec2 BUTTON_SIZE = ImVec2(35, 35);
@@ -103,9 +114,11 @@ void ImGuiLogWindow::draw(const char *title, bool *p_open)
 
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
+    ImGui::PushFont(D2Cording);
     ImGui::Indent(10.0f);
     ImGui::TextUnformatted(buf.begin(), buf.end()); // 텍스트 렌더링
     ImGui::Unindent(10.0f);
+    ImGui::PopFont();
 
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
 

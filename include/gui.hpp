@@ -37,35 +37,43 @@ namespace ImRay
 {
     std::string config_path = "imgui.ini";
 
-
+    // ==================================================
     // 뷰포트 상태
+    // ==================================================
     RenderTexture2D view_texture; // 렌더링된 이미지가 저장되는 텍스처
     Vector2 viewport_mouse_pos = { 0.0f, 0.0f };
     bool is_viewport_hovered = false;
 
 
+    // ==================================================
     // 윈도우 속성
+    // ==================================================
     std::string WINDOW_TITLE;
     const float TITLEBAR_HEIGHT     = 32.0f;
     const float VIEWPORT_INTERNAL_W = 1280.0f;
     const float VIEWPORT_INTERNAL_H = 720.0f;
 
 
+    // ==================================================
     // 독 스페이스 & 타이틀바 상태
+    // ==================================================
     bool is_resizing = false;
     bool is_dragging_title_bar = false;
     Vector2 drag_offset = { 0.0f, 0.0f };
 
 
+    // ==================================================
     // 폰트 설정
+    // ==================================================
     const float  FONT_SIZE   = 20;
     const float  ICON_SIZE   = 28;
     const ImVec2 ICON_OFFSET = ImVec2(0, 6);
 
-    ImFont* D2CODING = nullptr;
 
 
+    // ==================================================
     // 3d 카메라 정의
+    // ==================================================
     Camera camera = {
         { 1.0, 0.5, 2.0 },      // position
         { 0.0, 0.0, 0.0 },       // target
@@ -75,7 +83,9 @@ namespace ImRay
     };
 
 
+    // ==================================================
     // 상태 플래그
+    // ==================================================
     bool show_3d_viewport = false; // 3d 뷰포트 보이기 여부
     bool should_close_app = false; // 앱 닫기 여부
     bool show_log_window  = true;  // 로거 표시 여부
@@ -90,9 +100,6 @@ namespace ImRay
     // 스카이 박스
     // ==================================================
     Model skybox;
-
-
-
 }
 
 
@@ -337,6 +344,11 @@ namespace ImGui
             &config,
             icon_ranges
         );
+
+        // 로거 전용 폰트 로딩
+        ImRay::loggr.load_font();
+
+
 
 
 
