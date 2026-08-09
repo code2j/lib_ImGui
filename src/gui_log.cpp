@@ -44,10 +44,12 @@ void ImGuiLogWindow::clear()
 
 void ImGuiLogWindow::load_font()
 {
+    const float font_size = 17.0;
+
     D2Cording = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
         font2_compressed_data,
         font2_compressed_size,
-        20,
+        font_size,
         NULL,
         ImGui::GetIO().Fonts->GetGlyphRangesKorean()
     );
