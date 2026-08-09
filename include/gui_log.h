@@ -8,6 +8,7 @@ private:
     ImGuiTextBuffer buf;
     bool auto_scroll;
     std::streambuf* old_buf;
+    ImFont* D2CODING = NULL;
 
 protected:
     virtual int overflow(int c) override;

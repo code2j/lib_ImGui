@@ -9,5 +9,6 @@
 
 폰트 파일 변환:
 ```shell
-  ./binary_to_compressed_c myfont.ttf MyFont > myfont.cpp
+  ./binary_to_compressed_c font2.ttf MyFont > myfont.cpp
 ```
+

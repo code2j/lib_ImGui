@@ -1,5 +1,7 @@
 #include "gui_log.h"
 #include "icon.h"
+#include "font2.cpp"
+
 
 int ImGuiLogWindow::overflow(int c)
 {

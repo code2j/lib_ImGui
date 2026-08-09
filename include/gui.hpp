@@ -20,6 +20,7 @@
 #include "icon.h"
 #include "src/icon.cpp"
 #include "src/font.cpp"
+#include "src/font2.cpp"
 
 #include "gui_log.h"
 #include "imgui_internal.h"
@@ -57,9 +58,11 @@ namespace ImRay
 
 
     // 폰트 설정
-    const float  FONT_SIZE   = 18;
+    const float  FONT_SIZE   = 20;
     const float  ICON_SIZE   = 28;
     const ImVec2 ICON_OFFSET = ImVec2(0, 6);
+
+    ImFont* D2CODING = nullptr;
 
 
     // 3d 카메라 정의
@@ -319,8 +322,8 @@ namespace ImGui
         // 글자 폰트 추가
         io.Fonts->Clear();
         io.Fonts->AddFontFromMemoryCompressedTTF(
-            NEXON_Lv2_Gothic_Medium_compressed_data,
-            NEXON_Lv2_Gothic_Medium_compressed_size,
+            compressed_data,
+            compressed_size,
             ImRay::FONT_SIZE,
             NULL,
             io.Fonts->GetGlyphRangesKorean()
@@ -334,6 +337,8 @@ namespace ImGui
             &config,
             icon_ranges
         );
+
+
 
 
         // ---------------------------------------------------------------
