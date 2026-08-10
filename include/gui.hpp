@@ -233,6 +233,7 @@ namespace ImGui
         colors[ImGuiCol_TabActive]            = ImVec4(0.42f, 0.50f, 0.68f, 1.00f);
         colors[ImGuiCol_TabUnfocused]         = ImVec4(0.20f, 0.24f, 0.32f, 0.80f);
         colors[ImGuiCol_TabUnfocusedActive]   = ImVec4(0.30f, 0.36f, 0.50f, 1.00f);
+        colors[ImGuiCol_TabSelectedOverline]  = ImVec4(0.42f, 0.50f, 0.68f, 0.00f);
 
         // Text
         colors[ImGuiCol_Text]                  = ImVec4(0.92, 0.93, 0.94, 1.00); // 가독성을 위한 밝은 회색 Text
@@ -290,6 +291,7 @@ namespace ImGui
 
 
 
+
         // Style adjustments
         style.WindowPadding     = ImVec2(8.00, 8.00); // Window 내측 여백 (Padding)
         style.FramePadding      = ImVec2(5.00, 6.00); // Frame 내측 여백 (Padding)
@@ -304,7 +306,7 @@ namespace ImGui
         style.ChildBorderSize   = 1;                  // Child 창 테두리 (Border) 두께
         style.PopupBorderSize   = 1;                  // Popup 테두리 (Border) 두께
         style.FrameBorderSize   = 1;                  // Frame 테두리 (Border) 두께
-        style.TabBorderSize     = 1;                  // Tab 테두리 (Border) 두께
+        style.TabBorderSize     = 0;                  // Tab 테두리 (Border) 두께
         style.WindowRounding    = 3;                  // Window 모서리 둥글기 (Rounding)
         style.ChildRounding     = 4;                  // Child 창 모서리 둥글기 (Rounding)
         style.FrameRounding     = 3;                  // Frame 모서리 둥글기 (Rounding)
@@ -312,7 +314,8 @@ namespace ImGui
         style.ScrollbarRounding = 9;                  // Scrollbar 모서리 둥글기 (Rounding)
         style.GrabRounding      = 3;                  // Grab(손잡이) 모서리 둥글기 (Rounding)
         style.LogSliderDeadzone = 4;                  // Logarithmic Slider의 데드존(Deadzone) 크기
-        style.TabRounding       = 4;                  // Tab 모서리 둥글기 (Rounding)
+        style.TabRounding       = 6;                  // Tab 모서리 둥글기 (Rounding)
+        style.TabBarBorderSize  = 0;
 
         style.WindowMenuButtonPosition = ImGuiDir_None; // 탭 최소화 버튼 제거
 
