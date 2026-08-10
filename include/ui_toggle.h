@@ -1,7 +1,6 @@
 #pragma once
 
-namespace ImGui {
-
+namespace ImGui
+{
 bool ToggleButton(const char* str_id, bool* v);
-
 }

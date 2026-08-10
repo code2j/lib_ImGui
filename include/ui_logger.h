@@ -3,13 +3,12 @@
 #include <iostream>
 
 
-class ImGuiLogWindow : public std::streambuf {
+class ImGuiLogger : public std::streambuf {
 private:
     ImGuiTextBuffer buf;
     bool auto_scroll;
     std::streambuf* old_buf;
 
-    ImFont* D2Cording = nullptr;
 protected:
     virtual int overflow(int c) override;
     virtual std::streamsize xsputn(const char* s, std::streamsize n) override;
@@ -17,8 +16,8 @@ protected:
 
 
 public:
-    ImGuiLogWindow();
-    ~ImGuiLogWindow();
+    ImGuiLogger();
+    ~ImGuiLogger();
 
     void clear();
 

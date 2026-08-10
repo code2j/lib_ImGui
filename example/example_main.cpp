@@ -1,4 +1,4 @@
-#include "gui.hpp"
+#include "ui.hpp"
 #include <iostream>
 
 
@@ -131,6 +131,7 @@ void joystic_controller(float* out_x = nullptr, float* out_y = nullptr)
 
 
 int main() {
+    ImGui::load_config(IMGUI_ROOT "/config/imgui.ini");
     ImGui::init("테스트 프로그램", 1280, 720);
 
 
@@ -142,16 +143,16 @@ int main() {
 
 
     if (!texture1)
-        texture1 = ImGui::load_texture(IMGUI_ROOT "data/RAKOKO1.png");
+        texture1 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO1.png");
     if (!texture2)
-        texture2 = ImGui::load_texture(IMGUI_ROOT "data/RAKOKO2.png");
+        texture2 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO2.png");
     if (!texture3)
-        texture3 = ImGui::load_texture(IMGUI_ROOT "data/RAKOKO3.png");
+        texture3 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO3.png");
 
 
 
 
-    while (ImGui::is_running()) {
+    while (ImGui::should_close()) {
 
 
         ImGui::context([&]() {

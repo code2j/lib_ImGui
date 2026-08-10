@@ -1,6 +1,8 @@
-#include "gui_axis.h"
+#include "ui_axis.h"
 #include "raylib.h"
 
+namespace ImGui
+{
 void DrawWorldAxesThick(float length, float thickness)
 {
     Vector3 origin = { 0.0f, 0.0f, 0.0f };
@@ -16,4 +18,5 @@ void DrawWorldAxesThick(float length, float thickness)
 
     // Z축 (파랑)
     DrawCylinderEx(origin, (Vector3){ 0.0f, 0.0f, length }, thickness, thickness, sides, BLUE);
+}
 }

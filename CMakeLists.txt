@@ -29,11 +29,17 @@ add_library(imgui
         src/implot3d_items.cpp
         src/implot3d_meshes.cpp
         # My code
-        src/gui_log.cpp
-        src/gui_axis.cpp
-        src/gui_notify.cpp
-        src/gui_toggle.cpp
-        src/gui_skybox_loader.cpp
+        src/ui_core.cpp
+        src/ui_ini.cpp
+        src/ui_loader_skybox.cpp
+        src/ui_loader_texture.cpp
+        src/ui_logger.cpp
+        src/ui_notify.cpp
+        src/ui_toggle.cpp
+        src/ui_axis.cpp
+
+
+
 )
 
 
@@ -63,7 +69,7 @@ target_link_libraries(imgui
 # ==================================================================
 target_compile_definitions(imgui
         PUBLIC
-        "IMGUI_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\""
+        "IMGUI_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\""
 )
 
 

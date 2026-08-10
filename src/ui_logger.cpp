@@ -1,9 +1,9 @@
-#include "gui_log.h"
-#include "icon.h"
-#include "font2.cpp"
+#include "ui_logger.h"
+#include "ui_icon.h"
+#include "ui.hpp"
 
 
-int ImGuiLogWindow::overflow(int c)
+int ImGuiLogger::overflow(int c)
 {
     if (c != EOF) {
         // 1. ImGui 버퍼에 텍스트 저장
@@ -17,7 +17,7 @@ int ImGuiLogWindow::overflow(int c)
     return c;
 }
 
-std::streamsize ImGuiLogWindow::xsputn(const char *s, std::streamsize n) {
+std::streamsize ImGuiLogger::xsputn(const char *s, std::streamsize n) {
     buf.append(s, s + n);
 
     if (old_buf) {
@@ -26,36 +26,28 @@ std::streamsize ImGuiLogWindow::xsputn(const char *s, std::streamsize n) {
     return n;
 }
 
-ImGuiLogWindow::ImGuiLogWindow()
+ImGuiLogger::ImGuiLogger()
 {
     auto_scroll = true;
     old_buf = std::cout.rdbuf(this);
 }
 
-ImGuiLogWindow::~ImGuiLogWindow()
+ImGuiLogger::~ImGuiLogger()
 {
     std::cout.rdbuf(old_buf);
 }
 
-void ImGuiLogWindow::clear()
+void ImGuiLogger::clear()
 {
     buf.clear();
 }
 
-void ImGuiLogWindow::load_font()
+void ImGuiLogger::load_font()
 {
-    const float font_size = 17.0;
 
-    D2Cording = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
-        font2_compressed_data,
-        font2_compressed_size,
-        font_size,
-        NULL,
-        ImGui::GetIO().Fonts->GetGlyphRangesKorean()
-    );
 }
 
-void ImGuiLogWindow::draw(const char *title, bool *p_open)
+void ImGuiLogger::draw(const char *title, bool *p_open)
 {
     const ImVec2 BUTTON_SIZE = ImVec2(35, 35);
 
@@ -116,7 +108,7 @@ void ImGuiLogWindow::draw(const char *title, bool *p_open)
 
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
-    ImGui::PushFont(D2Cording);
+    ImGui::PushFont(ImGuiExt::D2Cording);
     ImGui::Indent(10.0f);
     ImGui::TextUnformatted(buf.begin(), buf.end()); // 텍스트 렌더링
     ImGui::Unindent(10.0f);
