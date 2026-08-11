@@ -27,7 +27,7 @@ const float WINDOW_HEIGHT   = 720.0;
 // ==================================================
 // 독 스페이스 & 타이틀바 상태
 // ==================================================
-const float TITLEBAR_HEIGHT = 32.0;
+const float TITLEBAR_HEIGHT = 34.0;
 bool is_resizing            = false;
 bool is_dragging_title_bar  = false;
 Vector2 drag_offset         = { 0.0, 0.0 };
@@ -107,7 +107,7 @@ void init(const char* title, int width, int height)
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // 키보드 네비게이션 활성화
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // 도킹 활성화
-    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // 멀티 뷰포트
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // 멀티 뷰포트
 
     // config 파일 저장할 경로 설정
     io.IniFilename = config_path.c_str();
@@ -119,88 +119,60 @@ void init(const char* title, int width, int height)
     ImGuiStyle& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
 
-    // Backgrounds
-    colors[ImGuiCol_WindowBg]             = ImVec4(0.12f, 0.13f, 0.15f, 1.00f); // Dark grey base
-    colors[ImGuiCol_ChildBg]              = ImVec4(0.14f, 0.15f, 0.17f, 1.00f);
-    colors[ImGuiCol_PopupBg]              = ImVec4(0.10f, 0.10f, 0.12f, 0.95f);
-    colors[ImGuiCol_Border]               = ImVec4(0.30f, 0.33f, 0.42f, 0.40f);
-
-    // Headers
-    colors[ImGuiCol_Header]               = ImVec4(0.36f, 0.42f, 0.55f, 0.60f);
-    colors[ImGuiCol_HeaderHovered]        = ImVec4(0.44f, 0.50f, 0.68f, 0.80f);
-    colors[ImGuiCol_HeaderActive]         = ImVec4(0.46f, 0.55f, 0.75f, 1.00f);
-
-    // Buttons
-    colors[ImGuiCol_Button]               = ImVec4(0.28f, 0.34f, 0.48f, 0.70f);
-    colors[ImGuiCol_ButtonHovered]        = ImVec4(0.36f, 0.45f, 0.65f, 0.85f);
-    colors[ImGuiCol_ButtonActive]         = ImVec4(0.40f, 0.50f, 0.70f, 1.00f);
-
-    // Frames
-    colors[ImGuiCol_FrameBg]              = ImVec4(0.20f, 0.22f, 0.28f, 1.00f);
-    colors[ImGuiCol_FrameBgHovered]       = ImVec4(0.28f, 0.32f, 0.42f, 1.00f);
-    colors[ImGuiCol_FrameBgActive]        = ImVec4(0.32f, 0.38f, 0.50f, 1.00f);
-
-    // Tabs
-    colors[ImGuiCol_Tab]                  = ImVec4(0.26f, 0.30f, 0.42f, 0.80f);
-    colors[ImGuiCol_TabHovered]           = ImVec4(0.36f, 0.42f, 0.58f, 1.00f);
-    colors[ImGuiCol_TabActive]            = ImVec4(0.42f, 0.50f, 0.68f, 1.00f);
-    colors[ImGuiCol_TabUnfocused]         = ImVec4(0.20f, 0.24f, 0.32f, 0.80f);
-    colors[ImGuiCol_TabUnfocusedActive]   = ImVec4(0.30f, 0.36f, 0.50f, 1.00f);
-    colors[ImGuiCol_TabSelectedOverline]  = ImVec4(0.42f, 0.50f, 0.68f, 0.00f);
-
-    // Text
     colors[ImGuiCol_Text]                  = ImVec4(0.92, 0.93, 0.94, 1.00); // 가독성을 위한 밝은 회색 Text
     colors[ImGuiCol_TextDisabled]          = ImVec4(0.50, 0.52, 0.54, 1.00); // 비활성화된 Text를 위한 옅은 회색
-    colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.24, 0.34, 0.44, 0.35); // 선택된 Text Background
-
-    // Title
+    colors[ImGuiCol_WindowBg]              = ImVec4(0.14, 0.14, 0.16, 0.50); // 약간 푸른빛이 도는 어두운 Background
+    colors[ImGuiCol_ChildBg]               = ImVec4(0.16, 0.16, 0.18, 1.00); // Child 요소를 위한 약간 더 밝은 색상
+    colors[ImGuiCol_PopupBg]               = ImVec4(0.18, 0.18, 0.20, 1.00); // Popup Background
+    colors[ImGuiCol_Border]                = ImVec4(0.28, 0.29, 0.30, 0.60); // 부드러운 Border 색상
+    colors[ImGuiCol_BorderShadow]          = ImVec4(0.00, 0.00, 0.00, 0.00); // Border Shadow 없음
+    colors[ImGuiCol_FrameBg]               = ImVec4(0.20, 0.22, 0.24, 1.00); // Frame Background
+    colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.22, 0.24, 0.26, 1.00); // Frame Hover 효과
+    colors[ImGuiCol_FrameBgActive]         = ImVec4(0.24, 0.26, 0.28, 1.00); // Active Frame Background
     colors[ImGuiCol_TitleBg]               = ImVec4(0.14, 0.14, 0.16, 1.00); // Title Background
     colors[ImGuiCol_TitleBgActive]         = ImVec4(0.16, 0.16, 0.18, 1.00); // Active Title Background
     colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.14, 0.14, 0.16, 1.00); // Collapsed Title Background
-
-    // Scroll
+    colors[ImGuiCol_MenuBarBg]             = ImVec4(0.20, 0.20, 0.22, 1.00); // Menu Bar Background
     colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.16, 0.16, 0.18, 1.00); // Scrollbar Background
     colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.24, 0.26, 0.28, 1.00); // Scrollbar Grab을 위한 어두운 강조색
     colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.28, 0.30, 0.32, 1.00); // Scrollbar Grab Hover
     colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.32, 0.34, 0.36, 1.00); // Scrollbar Grab Active
-
-    // Slider
+    colors[ImGuiCol_CheckMark]             = ImVec4(0.46, 0.56, 0.66, 1.00); // 짙은 파란색 Checkmark
     colors[ImGuiCol_SliderGrab]            = ImVec4(0.36, 0.46, 0.56, 1.00); // 짙은 파란색 Slider Grab
     colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.40, 0.50, 0.60, 1.00); // Active Slider Grab
-
-    // Separator
+    colors[ImGuiCol_Button]                = ImVec4(0.24, 0.34, 0.44, 1.00); // 짙은 파란색 Button
+    colors[ImGuiCol_ButtonHovered]         = ImVec4(0.28, 0.38, 0.48, 1.00); // Button Hover 효과
+    colors[ImGuiCol_ButtonActive]          = ImVec4(0.32, 0.42, 0.52, 1.00); // Active Button
+    colors[ImGuiCol_Header]                = ImVec4(0.24, 0.34, 0.44, 1.00); // Button과 비슷한 Header 색상
+    colors[ImGuiCol_HeaderHovered]         = ImVec4(0.28, 0.38, 0.48, 1.00); // Header Hover 효과
+    colors[ImGuiCol_HeaderActive]          = ImVec4(0.32, 0.42, 0.52, 1.00); // Active Header
     colors[ImGuiCol_Separator]             = ImVec4(0.28, 0.29, 0.30, 1.00); // Separator 색상
     colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00); // Separator Hover 효과
     colors[ImGuiCol_SeparatorActive]       = ImVec4(0.46, 0.56, 0.66, 1.00); // Active Separator
-
-    // Resize Grip
     colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 1.00); // Resize Grip
     colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00); // Resize Grip Hover 효과
     colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00); // Active Resize Grip
-
-    // Plot
+    colors[ImGuiCol_Tab]                   = ImVec4(0.20, 0.22, 0.24, 1.00); // 비활성 Tab
+    colors[ImGuiCol_TabHovered]            = ImVec4(0.28, 0.38, 0.48, 1.00); // Tab Hover 효과
+    colors[ImGuiCol_TabActive]             = ImVec4(0.24, 0.34, 0.44, 1.00); // Active Tab 색상
+    colors[ImGuiCol_TabUnfocused]          = ImVec4(0.20, 0.22, 0.24, 1.00); // 포커스를 잃은(Unfocused) Tab
+    colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.24, 0.34, 0.44, 1.00); // Active 상태지만 포커스를 잃은 Tab
     colors[ImGuiCol_PlotLines]             = ImVec4(0.46, 0.56, 0.66, 1.00); // Plot Lines
     colors[ImGuiCol_PlotLinesHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00); // Plot Lines Hover 효과
     colors[ImGuiCol_PlotHistogram]         = ImVec4(0.36, 0.46, 0.56, 1.00); // Histogram 색상
     colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(0.40, 0.50, 0.60, 1.00); // Histogram Hover 효과
-
-    // Table
     colors[ImGuiCol_TableHeaderBg]         = ImVec4(0.20, 0.22, 0.24, 1.00); // Table Header Background
     colors[ImGuiCol_TableBorderStrong]     = ImVec4(0.28, 0.29, 0.30, 1.00); // Table을 위한 짙은 Border
     colors[ImGuiCol_TableBorderLight]      = ImVec4(0.24, 0.25, 0.26, 1.00); // Table을 위한 옅은 Border
     colors[ImGuiCol_TableRowBg]            = ImVec4(0.20, 0.22, 0.24, 1.00); // Table Row Background
     colors[ImGuiCol_TableRowBgAlt]         = ImVec4(0.22, 0.24, 0.26, 1.00); // 교차(Alternate) Row Background
+    colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.24, 0.34, 0.44, 0.35); // 선택된 Text Background
     colors[ImGuiCol_DragDropTarget]        = ImVec4(0.46, 0.56, 0.66, 0.90); // Drag and Drop Target
-
-    // Nav
     colors[ImGuiCol_NavHighlight]          = ImVec4(0.46, 0.56, 0.66, 1.00); // Navigation Highlight
     colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00, 1.00, 1.00, 0.70); // Windowing Highlight
     colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80, 0.80, 0.80, 0.20); // Windowing을 위한 어두운(Dim) Background
-
     colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80, 0.80, 0.80, 0.35); // Modal Window를 위한 어두운(Dim) Background
-    colors[ImGuiCol_BorderShadow]          = ImVec4(0.00, 0.00, 0.00, 0.00); // Border Shadow 없음
-    colors[ImGuiCol_CheckMark]             = ImVec4(0.46, 0.56, 0.66, 1.00); // 짙은 파란색 Checkmark
-    colors[ImGuiCol_MenuBarBg]             = ImVec4(0.14f, 0.15f, 0.17f, 1.00f);
+    colors[ImGuiCol_TabSelectedOverline]   = ImVec4(0.00, 0.00, 0.00, 0.00);
 
 
 
@@ -262,11 +234,10 @@ void init(const char* title, int width, int height)
     );
 
     // 로거 전용 폰트 로딩
-    const float font_size = 17.0;
     ImGuiExt::D2Cording = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
         font2_compressed_data,
         font2_compressed_size,
-        font_size,
+        FONT_SIZE,
         NULL,
         ImGui::GetIO().Fonts->GetGlyphRangesKorean()
     );
@@ -316,7 +287,7 @@ void destroy()
 
 bool should_close()
 {
-    return !WindowShouldClose() && !ImGuiExt::should_close_app;
+    return WindowShouldClose() || ImGuiExt::should_close_app;
 }
 
 
@@ -392,18 +363,23 @@ void context(std::function<void()> func)
     if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0)) {
         is_dragging_title_bar = true;
 
-        ImVec2 mousePos = ImGui::GetMousePos();
+        // ImGui의 절대 화면 마우스 좌표를 사용합니다.
+        ImVec2 mouseGlobal = ImGui::GetMousePos();
         Vector2 winPos = GetWindowPosition();
 
-        drag_offset.x = mousePos.x - winPos.x;
-        drag_offset.y = mousePos.y - winPos.y;
+        // 창의 좌상단 기준 클릭한 오프셋을 계산하여 저장합니다.
+        drag_offset.x = mouseGlobal.x - winPos.x;
+        drag_offset.y = mouseGlobal.y - winPos.y;
     }
 
     if (is_dragging_title_bar) {
         if (ImGui::IsMouseDown(0)) {
-            ImVec2 currentAbsoluteMouse = ImGui::GetMousePos();
-            ::SetWindowPosition((int)(currentAbsoluteMouse.x - drag_offset.x),
-                                (int)(currentAbsoluteMouse.y - drag_offset.y));
+            // 드래그 중에도 절대 화면 마우스 좌표를 기준으로 창 위치를 업데이트합니다.
+            ImVec2 mouseGlobal = ImGui::GetMousePos();
+
+            // 절대 마우스 위치에서 처음 클릭했던 오프셋을 빼서 창 위치를 세팅합니다.
+            ::SetWindowPosition((int)(mouseGlobal.x - drag_offset.x),
+                                (int)(mouseGlobal.y - drag_offset.y));
         } else {
             is_dragging_title_bar = false;
         }

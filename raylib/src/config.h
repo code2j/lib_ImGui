@@ -57,7 +57,7 @@
 //------------------------------------------------------------------------------------
 #ifndef SUPPORT_TRACELOG
     // Show TRACELOG() output messages
-    #define SUPPORT_TRACELOG                0
+    #define SUPPORT_TRACELOG                1
 #endif
 #ifndef SUPPORT_CAMERA_SYSTEM
     // Camera module is included (rcamera.h) and multiple predefined

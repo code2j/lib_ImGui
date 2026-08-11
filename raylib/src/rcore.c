@@ -1862,12 +1862,12 @@ void TraceLog(int logType, const char *text, ...)
     va_list args;
     va_start(args, text);
 
-    if (traceLog)
-    {
-        traceLog(logType, text, args);
-        va_end(args);
-        return;
-    }
+    // if (traceLog)
+    // {
+    //     traceLog(logType, text, args);
+    //     va_end(args);
+    //     return;
+    // }
 
 #if defined(PLATFORM_ANDROID)
     switch (logType)
@@ -1883,22 +1883,22 @@ void TraceLog(int logType, const char *text, ...)
 #else
     char buffer[MAX_TRACELOG_MSG_LENGTH] = { 0 };
 
-    switch (logType)
-    {
-        case LOG_TRACE: strncpy(buffer, "TRACE: ", 8); break;
-        case LOG_DEBUG: strncpy(buffer, "DEBUG: ", 8); break;
-        case LOG_INFO: strncpy(buffer, "INFO: ", 7); break;
-        case LOG_WARNING: strncpy(buffer, "WARNING: ", 10); break;
-        case LOG_ERROR: strncpy(buffer, "ERROR: ", 8); break;
-        case LOG_FATAL: strncpy(buffer, "FATAL: ", 8); break;
-        default: break;
-    }
+    // switch (logType)
+    // {
+    //     case LOG_TRACE: strncpy(buffer, "TRACE: ", 8); break;
+    //     case LOG_DEBUG: strncpy(buffer, "DEBUG: ", 8); break;
+    //     case LOG_INFO: strncpy(buffer, "INFO: ", 7); break;
+    //     case LOG_WARNING: strncpy(buffer, "WARNING: ", 10); break;
+    //     case LOG_ERROR: strncpy(buffer, "ERROR: ", 8); break;
+    //     case LOG_FATAL: strncpy(buffer, "FATAL: ", 8); break;
+    //     default: break;
+    // }
 
-    unsigned int textLength = (unsigned int)strlen(text);
-    memcpy(buffer + strlen(buffer), text, (textLength < (MAX_TRACELOG_MSG_LENGTH - 12))? textLength : (MAX_TRACELOG_MSG_LENGTH - 12));
-    strcat(buffer, "\n");
-    vprintf(buffer, args);
-    fflush(stdout);
+    // unsigned int textLength = (unsigned int)strlen(text);
+    // memcpy(buffer + strlen(buffer), text, (textLength < (MAX_TRACELOG_MSG_LENGTH - 12))? textLength : (MAX_TRACELOG_MSG_LENGTH - 12));
+    // strcat(buffer, "\n");
+    // vprintf(buffer, args);
+    // fflush(stdout);
 #endif
 
     va_end(args);

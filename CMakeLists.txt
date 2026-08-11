@@ -79,14 +79,11 @@ target_compile_definitions(imgui
 project(main)
 
 if(${PROJECT_IS_TOP_LEVEL})
-add_executable(main
-        example/example_main.cpp
-)
+    add_executable(main
+            example/example_main.cpp
+    )
 
-target_link_libraries(main
-        imgui
-)
-
-
-
+    target_link_libraries(main
+            imgui
+    )
 endif ()
