@@ -2,6 +2,18 @@
 #include <iostream>
 
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
+
+
+
+
+// -------------------------------------------------------------
+// PLY 파싱 및 GPU Mesh 생성 함수
+// -------------------------------------------------------------
 
 
 
@@ -9,9 +21,36 @@ int main() {
     ImGui::init("테스트 프로그램", 1280, 720);
     ImGui::load_config("../example/imgui.ini");
 
+    const std::string ply_file = "/home/jusik/workspace/lib_ImGui/aaa.ply";
+
+    ImGui::Points points;
+    if (!ImGui::load_points(ply_file.c_str(), &points)) {
+        std::cout << "[Warn ] [Main] 데이터 불러오기 실패: " << ply_file << std::endl;
+        return 1;
+    }
+
+    float pointSize = 0.01f;
+    Mesh pointMesh = GenMeshSphere(0.005, 10, 10);
+
+    Shader instancingShader = LoadShader("/home/jusik/workspace/lib_ImGui/data/shaders/lighting_instancing.vs",
+                                         "/home/jusik/workspace/lib_ImGui/data/shaders/lighting.fs");
+
+    int ambientLoc = GetShaderLocation(instancingShader, "ambient");
+    float ambient[4] = { 10.0f, 10.0f, 10.0f, 10.0f }; // R, G, B, Alpha 순서
+    SetShaderValue(instancingShader, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
+
+    Material pointMat = LoadMaterialDefault();
+    pointMat.shader = instancingShader; // <--- 이 부분이 핵심입니다!
+    pointMat.maps[MATERIAL_MAP_DIFFUSE].color = SKYBLUE;
 
 
-
+    Matrix* transforms = nullptr;
+    if (!points.empty()) {
+        transforms = (Matrix*)MemAlloc(points.size() * sizeof(Matrix));
+        for (size_t i = 0; i < points.size(); i++) {
+            transforms[i] = MatrixTranslate(points[i].x, points[i].y, points[i].z);
+        }
+    }
 
     {   // 스코프 안에서 생성하면 자동으로 해제됨
         ImGui::Texture texture1 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO1.png");
@@ -66,6 +105,11 @@ int main() {
             ImGui::End();
 
             ImGui::ShowDemoWindow();
+
+
+            if (transforms != nullptr) {
+                DrawMeshInstanced(pointMesh, pointMat, transforms, points.size());
+            }
         }));
     } // 스코프 해제 시점
 

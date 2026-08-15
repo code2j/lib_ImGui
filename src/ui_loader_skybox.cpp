@@ -1,7 +1,7 @@
 #include "ui_loader.h"
 namespace ImGui
 {
-    Model load_skybox(const char* cubemapFileName)
+    Model load_skybox(const char* path)
     {
         const char* vsFileName = IMGUI_ROOT "/data/shaders/skybox.vs";
         const char* fsFileName = IMGUI_ROOT "/data/shaders/skybox.fs";
@@ -25,7 +25,7 @@ namespace ImGui
         SetShaderValue(skybox.materials[0].shader, GetShaderLocation(skybox.materials[0].shader, "vflipped"), &vflippedValue, SHADER_UNIFORM_INT);
 
         // 스카이박스 텍스처(Cubemap) 로드 및 모델에 적용
-        ::Image image = LoadImage(cubemapFileName);
+        ::Image image = LoadImage(path);
         skybox.materials[0].maps[MATERIAL_MAP_CUBEMAP].texture = LoadTextureCubemap(image, CUBEMAP_LAYOUT_AUTO_DETECT);
         UnloadImage(image); // GPU에 텍스처를 올렸으므로 RAM에 있는 이미지 데이터는 해제
 
