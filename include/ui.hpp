@@ -16,6 +16,7 @@
 #include "implot3d.h"
 #include "implot.h"
 
+#include "ui_ini.h"
 #include "ui_icon.h"
 #include "ui_axis.h"
 #include "ui_logger.h"
@@ -40,7 +41,6 @@ namespace ImGuiExt
     // 폰트 객체
     // ==================================================
     inline ImFont* D2Cording = nullptr;
-
 }
 
 
@@ -50,8 +50,8 @@ namespace ImGui
     void init(const char* title, int width = 1280, int height = 720);
     void destroy();
     bool should_close();
-    bool context(std::function<void()> func);
-    void load_config(const std::string& path);
+    bool context(std::function<void()> func);   // Gui 실행 컨텍스트
+    void load_config(const char* path);         // config 파일 불러오기
 
 
     // =====================================================
@@ -59,14 +59,6 @@ namespace ImGui
     // =====================================================
     Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
     bool    is_viewport_hovered();
-
-
-    // =====================================================
-    // ImGui ini 핸들러 콜백 함수 정의
-    // =====================================================
-    void* read_open(ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);
-    void read_line(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line);
-    void write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf);
 }
 
 

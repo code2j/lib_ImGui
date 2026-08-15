@@ -132,6 +132,7 @@ void joystic_controller(float* out_x = nullptr, float* out_y = nullptr)
 
 int main() {
     ImGui::init("테스트 프로그램", 1280, 720);
+    ImGui::load_config("../example/imgui.ini");
 
 
     std::shared_ptr<Texture2D> texture1;

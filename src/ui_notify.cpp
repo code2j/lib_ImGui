@@ -147,101 +147,107 @@ void RemoveNotification(int index)
 
 void RenderNotifications()
 {
-    const auto vp_size = GetMainViewport()->Size;
+    // 멀티 뷰포트를 위해 뷰포트의 시작 좌표(WorkPos)와 크기(WorkSize)를 모두 가져옵니다.
+    const auto viewport = GetMainViewport();
+    const auto vp_pos = viewport->WorkPos;
+    const auto vp_size = viewport->WorkSize;
 
-    float height = 0.f;
+    float height = 0.f; 
 
-    for (auto i = 0; i < notifications.size(); i++)
+    for (auto i = 0; i < notifications.size(); i++) 
     {
-        auto* current_toast = &notifications[i];
+        auto* current_toast = &notifications[i]; 
 
         // Remove toast if expired
-        if (current_toast->get_phase() == ImGuiToastPhase_Expired)
+        if (current_toast->get_phase() == ImGuiToastPhase_Expired) 
         {
-            RemoveNotification(i);
-            continue;
+            RemoveNotification(i); 
+            continue; 
         }
 
         // Get icon, title and other data
-        const auto icon = current_toast->get_icon();
-        const auto title = current_toast->get_title();
-        const auto content = current_toast->get_content();
-        const auto default_title = current_toast->get_default_title();
+        const auto icon = current_toast->get_icon(); 
+        const auto title = current_toast->get_title(); 
+        const auto content = current_toast->get_content(); 
+        const auto default_title = current_toast->get_default_title(); 
         const auto opacity = current_toast->get_fade_percent(); // Get opacity based of the current phase
 
         // Window rendering
-        auto text_color = current_toast->get_color();
-        text_color.w = opacity;
+        auto text_color = current_toast->get_color(); 
+        text_color.w = opacity; 
 
         // Generate new unique name for this toast
-        char window_name[50]{};
-        snprintf(window_name, sizeof(window_name), "##TOAST%d", i);
+        char window_name[50]{}; 
+        snprintf(window_name, sizeof(window_name), "##TOAST%d", i); 
 
         //PushStyleColor(ImGuiCol_Text, text_color);
-        SetNextWindowBgAlpha(opacity);
-        SetNextWindowPos(ImVec2(vp_size.x - NOTIFY_PADDING_X, vp_size.y - NOTIFY_PADDING_Y - height), ImGuiCond_Always, ImVec2(1.0f, 1.0f));
-        Begin(window_name, NULL, NOTIFY_TOAST_FLAGS);
+        SetNextWindowBgAlpha(opacity); 
+        
+        // 멀티 뷰포트 위치 보정: vp_pos 값을 더해줍니다.
+        SetNextWindowPos(ImVec2(vp_pos.x + vp_size.x - NOTIFY_PADDING_X, vp_pos.y + vp_size.y - NOTIFY_PADDING_Y - height), ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+        
+        Begin(window_name, NULL, NOTIFY_TOAST_FLAGS); 
 
         // Here we render the toast content
         {
             PushTextWrapPos(vp_size.x / 3.f); // We want to support multi-line text, this will wrap the text after 1/3 of the screen width
 
-            bool was_title_rendered = false;
+            bool was_title_rendered = false; 
 
             // If an icon is set
-            if (!NOTIFY_NULL_OR_EMPTY(icon))
+            if (!NOTIFY_NULL_OR_EMPTY(icon)) 
             {
                 //Text(icon); // Render icon text
-                TextColored(text_color, icon);
-                was_title_rendered = true;
+                TextColored(text_color, icon); 
+                was_title_rendered = true; 
             }
 
             // If a title is set
-            if (!NOTIFY_NULL_OR_EMPTY(title))
+            if (!NOTIFY_NULL_OR_EMPTY(title)) 
             {
                 // If a title and an icon is set, we want to render on same line
-                if (!NOTIFY_NULL_OR_EMPTY(icon))
-                    SameLine();
+                if (!NOTIFY_NULL_OR_EMPTY(icon)) 
+                    SameLine(); 
 
                 Text(title); // Render title text
-                was_title_rendered = true;
+                was_title_rendered = true; 
             }
-            else if (!NOTIFY_NULL_OR_EMPTY(default_title))
+            else if (!NOTIFY_NULL_OR_EMPTY(default_title)) 
             {
-                if (!NOTIFY_NULL_OR_EMPTY(icon))
-                    SameLine();
+                if (!NOTIFY_NULL_OR_EMPTY(icon)) 
+                    SameLine(); 
 
                 Text(default_title); // Render default title text (ImGuiToastType_Success -> "Success", etc...)
-                was_title_rendered = true;
+                was_title_rendered = true; 
             }
 
             // In case ANYTHING was rendered in the top, we want to add a small padding so the text (or icon) looks centered vertically
-            if (was_title_rendered && !NOTIFY_NULL_OR_EMPTY(content))
+            if (was_title_rendered && !NOTIFY_NULL_OR_EMPTY(content)) 
             {
                 SetCursorPosY(GetCursorPosY() + 5.f); // Must be a better way to do this!!!!
             }
 
             // If a content is set
-            if (!NOTIFY_NULL_OR_EMPTY(content))
+            if (!NOTIFY_NULL_OR_EMPTY(content)) 
             {
-                if (was_title_rendered)
+                if (was_title_rendered) 
                 {
-#ifdef NOTIFY_USE_SEPARATOR
-                    Separator();
-#endif
+#ifdef NOTIFY_USE_SEPARATOR 
+                    Separator(); 
+#endif 
                 }
 
                 Text(content); // Render content text
             }
 
-            PopTextWrapPos();
+            PopTextWrapPos(); 
         }
 
         // Save height for next toasts
-        height += GetWindowHeight() + NOTIFY_PADDING_MESSAGE_Y;
+        height += GetWindowHeight() + NOTIFY_PADDING_MESSAGE_Y; 
 
         // End
-        End();
+        End(); 
     }
 }
 }
