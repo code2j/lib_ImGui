@@ -116,7 +116,7 @@ namespace ImGui
 
         colors[ImGuiCol_Text]                  = ImVec4(0.92, 0.93, 0.94, 1.00); // 가독성을 위한 밝은 회색 Text
         colors[ImGuiCol_TextDisabled]          = ImVec4(0.50, 0.52, 0.54, 1.00); // 비활성화된 Text를 위한 옅은 회색
-        colors[ImGuiCol_WindowBg]              = ImVec4(0.14, 0.14, 0.16, 0.50); // 약간 푸른빛이 도는 어두운 Background
+        colors[ImGuiCol_WindowBg]              = ImVec4(0.14, 0.14, 0.16, 0.87); // 약간 푸른빛이 도는 어두운 Background
         colors[ImGuiCol_ChildBg]               = ImVec4(0.16, 0.16, 0.18, 1.00); // Child 요소를 위한 약간 더 밝은 색상
         colors[ImGuiCol_PopupBg]               = ImVec4(0.18, 0.18, 0.20, 1.00); // Popup Background
         colors[ImGuiCol_Border]                = ImVec4(0.28, 0.29, 0.30, 0.60); // 부드러운 Border 색상
