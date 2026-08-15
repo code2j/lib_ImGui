@@ -2,5 +2,5 @@
 
 namespace ImGui
 {
-bool ToggleButton(const char* str_id, bool* v);
+    bool ToggleButton(const char* str_id, bool* v);
 }
