@@ -37,9 +37,7 @@ add_library(imgui
         src/ui_notify.cpp
         src/ui_toggle.cpp
         src/ui_axis.cpp
-
-
-
+        src/ui_joystick.cpp
 )
 
 

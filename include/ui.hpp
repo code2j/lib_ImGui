@@ -23,6 +23,7 @@
 #include "ui_notify.h"
 #include "ui_toggle.h"
 #include "ui_loader.h"
+#include "ui_joystick.h"
 
 
 #define SKYBOX_ON 1  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
