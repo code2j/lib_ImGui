@@ -13,11 +13,22 @@ using namespace std;
 
 namespace ImGui
 {
-    bool load_points(const char* path, Points* out_points)
+    void Points::move(const Eigen::Matrix4d &transform)
+    {
+        for (size_t i = 0; i < data.size(); ++i) {
+            Eigen::Vector4d pos(data[i].x, data[i].y, data[i].z, 1.0f);
+
+            Eigen::Vector4d transformed_pos = transform * pos;
+
+            transforms[i] = MatrixTranslate(transformed_pos.x(), transformed_pos.y(), transformed_pos.z());
+        }
+    }
+
+    bool load_points(const char* path, Points* out)
     {
         std::ifstream file(path, std::ios::binary);
 
-        out_points->data.clear();
+        out->data.clear();
 
         // 파일 열기
         if (!file.is_open()) {
@@ -53,7 +64,7 @@ namespace ImGui
         }
 
 
-        out_points->data.reserve(numVertices);
+        out->data.reserve(numVertices);
 
         //  데이터 파싱
         if (isBinary) {
@@ -65,7 +76,7 @@ namespace ImGui
                 file.read(buffer.data(), bytesPerVertex);
                 if (!file) break;
                 float* floats = reinterpret_cast<float*>(buffer.data());
-                out_points->data.push_back({ floats[0], floats[1], floats[2] });
+                out->data.push_back({ floats[0], floats[1], floats[2] });
             }
         }
         else {
@@ -74,18 +85,18 @@ namespace ImGui
                 if (!std::getline(file, line)) break;
                 std::stringstream ss(line);
                 Vector3 p;
-                if (ss >> p.x >> p.y >> p.z) out_points->data.push_back(p);
+                if (ss >> p.x >> p.y >> p.z) out->data.push_back(p);
             }
         }
 
         // 쉐이더 및 트렌스폼 설정
-        out_points->material.shader = ImGuiExt::shader_instancing;
-        out_points->material.maps[MATERIAL_MAP_DIFFUSE].color = out_points->color;
+        out->material.shader = ImGuiExt::shader_instancing;
+        out->material.maps[MATERIAL_MAP_DIFFUSE].color = out->color;
 
-        out_points->transforms.clear();
-        out_points->transforms.reserve(out_points->data.size());
-        for (const auto& p : out_points->data) {
-            out_points->transforms.push_back(MatrixTranslate(p.x, p.y, p.z));
+        out->transforms.clear();
+        out->transforms.reserve(out->data.size());
+        for (const auto& p : out->data) {
+            out->transforms.push_back(MatrixTranslate(p.x, p.y, p.z));
         }
 
         return true;

@@ -1,5 +1,7 @@
 #pragma once
-#include "ui_loader.h"
+#include "raylib.h"
+#include <vector>
+#include <eigen3/Eigen/Eigen>
 
 namespace ImGui
 {
@@ -9,6 +11,8 @@ namespace ImGui
         Material                material    = LoadMaterialDefault();
         std::vector<Vector3>    data;
         Color                   color       = SKYBLUE;
+
+        void move(const Eigen::Matrix4d& transform);
     };
 
 
