@@ -1,5 +1,5 @@
 #include "ui.hpp"
-#include "icon.cpp"
+#include "ui_font_icon.cpp"
 #include "ui_font_level2.cpp"
 #include "ui_font_d2coding.cpp"
 
