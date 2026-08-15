@@ -3,7 +3,7 @@
 
 namespace ImGui
 {
-    void DrawWorldAxesThick(float length, float thickness)
+    void draw_axes(float length, float thickness)
     {
         const int sides         = 8;         // 원기둥의 면 개수
         const Vector3 origin    = { 0.0f, 0.0f, 0.0f };

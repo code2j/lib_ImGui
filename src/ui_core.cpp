@@ -607,7 +607,7 @@ namespace ImGui
                     DrawGrid(10, 1);
 
                     // 월드 축
-                    DrawWorldAxesThick(0.5, 0.01);
+                    draw_axes(0.5, 0.01);
 
                     // 외부 함수
                     func();
