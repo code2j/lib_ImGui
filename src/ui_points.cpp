@@ -1,9 +1,13 @@
-#include "ui_loader.h"
+#include "ui_points.h"
+#include "raymath.h"
+#include "ui.hpp"
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
+
+
 
 using namespace std;
 
@@ -13,7 +17,7 @@ namespace ImGui
     {
         std::ifstream file(path, std::ios::binary);
 
-        out_points->clear();
+        out_points->data.clear();
 
         // 파일 열기
         if (!file.is_open()) {
@@ -49,7 +53,7 @@ namespace ImGui
         }
 
 
-        out_points->reserve(numVertices);
+        out_points->data.reserve(numVertices);
 
         //  데이터 파싱
         if (isBinary) {
@@ -61,7 +65,7 @@ namespace ImGui
                 file.read(buffer.data(), bytesPerVertex);
                 if (!file) break;
                 float* floats = reinterpret_cast<float*>(buffer.data());
-                out_points->push_back({ floats[0], floats[1], floats[2] });
+                out_points->data.push_back({ floats[0], floats[1], floats[2] });
             }
         }
         else {
@@ -70,10 +74,26 @@ namespace ImGui
                 if (!std::getline(file, line)) break;
                 std::stringstream ss(line);
                 Vector3 p;
-                if (ss >> p.x >> p.y >> p.z) out_points->push_back(p);
+                if (ss >> p.x >> p.y >> p.z) out_points->data.push_back(p);
             }
         }
 
+        // 쉐이더 및 트렌스폼 설정
+        out_points->material.shader = ImGuiExt::shader_instancing;
+        out_points->material.maps[MATERIAL_MAP_DIFFUSE].color = out_points->color;
+
+        out_points->transforms.clear();
+        out_points->transforms.reserve(out_points->data.size());
+        for (const auto& p : out_points->data) {
+            out_points->transforms.push_back(MatrixTranslate(p.x, p.y, p.z));
+        }
+
         return true;
+    }
+
+
+    void draw_points(const Points& points)
+    {
+        DrawMeshInstanced(points.mesh, points.material, points.transforms.data(), points.transforms.size());
     }
 }

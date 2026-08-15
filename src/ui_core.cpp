@@ -248,6 +248,24 @@ namespace ImGui
 
 
         // ---------------------------------------------------------------
+        // 쉐이더 불러오기
+        // ---------------------------------------------------------------
+        ImGuiExt::shader_instancing = LoadShader(
+            IMGUI_ROOT "/data/shaders/lighting_instancing.vs",
+            IMGUI_ROOT "/data/shaders/lighting.fs");
+
+
+        // ---------------------------------------------------------------
+        // 쉐이더 설정
+        // ---------------------------------------------------------------
+        int ambientLoc = GetShaderLocation(ImGuiExt::shader_instancing, "ambient");
+        float ambient[4] = { 10.0f, 10.0f, 10.0f, 10.0f }; // R, G, B, Alpha 순서
+        SetShaderValue(ImGuiExt::shader_instancing, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
+
+
+
+
+        // ---------------------------------------------------------------
         // 윈도우 및 뷰포트 텍스쳐 생성
         // ---------------------------------------------------------------
         GLFWwindow* window = glfwGetCurrentContext();

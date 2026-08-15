@@ -24,6 +24,7 @@
 #include "ui_toggle.h"
 #include "ui_loader.h"
 #include "ui_joystick.h"
+#include "ui_points.h"
 
 
 #define SKYBOX_ON 1  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
@@ -42,6 +43,12 @@ namespace ImGuiExt
     // 폰트 객체
     // ==================================================
     inline ImFont* D2Cording = nullptr;
+
+
+    // =====================================================
+    // 쉐이더
+    // =====================================================
+    inline Shader shader_instancing;
 }
 
 
@@ -60,6 +67,7 @@ namespace ImGui
     // =====================================================
     Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
     bool    is_viewport_hovered();
+
 }
 
 

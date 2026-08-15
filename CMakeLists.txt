@@ -38,7 +38,7 @@ add_library(imgui
         src/ui_toggle.cpp
         src/ui_axis.cpp
         src/ui_joystick.cpp
-        src/ui_loader_points.cpp
+        src/ui_points.cpp
 )
 
 
