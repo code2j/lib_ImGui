@@ -12,6 +12,8 @@ namespace ImGui
         std::vector<Vector3>    data;
         Color                   color       = SKYBLUE;
 
+        ~Points();
+
         void move(const Eigen::Matrix4d& transform);
     };
 

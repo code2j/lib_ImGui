@@ -13,6 +13,12 @@ using namespace std;
 
 namespace ImGui
 {
+    Points::~Points()
+    {
+        UnloadMesh(mesh);
+        UnloadMaterial(material);
+    }
+
     void Points::move(const Eigen::Matrix4d &transform)
     {
         for (size_t i = 0; i < data.size(); ++i) {

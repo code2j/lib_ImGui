@@ -12,64 +12,55 @@ namespace fs = std::filesystem;
 namespace 
 {
 
-// ==================================================
-// 뷰포트 상태
-// ==================================================
-RenderTexture2D view_texture; // 렌더링된 이미지가 저장되는 텍스처
-Vector2 viewport_mouse_pos = { 0.0, 0.0 };
-bool is_viewport_hovered   = false;
+    // ==================================================
+    // 뷰포트 상태
+    // ==================================================
+    RenderTexture2D view_texture; // 렌더링된 이미지가 저장되는 텍스처
+    Vector2 viewport_mouse_pos = { 0.0, 0.0 };
+    bool is_viewport_hovered   = false;
 
 
-// ==================================================
-// 윈도우 속성
-// ==================================================
-std::string WINDOW_TITLE;
-const float WINDOW_WIDTH    = 1280.0;
-const float WINDOW_HEIGHT   = 720.0;
+    // ==================================================
+    // 윈도우 속성
+    // ==================================================
+    std::string WINDOW_TITLE;
+    const float WINDOW_WIDTH    = 1280.0;
+    const float WINDOW_HEIGHT   = 720.0;
 
 
-// ==================================================
-// 독 스페이스 & 타이틀바 상태
-// ==================================================
-const float TITLEBAR_HEIGHT = 34.0;
-bool is_resizing            = false;
-bool is_dragging_title_bar  = false;
-Vector2 drag_offset         = { 0.0, 0.0 };
+    // ==================================================
+    // 독 스페이스 & 타이틀바 상태
+    // ==================================================
+    const float TITLEBAR_HEIGHT = 34.0;
+    bool is_resizing            = false;
+    bool is_dragging_title_bar  = false;
+    Vector2 drag_offset         = { 0.0, 0.0 };
 
 
-// ==================================================
-// 폰트 설정
-// ==================================================
-const float  FONT_SIZE   = 20;
-const float  ICON_SIZE   = 28;
-const ImVec2 ICON_OFFSET = ImVec2(0, 6);
-
-
-// ==================================================
-// 3d 카메라 정의
-// ==================================================
-Camera camera = {
-    { 1.0, 0.5, 2.0 },      // position
-    { 0.0, 0.0, 0.0 },       // target
-    { 0.0, 1.0, 0.0 },       // up
-    45.0f,                   // fovy
-    CAMERA_PERSPECTIVE       // projection
-};
+    // ==================================================
+    // 폰트 설정
+    // ==================================================
+    const float  FONT_SIZE   = 20;
+    const float  ICON_SIZE   = 28;
+    const ImVec2 ICON_OFFSET = ImVec2(0, 6);
 
 
 
 
 
-// ==================================================
-// 로그 윈도우
-// ==================================================
-ImGuiLogger loggr;
 
 
-// ==================================================
-// 스카이 박스
-// ==================================================
-Model skybox;
+
+    // ==================================================
+    // 로그 윈도우
+    // ==================================================
+    ImGuiLogger loggr;
+
+
+    // ==================================================
+    // 스카이 박스
+    // ==================================================
+    Model skybox;
 
 
 }
@@ -592,7 +583,7 @@ namespace ImGui
                     EnableCursor();
                 }
                 // 카메라 업데이트 수행
-                UpdateCamera(&camera, CAMERA_FREE);
+                UpdateCamera(&ImGuiExt::camera, CAMERA_FREE);
             }
             // 커서가 보일 때 (일반 UI 조작 중)
             else {
@@ -609,7 +600,7 @@ namespace ImGui
 
             // 사용자 람다 콜백 실행
             if (func) {
-                BeginMode3D(camera);
+                BeginMode3D(ImGuiExt::camera);
 
     #if(SKYBOX_ON)
                     rlDisableBackfaceCulling();
