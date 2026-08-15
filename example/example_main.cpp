@@ -31,6 +31,10 @@ int main() {
     while (ImGui::context([&]() {
         ImGui::Begin(" " ICON_MD_TUNE " 제어 패널 ");
 
+        static float slider = 0.0f;
+        ImGui::DragFloat("드레그", &slider);
+        ImGui::SliderFloat("슬라이더", &slider, 0.0f, 1.0f);
+
         // 조이스틱
         ImVec2 joy;
         ImGui::joystic(" " ICON_MD_JOYSTICK " 조이스틱 ", &joy);

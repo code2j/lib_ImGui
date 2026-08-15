@@ -1372,13 +1372,28 @@ bool ImGui::RadioButton(const char* label, bool active)
 
     RenderNavCursor(total_bb, id);
     const int num_segment = window->DrawList->_CalcCircleAutoSegmentCount(radius);
-    window->DrawList->AddCircleFilled(center, radius, GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg), num_segment);
+
+    // --- 디자인 수정 부분 ---
+    // 1. 바깥쪽 원 (배경)
+    ImU32 bg_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+
+    // 활성화되었을 때 배경을 강조 색상으로 변경하여 안쪽의 흰색 원이 대비되도록 합니다.
+    // (만약 이전 토글버튼의 파란색(93, 105, 240)을 원하시면 IM_COL32(93, 105, 240, 255)로 변경하세요)
+    if (active)
+        bg_col = GetColorU32(ImGuiCol_CheckMark);
+
+    window->DrawList->AddCircleFilled(center, radius, bg_col, num_segment);
+
+    // 2. 안쪽의 작고 채워진 흰색 원
     if (active)
     {
-        const float pad = ImMax(1.0f, IM_TRUNC(square_sz / 6.0f));
-        window->DrawList->AddCircleFilled(center, radius - pad, GetColorU32(ImGuiCol_CheckMark));
+        // 안쪽 원을 더 작게 만들기 위해 패딩 값을 늘립니다. (기존 6.0f -> 3.0f 등으로 조절)
+        const float pad = ImMax(1.0f, IM_TRUNC(square_sz / 3.5f));
+        window->DrawList->AddCircleFilled(center, radius - pad, IM_COL32(255, 255, 255, 255), num_segment);
     }
+    // ------------------------
 
+    // 테두리 선
     if (style.FrameBorderSize > 0.0f)
     {
         window->DrawList->AddCircle(center + ImVec2(1, 1), radius, GetColorU32(ImGuiCol_BorderShadow), num_segment, style.FrameBorderSize);
@@ -2747,7 +2762,28 @@ bool ImGui::DragScalar(const char* label, ImGuiDataType data_type, void* p_data,
     RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, false, style.FrameRounding);
     if (color_marker != 0 && style.ColorMarkerSize > 0.0f)
         RenderColorComponentMarker(frame_bb, GetColorU32(color_marker), style.FrameRounding);
-    RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+
+    // --- 디자인 수정 부분: 활성화 시 커스텀 테두리 색상 적용 ---
+    if (g.ActiveId == id)
+    {
+        // 1. 요청하신 활성화 테두리 색상 푸시
+        PushStyleColor(ImGuiCol_Border, ImVec4(0.364705882f, 0.411764706f, 0.941176471f, 1.00f));
+
+        // 2. 만약 기본 스타일의 테두리 두께가 0이라면 색상이 보이지 않으므로, 강제로 최소 1.0f 두께를 주어 그리도록 함
+        float active_border_size = style.FrameBorderSize > 0.0f ? style.FrameBorderSize : 1.0f;
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, active_border_size);
+
+        RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+
+        PopStyleVar();
+        PopStyleColor();
+    }
+    else
+    {
+        // 비활성 시 기존 방식대로 테두리 렌더링
+        RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+    }
+    // -------------------------------------------------------------
 
     // Drag behavior
     const bool value_changed = DragBehavior(id, data_type, p_data, v_speed, p_min, p_max, format, flags);
@@ -3339,7 +3375,28 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, false, style.FrameRounding);
     if (color_marker != 0 && style.ColorMarkerSize > 0.0f)
         RenderColorComponentMarker(frame_bb, GetColorU32(color_marker), style.FrameRounding);
-    RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+
+    // --- 디자인 수정 부분: 활성화 시 커스텀 테두리 색상 적용 ---
+    if (g.ActiveId == id)
+    {
+        // 활성화 테두리 색상 푸시
+        PushStyleColor(ImGuiCol_Border, ImVec4(0.364705882f, 0.411764706f, 0.941176471f, 1.00f));
+
+        // 기본 스타일의 테두리 두께가 0이라면 색상이 보이지 않으므로, 강제로 최소 1.0f 두께를 줌
+        float active_border_size = style.FrameBorderSize > 0.0f ? style.FrameBorderSize : 1.0f;
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, active_border_size);
+
+        RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+
+        PopStyleVar();
+        PopStyleColor();
+    }
+    else
+    {
+        // 비활성 시 기존 방식대로 테두리 렌더링
+        RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+    }
+    // -------------------------------------------------------------
 
     // Slider behavior
     ImRect grab_bb;
