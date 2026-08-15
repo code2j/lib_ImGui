@@ -139,9 +139,9 @@ int main() {
 
 
     {   // 스코프 안에서 생성하면 자동으로 해제됨
-        std::shared_ptr<Texture2D> texture1 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO1.png");
-        std::shared_ptr<Texture2D> texture2 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO2.png");
-        std::shared_ptr<Texture2D> texture3 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO3.png");
+        ImGui::Texture texture1 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO1.png");
+        ImGui::Texture texture2 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO2.png");
+        ImGui::Texture texture3 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO3.png");
 
 
         while (ImGui::context([&]() {
