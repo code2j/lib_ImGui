@@ -67,7 +67,6 @@ namespace ImGui
     // =====================================================
     Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
     bool    is_viewport_hovered();
-
 }
 
 

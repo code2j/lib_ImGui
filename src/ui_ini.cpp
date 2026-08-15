@@ -25,4 +25,4 @@ namespace ImGui
         buf->appendf("Show3DViewport=%d\n", ImGuiExt::show_3d_viewport ? 1 : 0);
         buf->appendf("\n");
     }
-} // namespace ImGui
+}
