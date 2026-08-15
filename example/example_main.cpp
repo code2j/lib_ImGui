@@ -1,87 +1,107 @@
 #include "ui.hpp"
 #include <iostream>
 
-
+#define FILE_PCD IMGUI_ROOT "/aaa.ply"
 
 Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
-void draw_tf_control() {
-    // ImGui에서 값을 입력받기 위해 상태를 유지할 static 변수 선언
-    // xyz: x, y, z 이동 거리
-    static float translation[3] = { 0.0f, 0.0f, 0.0f };
-    // rpy: Roll(X), Pitch(Y), Yaw(Z) 회전 각도 (단위: Degree)
-    static float rotation_deg[3] = { 0.0f, 0.0f, 0.0f };
-
-    ImGui::Begin("TF 제어");
+bool DrawTfControlWidget(Eigen::Matrix4d* matrix)
+{
+    // 유효하지 않은 포인터가 들어오면 바로 종료하여 크래시 방지
+    if (!matrix) {
+        return false;
+    }
 
     bool is_changed = false;
 
-    // x, y, z 이동 UI (드래그하여 세밀하게 조절 가능)
-    if (ImGui::DragFloat3("Translation (X,Y,Z)", translation, 0.01f)) {
-        is_changed = true;
-    }
+    // 위젯 고유 ID 부여 (matrix의 메모리 주소를 그대로 사용하여 충돌 방지)
+    ImGui::PushID(matrix);
 
-    // roll, pitch, yaw 회전 UI (단위: Degree, 드래그 조절)
-    if (ImGui::DragFloat3("Rotation (R,P,Y)", rotation_deg, 1.0f)) {
-        is_changed = true;
-    }
+    // 위젯 내부에서 상태를 유지할 변수
+    static float translation[3] = { 0.0f, 0.0f, 0.0f };
+    static float rotation_deg[3] = { 0.0f, 0.0f, 0.0f };
 
-    // 값 초기화 버튼 추가
-    if (ImGui::Button("Reset")) {
-        for(int i=0; i<3; ++i) {
+    // --- [1] 초기화 버튼 ---
+    if (ImGui::Button("Reset All", ImVec2(-1, 0))) {
+        for(int i = 0; i < 3; ++i) {
             translation[i] = 0.0f;
             rotation_deg[i] = 0.0f;
         }
         is_changed = true;
     }
 
-    // UI에서 값이 변경되었을 때만 매트릭스 재계산
+    ImGui::Spacing();
+
+    // --- [2] 이동 (Translation) 컨트롤 ---
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Translation (X, Y, Z)");
+    ImGui::PushItemWidth(-1);
+    if (ImGui::DragFloat3("##Trans", translation, 0.01f, 0.0f, 0.0f, "%.3f")) {
+        is_changed = true;
+    }
+    ImGui::PopItemWidth();
+
+    ImGui::Spacing();
+
+    // --- [3] 회전 (Rotation) 컨트롤 ---
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f), "Rotation [Deg] (Roll, Pitch, Yaw)");
+    ImGui::PushItemWidth(-1);
+    if (ImGui::DragFloat3("##Rot", rotation_deg, 0.5f, 0.0f, 0.0f, "%.1f")) {
+        is_changed = true;
+    }
+    ImGui::PopItemWidth();
+
+    // --- [4] 변경 시 Matrix 업데이트 ---
     if (is_changed) {
-        // Degree -> Radian 변환
         double roll_rad  = rotation_deg[0] * (M_PI / 180.0);
         double pitch_rad = rotation_deg[1] * (M_PI / 180.0);
         double yaw_rad   = rotation_deg[2] * (M_PI / 180.0);
 
-        // 각 축에 대한 회전 행렬 생성
         Eigen::AngleAxisd rollAngle(roll_rad, Eigen::Vector3d::UnitX());
         Eigen::AngleAxisd pitchAngle(pitch_rad, Eigen::Vector3d::UnitY());
         Eigen::AngleAxisd yawAngle(yaw_rad, Eigen::Vector3d::UnitZ());
 
-        // 회전 행렬 적용 (Yaw * Pitch * Roll 순서가 일반적인 오일러 각 적용 순서)
         Eigen::Matrix3d rotation_matrix = (yawAngle * pitchAngle * rollAngle).matrix();
 
-        // tf_control 행렬 업데이트
-        tf_control.setIdentity(); // 매트릭스를 단위 행렬로 초기화
-
-        // 1. 회전(Rotation) 성분 세팅 (좌상단 3x3)
-        tf_control.block<3, 3>(0, 0) = rotation_matrix;
-
-        // 2. 이동(Translation) 성분 세팅 (우측 3x1)
-        tf_control.block<3, 1>(0, 3) = Eigen::Vector3d(translation[0], translation[1], translation[2]);
+        // 포인터 접근(->)을 통한 행렬 조작
+        matrix->setIdentity();
+        matrix->block<3, 3>(0, 0) = rotation_matrix;
+        matrix->block<3, 1>(0, 3) = Eigen::Vector3d(translation[0], translation[1], translation[2]);
     }
 
-    // (선택 사항) 결과 매트릭스를 UI 하단에 텍스트로 출력하여 확인
+    ImGui::Spacing();
     ImGui::Separator();
-    ImGui::Text("Current Matrix (tf_control):");
-    for (int i = 0; i < 4; ++i) {
-        ImGui::Text("%8.3f %8.3f %8.3f %8.3f",
-            tf_control(i, 0), tf_control(i, 1),
-            tf_control(i, 2), tf_control(i, 3));
+    ImGui::Spacing();
+
+    // --- [5] 결과 행렬 출력 ---
+    ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "Current Matrix (4x4)");
+    if (ImGui::BeginTable("MatrixTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame)) {
+        for (int i = 0; i < 4; ++i) {
+            ImGui::TableNextRow();
+            for (int j = 0; j < 4; ++j) {
+                ImGui::TableSetColumnIndex(j);
+                // 괄호와 역참조 연산자(*matrix)를 사용하여 요소 접근
+                if (j == 3 && i != 3) {
+                    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%8.3f", (*matrix)(i, j));
+                } else {
+                    ImGui::Text("%8.3f", (*matrix)(i, j));
+                }
+            }
+        }
+        ImGui::EndTable();
     }
 
-    ImGui::End();
-}
+    ImGui::PopID(); // 위젯 ID 종료
 
+    return is_changed; // 값이 변한 프레임에만 true 리턴
+}
 
 int main() {
     ImGui::init("테스트 프로그램", 1280, 720);
     ImGui::load_config("../example/imgui.ini");
 
-    const char* ply_file = "/home/jusik/workspace/lib_ImGui/aaa.ply";
-
     ImGui::Points points;
-    if (!ImGui::load_points(ply_file, &points)) {
-        std::cout << "[Warn ] [Main] 데이터 불러오기 실패: " << ply_file << std::endl;
+    if (!ImGui::load_points(FILE_PCD, &points)) {
+        std::cout << "[Warn ] [Main] 데이터 불러오기 실패: " << FILE_PCD << std::endl;
         return 1;
     }
 
@@ -142,7 +162,9 @@ int main() {
 
             ImGui::ShowDemoWindow();
 
-            draw_tf_control();
+            ImGui::Begin(" " ICON_MD_GAMEPAD " TF 컨트롤 ");
+            DrawTfControlWidget(&tf_control);
+            ImGui::End();
 
             points.move(tf_control);
             ImGui::draw_points(points);

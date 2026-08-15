@@ -153,4 +153,104 @@ namespace ImGui
         // 최종적으로 값 변경 여부를 리턴
         return value_changed;
     }
+
+
+
+    bool tf_control(Eigen::Matrix4d* matrix)
+    {
+        if (!matrix) {
+            return false;
+        }
+
+        bool is_changed = false;
+
+        ImGui::PushID(matrix);
+
+        // 위젯 내부에서 상태를 유지할 변수
+        static float translation[3] = { 0.0f, 0.0f, 0.0f };
+        static float rotation_deg[3] = { 0.0f, 0.0f, 0.0f };
+
+        // -------------------------------------------------------------
+        // 초기화 버튼
+        // -------------------------------------------------------------
+        if (ImGui::Button("Reset All", ImVec2(-1, 0))) {
+            for(int i = 0; i < 3; ++i) {
+                translation[i] = 0.0f;
+                rotation_deg[i] = 0.0f;
+            }
+            is_changed = true;
+        }
+
+        ImGui::Spacing();
+
+        // -------------------------------------------------------------
+        // 이동 (Translation) 컨트롤
+        // -------------------------------------------------------------
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Translation (X, Y, Z)");
+        ImGui::PushItemWidth(-1);
+        if (ImGui::DragFloat3("##Trans", translation, 0.01f, 0.0f, 0.0f, "%.3f")) {
+            is_changed = true;
+        }
+        ImGui::PopItemWidth();
+
+        ImGui::Spacing();
+
+        // -------------------------------------------------------------
+        // 회전 (Rotation) 컨트롤
+        // -------------------------------------------------------------
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f), "Rotation [Deg] (Roll, Pitch, Yaw)");
+        ImGui::PushItemWidth(-1);
+        if (ImGui::DragFloat3("##Rot", rotation_deg, 0.5f, 0.0f, 0.0f, "%.1f")) {
+            is_changed = true;
+        }
+        ImGui::PopItemWidth();
+
+        // -------------------------------------------------------------
+        // 변경 시 Matrix 업데이트
+        // -------------------------------------------------------------
+        if (is_changed) {
+            double roll_rad  = rotation_deg[0] * (M_PI / 180.0);
+            double pitch_rad = rotation_deg[1] * (M_PI / 180.0);
+            double yaw_rad   = rotation_deg[2] * (M_PI / 180.0);
+
+            Eigen::AngleAxisd rollAngle(roll_rad, Eigen::Vector3d::UnitX());
+            Eigen::AngleAxisd pitchAngle(pitch_rad, Eigen::Vector3d::UnitY());
+            Eigen::AngleAxisd yawAngle(yaw_rad, Eigen::Vector3d::UnitZ());
+
+            Eigen::Matrix3d rotation_matrix = (yawAngle * pitchAngle * rollAngle).matrix();
+
+            // 포인터 접근(->)을 통한 행렬 조작
+            matrix->setIdentity();
+            matrix->block<3, 3>(0, 0) = rotation_matrix;
+            matrix->block<3, 1>(0, 3) = Eigen::Vector3d(translation[0], translation[1], translation[2]);
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // -------------------------------------------------------------
+        // 결과 행렬 출력
+        // -------------------------------------------------------------
+        ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "Current Matrix (4x4)");
+        if (ImGui::BeginTable("MatrixTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame)) {
+            for (int i = 0; i < 4; ++i) {
+                ImGui::TableNextRow();
+                for (int j = 0; j < 4; ++j) {
+                    ImGui::TableSetColumnIndex(j);
+                    // 괄호와 역참조 연산자(*matrix)를 사용하여 요소 접근
+                    if (j == 3 && i != 3) {
+                        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%8.3f", (*matrix)(i, j));
+                    } else {
+                        ImGui::Text("%8.3f", (*matrix)(i, j));
+                    }
+                }
+            }
+            ImGui::EndTable();
+        }
+
+        ImGui::PopID();
+
+        return is_changed;
+    }
 }
