@@ -296,8 +296,12 @@ Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
 bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }
 
 
-void context(std::function<void()> func)
+bool context(std::function<void()> func)
 {
+    if (should_close()) {
+        return false;
+    }
+
     // ---------------------------------------------------------------
     // 1. ImGui 프레임 시작
     // ---------------------------------------------------------------
@@ -633,6 +637,10 @@ void context(std::function<void()> func)
             glfwMakeContextCurrent(backup_current_context);
         }
     EndDrawing();
+
+
+
+    return true;
 }
 
 

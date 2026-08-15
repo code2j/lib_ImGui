@@ -50,7 +50,7 @@ namespace ImGui
     void init(const char* title, int width = 1280, int height = 720);
     void destroy();
     bool should_close();
-    void context(std::function<void()> func);
+    bool context(std::function<void()> func);
     void load_config(const std::string& path);
 
 
