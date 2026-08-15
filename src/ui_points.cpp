@@ -30,7 +30,9 @@ namespace ImGui
 
         out->data.clear();
 
+        // -------------------------------------------------------------
         // 파일 열기
+        // -------------------------------------------------------------
         if (!file.is_open()) {
             // [파일이 안열림]
             cout << "[Error] [Loader] 파일 열기 실패: " << path << endl;
@@ -42,7 +44,10 @@ namespace ImGui
         int propertyCount   = 0;
         bool isBinary       = false;
 
+
+        // -------------------------------------------------------------
         // 헤더 파싱
+        // -------------------------------------------------------------
         while (std::getline(file, line)) {
             if (!line.empty() && line.back() == '\r') line.pop_back();
 
@@ -63,10 +68,12 @@ namespace ImGui
             return false;
         }
 
-
         out->data.reserve(numVertices);
 
+
+        // -------------------------------------------------------------
         //  데이터 파싱
+        // -------------------------------------------------------------
         if (isBinary) {
             // [바이너리 파일]
             int bytesPerVertex = propertyCount * sizeof(float);
@@ -89,7 +96,10 @@ namespace ImGui
             }
         }
 
+
+        // -------------------------------------------------------------
         // 쉐이더 및 트렌스폼 설정
+        // -------------------------------------------------------------
         out->material.shader = ImGuiExt::shader_instancing;
         out->material.maps[MATERIAL_MAP_DIFFUSE].color = out->color;
 

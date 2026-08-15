@@ -156,7 +156,7 @@ namespace ImGui
 
 
 
-    bool tf_control(Eigen::Matrix4d* matrix)
+    bool tf_widget(Eigen::Matrix4d* matrix)
     {
         if (!matrix) {
             return false;

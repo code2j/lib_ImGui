@@ -5,5 +5,5 @@
 namespace ImGui
 {
     bool joystic(const char* title, ImVec2* out);
-    bool tf_control(Eigen::Matrix4d* matrix);
+    bool tf_widget(Eigen::Matrix4d* matrix);
 }
