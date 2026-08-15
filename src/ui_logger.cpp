@@ -3,6 +3,14 @@
 #include "ui.hpp"
 
 
+namespace
+{
+    bool            auto_scroll;
+    ImGuiTextBuffer buf;
+    std::streambuf* old_buf;
+}
+
+
 int ImGuiLogger::overflow(int c)
 {
     if (c != EOF) {
@@ -17,7 +25,8 @@ int ImGuiLogger::overflow(int c)
     return c;
 }
 
-std::streamsize ImGuiLogger::xsputn(const char *s, std::streamsize n) {
+std::streamsize ImGuiLogger::xsputn(const char *s, std::streamsize n)
+{
     buf.append(s, s + n);
 
     if (old_buf) {
@@ -42,16 +51,10 @@ void ImGuiLogger::clear()
     buf.clear();
 }
 
-void ImGuiLogger::load_font()
-{
-
-}
-
 void ImGuiLogger::draw(const char *title, bool *p_open)
 {
     const ImVec2 BUTTON_SIZE = ImVec2(35, 35);
 
-    ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin(title)) {
         ImGui::End();
         return;
@@ -61,7 +64,7 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
     float sidebar_width = BUTTON_SIZE.x + 0.0f;
 
     // ===============================================================
-    // 1. 왼쪽 패널: 아이콘 버튼들 (세로 배치)
+    //  왼쪽 패널: 아이콘 버튼들 (세로 배치)
     // ===============================================================
     ImGui::BeginChild("Sidebar", ImVec2(sidebar_width, 0), false);
 
@@ -100,10 +103,12 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
     ImGui::PopStyleColor();
 
     ImGui::EndChild(); // 왼쪽 패널 종료
-
-
     ImGui::SameLine();
 
+
+    // ===============================================================
+    // 텍스트 출력 그리기
+    // ===============================================================
     ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 
     ImGui::Dummy(ImVec2(0.0f, 5.0f));

@@ -243,11 +243,7 @@ namespace ImGui
         // 스카이 박스
         // ---------------------------------------------------------------
     #if(SKYBOX_ON)
-        skybox = load_skybox(
-            IMGUI_ROOT "/data/shaders/skybox.vs",
-            IMGUI_ROOT "/data/shaders/skybox.fs",
-            IMGUI_ROOT "/data/textures/skybox/skybox.png"
-        );
+        skybox = load_skybox(IMGUI_ROOT "/data/textures/skybox/skybox.png");
     #endif
 
 

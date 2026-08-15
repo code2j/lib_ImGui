@@ -32,8 +32,8 @@ namespace ImGuiExt
     // ==================================================
     // 상태 플래그
     // ==================================================
-    inline bool show_3d_viewport = false; // 3d 뷰포트 보이기 여부
     inline bool should_close_app = false; // 앱 닫기 여부
+    inline bool show_3d_viewport = false; // 3d 뷰포트 보이기 여부
     inline bool show_log_window  = false; // 로거 표시 여부
 
 

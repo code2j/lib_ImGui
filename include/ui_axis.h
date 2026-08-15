@@ -2,5 +2,5 @@
 
 namespace ImGui
 {
-void DrawWorldAxesThick(float length, float thickness);
+    void DrawWorldAxesThick(float length, float thickness);
 }

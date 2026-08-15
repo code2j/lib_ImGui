@@ -5,8 +5,6 @@
 
 namespace ImGui
 {
-std::shared_ptr<Texture2D> load_texture(const char* path);
-
-Model load_skybox(const char* vsFileName, const char* fsFileName, const char* cubemapFileName);
-
+    std::shared_ptr<Texture2D>  load_texture(const char* path);
+    Model                       load_skybox(const char* cubemapFileName);
 }
