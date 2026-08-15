@@ -3321,7 +3321,6 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
     const float w = CalcItemWidth();
-    const ImU32 color_marker = (g.NextItemData.HasFlags & ImGuiNextItemDataFlags_HasColorMarker) ? g.NextItemData.ColorMarker : 0;
 
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w, label_size.y + style.FramePadding.y * 2.0f));
@@ -3332,15 +3331,14 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     if (!ItemAdd(total_bb, id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
         return false;
 
-    // Default format string when passing NULL
     if (format == NULL)
         format = DataTypeGetInfo(data_type)->PrintFmt;
 
     const bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
     bool temp_input_is_active = temp_input_allowed && TempInputIsActive(id);
+
     if (!temp_input_is_active)
     {
-        // Tabbing or Ctrl+Click on Slider turns it into an input box
         const bool clicked = hovered && IsMouseClicked(0, ImGuiInputFlags_None, id);
         const bool make_active = (clicked || g.NavActivateId == id);
         if (make_active && clicked)
@@ -3349,7 +3347,6 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
             if ((clicked && g.IO.KeyCtrl) || (g.NavActivateId == id && (g.NavActivateFlags & ImGuiActivateFlags_PreferInput)))
                 temp_input_is_active = true;
 
-        // Store initial value (not used by main lib but available as a convenience but some mods e.g. to revert)
         if (make_active)
             memcpy(&g.ActiveIdValueOnActivation, p_data, DataTypeGetInfo(data_type)->Size);
 
@@ -3364,57 +3361,81 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
 
     if (temp_input_is_active)
     {
-        // Only clamp Ctrl+Click input when ImGuiSliderFlags_ClampOnInput is set (generally via ImGuiSliderFlags_AlwaysClamp)
         const bool clamp_enabled = (flags & ImGuiSliderFlags_ClampOnInput) != 0;
         return TempInputScalar(frame_bb, id, label, data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
     }
 
-    // Draw frame
-    const ImU32 frame_col = GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
-    RenderNavCursor(frame_bb, id);
-    RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, false, style.FrameRounding);
-    if (color_marker != 0 && style.ColorMarkerSize > 0.0f)
-        RenderColorComponentMarker(frame_bb, GetColorU32(color_marker), style.FrameRounding);
-
-    // --- 디자인 수정 부분: 활성화 시 커스텀 테두리 색상 적용 ---
-    if (g.ActiveId == id)
-    {
-        // 활성화 테두리 색상 푸시
-        PushStyleColor(ImGuiCol_Border, ImVec4(0.364705882f, 0.411764706f, 0.941176471f, 1.00f));
-
-        // 기본 스타일의 테두리 두께가 0이라면 색상이 보이지 않으므로, 강제로 최소 1.0f 두께를 줌
-        float active_border_size = style.FrameBorderSize > 0.0f ? style.FrameBorderSize : 1.0f;
-        PushStyleVar(ImGuiStyleVar_FrameBorderSize, active_border_size);
-
-        RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
-
-        PopStyleVar();
-        PopStyleColor();
-    }
-    else
-    {
-        // 비활성 시 기존 방식대로 테두리 렌더링
-        RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
-    }
-    // -------------------------------------------------------------
-
-    // Slider behavior
     ImRect grab_bb;
     const bool value_changed = SliderBehavior(frame_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
     if (value_changed)
         MarkItemEdited(id);
 
-    // Render grab
+    // ==========================================
+    // --- 이미지 스타일 커스텀 렌더링 시작 ---
+    // ==========================================
+    RenderNavCursor(frame_bb, id);
+
+    // 트랙 높이 및 좌표 계산
+    float track_height = 4.0f; // 얇은 막대기 두께
+    ImVec2 track_min = ImVec2(frame_bb.Min.x, frame_bb.GetCenter().y - track_height * 0.5f);
+    ImVec2 track_max = ImVec2(frame_bb.Max.x, frame_bb.GetCenter().y + track_height * 0.5f);
+
+    // 1. 전체 배경 트랙 (어두운 회색)
+    ImU32 bg_track_col = IM_COL32(65, 65, 70, 255);
+    window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
+
+    // 2. 왼쪽 채워진 트랙 (이전 요청의 커스텀 블루 색상 적용)
+    ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
     if (grab_bb.Max.x > grab_bb.Min.x)
-        window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab), style.GrabRounding);
+    {
+        // 그랩의 중심까지만 색을 채웁니다.
+        ImVec2 fill_max = ImVec2(grab_bb.GetCenter().x, track_max.y);
+        window->DrawList->AddRectFilled(track_min, fill_max, fill_track_col, track_height * 0.5f);
+    }
 
-    // Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
+    // 그랩 중심점과 크기
+    ImVec2 grab_center = ImVec2(grab_bb.GetCenter().x, frame_bb.GetCenter().y);
+    float grab_radius = 9.0f; // 얇은 트랙보다 크게 강조된 원형 손잡이
+
+    // 3. 완전한 흰색 원형 그랩
+    window->DrawList->AddCircleFilled(grab_center, grab_radius, IM_COL32(255, 255, 255, 255));
+
+    // 값 포맷팅 (툴팁에 표시하기 위함)
     char value_buf[64];
-    const char* value_buf_end = value_buf + DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
-    if (g.LogEnabled)
-        LogSetNextTextDecoration("{", "}");
-    RenderTextClipped(frame_bb.Min, frame_bb.Max, value_buf, value_buf_end, NULL, ImVec2(0.5f, 0.5f));
+    DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
 
+    // 4. 조작 중일 때 팝업되는 말풍선(Tooltip) 디자인
+    if (g.ActiveId == id) // 클릭하거나 드래그 중일 때만 표시
+    {
+        ImVec2 text_size = CalcTextSize(value_buf);
+        ImVec2 padding(10.0f, 6.0f); // 말풍선 내부 여백
+        float tooltip_y_offset = 12.0f; // 원형 그랩에서 말풍선까지의 띄움 간격
+
+        // 말풍선 사각형 크기 계산
+        ImVec2 tooltip_min = ImVec2(grab_center.x - text_size.x * 0.5f - padding.x, grab_center.y - grab_radius - tooltip_y_offset - text_size.y - padding.y * 2.0f);
+        ImVec2 tooltip_max = ImVec2(grab_center.x + text_size.x * 0.5f + padding.x, grab_center.y - grab_radius - tooltip_y_offset);
+
+        ImU32 tooltip_bg_col = IM_COL32(25, 25, 28, 255);     // 아주 어두운 말풍선 배경
+        ImU32 tooltip_border_col = IM_COL32(55, 55, 60, 255); // 은은한 말풍선 테두리
+
+        // 말풍선 둥근 배경 및 테두리
+        window->DrawList->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
+        window->DrawList->AddRect(tooltip_min, tooltip_max, tooltip_border_col, 6.0f);
+
+        // 말풍선 아래 뾰족한 삼각형(꼬리)
+        ImVec2 p1 = ImVec2(grab_center.x - 6.0f, tooltip_max.y);
+        ImVec2 p2 = ImVec2(grab_center.x + 6.0f, tooltip_max.y);
+        ImVec2 p3 = ImVec2(grab_center.x, tooltip_max.y + 5.0f);
+        window->DrawList->AddTriangleFilled(p1, p2, p3, tooltip_bg_col);
+
+        // 텍스트 출력
+        window->DrawList->AddText(tooltip_min + padding, IM_COL32(230, 230, 230, 255), value_buf);
+    }
+    // ==========================================
+    // --- 이미지 스타일 커스텀 렌더링 끝 ---
+    // ==========================================
+
+    // 우측 레이블 (ex: "사운드보드 음량" 같은 요소) 렌더링
     if (label_size.x > 0.0f)
         RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, frame_bb.Min.y + style.FramePadding.y), label);
 
