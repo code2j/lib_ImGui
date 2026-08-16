@@ -165,13 +165,13 @@ namespace ImGui
         colors[ImGuiCol_ButtonHovered]         = theme_blue_hover;
         colors[ImGuiCol_ButtonActive]          = theme_blue_active;
         // [Header]
-        colors[ImGuiCol_Header]                = theme_blue;
+        colors[ImGuiCol_Header]                = theme_tab_focused;
         colors[ImGuiCol_HeaderHovered]         = theme_blue_hover;
         colors[ImGuiCol_HeaderActive]          = theme_blue_active;
         // [Separator]
         colors[ImGuiCol_Separator]             = ImVec4(0.28, 0.29, 0.30, 1.00);
-        colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00);
-        colors[ImGuiCol_SeparatorActive]       = ImVec4(0.46, 0.56, 0.66, 1.00);
+        colors[ImGuiCol_SeparatorHovered]      = theme_blue_hover;
+        colors[ImGuiCol_SeparatorActive]       = theme_blue_active;
         // [Resize Grip]
         colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 1.00);
         colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00);
@@ -186,10 +186,10 @@ namespace ImGui
         colors[ImGuiCol_TabDimmed]             = theme_tab_inactive;
         colors[ImGuiCol_TabDimmedSelected]     = theme_tab_active;
         // [Plot]
-        colors[ImGuiCol_PlotLines]             = ImVec4(0.46, 0.56, 0.66, 1.00);
-        colors[ImGuiCol_PlotLinesHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00);
-        colors[ImGuiCol_PlotHistogram]         = ImVec4(0.36, 0.46, 0.56, 1.00);
-        colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(0.40, 0.50, 0.60, 1.00);
+        colors[ImGuiCol_PlotLines]             = theme_blue;
+        colors[ImGuiCol_PlotLinesHovered]      = theme_blue_hover;
+        colors[ImGuiCol_PlotHistogram]         = theme_blue;
+        colors[ImGuiCol_PlotHistogramHovered]  = theme_blue_hover;
         // [Table]
         colors[ImGuiCol_TableHeaderBg]         = ImVec4(0.20, 0.22, 0.24, 1.00);
         colors[ImGuiCol_TableBorderStrong]     = ImVec4(0.28, 0.29, 0.30, 1.00);
@@ -218,7 +218,7 @@ namespace ImGui
         style.IndentSpacing     = 25;                 // 들여쓰기 (Indent) 간격
         style.ScrollbarSize     = 11;                 // Scrollbar 두께/크기
         style.GrabMinSize       = 10;                 // 슬라이더 등 Grab(손잡이)의 최소 크기
-        style.WindowBorderSize  = 1;                  // Window 테두리 (Border) 두께
+        style.WindowBorderSize  = 0;                  // Window 테두리 (Border) 두께
         style.ChildBorderSize   = 1;                  // Child 창 테두리 (Border) 두께
         style.PopupBorderSize   = 1;                  // Popup 테두리 (Border) 두께
         style.FrameBorderSize   = 1;                  // Frame 테두리 (Border) 두께
@@ -512,6 +512,7 @@ namespace ImGui
 
             ImGui::Checkbox("3D 뷰포트", & ImGuiExt::show_3d_viewport);
             ImGui::Checkbox("로그", &ImGuiExt::show_log_window);
+            ImGui::Checkbox("컬러 에디터", &ImGuiExt::show_color_edit);
 
             ImGui::PopStyleVar();
 
@@ -699,6 +700,16 @@ namespace ImGui
         // ---------------------------------------------------------------
         if (ImGuiExt::show_log_window)
             loggr.draw(" " ICON_MD_SUBJECT " 로그 ", &ImGuiExt::show_log_window);
+
+
+        // ---------------------------------------------------------------
+        // Color Editer
+        // ---------------------------------------------------------------
+        if (ImGuiExt::show_color_edit) {
+            ImGui::Begin("Style Editor");
+            ImGui::ShowStyleEditor(&ImGui::GetStyle());
+            ImGui::End();
+        }
 
 
         // ---------------------------------------------------------------

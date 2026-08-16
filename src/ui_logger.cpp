@@ -90,7 +90,7 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
     }
 
-    if (ImGui::Button(ICON_MD_VERTICAL_ALIGN_BOTTOM, BUTTON_SIZE)) {
+    if (ImGui::Button(ICON_MD_WRAP_TEXT, BUTTON_SIZE)) {
         auto_scroll = !auto_scroll;
     }
 

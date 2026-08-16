@@ -164,7 +164,7 @@ namespace ImGui
 
         ImGuiContext& g = *GImGui;
         float delta_time = ImGui::GetIO().DeltaTime;
-        float anim_speed = 10.0f; // 위치 이동 애니메이션 속도 (클수록 빠름)
+        float anim_speed = 12.0f; // 위치 이동 애니메이션 속도 (클수록 빠름)
 
         float target_height = 0.f;
 
@@ -271,7 +271,7 @@ namespace ImGui
                 float bar_height = 3.0f; // 프로그레스 바 두께 (원하는 수치로 조절 가능)
 
                 // 오른쪽 끝이 왼쪽으로 줄어드는 형태 (왼쪽은 고정, 오른쪽 끝이 진행률에 따라 감소)
-                ImVec2 p_min = ImVec2(win_pos.x, win_pos.y + win_size.y - bar_height);
+                ImVec2 p_min = ImVec2(win_pos.x+1.4, win_pos.y + win_size.y - bar_height);
                 ImVec2 p_max = ImVec2(win_pos.x + (win_size.x * progress), win_pos.y + win_size.y);
 
                 ImU32 bar_color = ColorConvertFloat4ToU32(text_color);
