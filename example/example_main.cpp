@@ -86,7 +86,6 @@ int main() {
             }
             ImGui::Dummy(ImVec2(0, 1));
 
-
             ImGui::PopItemWidth();
             ImGui::EndChild();
 

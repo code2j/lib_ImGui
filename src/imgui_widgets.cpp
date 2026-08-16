@@ -3463,24 +3463,27 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     if (format == NULL)
         format = DataTypeGetInfo(data_type)->PrintFmt;
 
+    ImRect slider_bb = frame_bb;
+    slider_bb.Min.x += 5.0f;
+    slider_bb.Max.x -= 5.0f;
+
     // =========================================================================
     // [헬퍼 람다] ImGui 내부의 grab_bb 중심점을 트랙 양끝(frame_bb)으로 꽉 차게 매핑
     // =========================================================================
     auto GetMappedGrabCenter = [&](const ImRect& g_bb) -> ImVec2 {
-        float grab_padding = 2.0f; // ImGui 내부 슬라이더 패딩
+        float grab_padding = 2.0f;
         float g_w = g_bb.GetWidth();
 
-        // ImGui 내부에서 grab 중심이 실제로 이동할 수 있는 최소/최대 위치
-        float internal_min_c = frame_bb.Min.x + grab_padding + g_w * 0.5f;
-        float internal_max_c = frame_bb.Max.x - grab_padding - g_w * 0.5f;
+        // 내부 계산도 줄어든 slider_bb를 기준으로 합니다.
+        float internal_min_c = slider_bb.Min.x + grab_padding + g_w * 0.5f;
+        float internal_max_c = slider_bb.Max.x - grab_padding - g_w * 0.5f;
 
-        // 현재 값의 진행률 (0.0 ~ 1.0) 계산
         float t = 0.0f;
         if (internal_max_c > internal_min_c)
             t = ImClamp((g_bb.GetCenter().x - internal_min_c) / (internal_max_c - internal_min_c), 0.0f, 1.0f);
 
-        // 시각적 트랙의 양 끝단으로 다시 매핑
-        float mapped_x = ImLerp(frame_bb.Min.x, frame_bb.Max.x, t);
+        // 여기서 억지로 +5를 더할 필요 없이, slider_bb 전체 영역으로 꽉 차게 매핑하면 끝납니다.
+        float mapped_x = ImLerp(slider_bb.Min.x, slider_bb.Max.x, t);
         return ImVec2(mapped_x, frame_bb.GetCenter().y);
     };
 
@@ -3501,14 +3504,15 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
         char dummy_data[16];
         memcpy(dummy_data, p_data, DataTypeGetInfo(data_type)->Size);
 
-        SliderBehavior(frame_bb, id, data_type, dummy_data, p_min, p_max, format, flags, &current_grab_bb);
+        // 2. 핵심: frame_bb 대신 slider_bb를 넘겨줍니다.
+        SliderBehavior(slider_bb, id, data_type, dummy_data, p_min, p_max, format, flags, &current_grab_bb);
 
         g.ActiveId = backup_active_id;
         g.IO.MouseDown[0] = backup_mouse_down;
         g.IO.MouseClicked[0] = backup_mouse_clicked;
     }
 
-    // [수정됨] 단순히 GetCenter()를 쓰지 않고 화면 끝에 맞게 보정된 위치 사용
+    // 클릭 판정은 수정할 필요 없이 그대로 두면 됩니다. (자동으로 따라갑니다)
     ImVec2 current_grab_center = GetMappedGrabCenter(current_grab_bb);
     float grab_hitbox_radius = 9.0f + 4.0f;
     ImRect interact_grab_bb(
@@ -3565,7 +3569,7 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     }
 
     ImRect grab_bb;
-    const bool value_changed = SliderBehavior(frame_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
+    const bool value_changed = SliderBehavior(slider_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
 
     if (is_clicking_outside_grab)
     {
