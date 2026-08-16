@@ -7,10 +7,6 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
 
-namespace CustomImGui {
-
-
-} // namespace CustomImGui
 
 int main() {
     ImGui::init("테스트 프로그램", 1280, 720);
@@ -63,13 +59,26 @@ int main() {
         }
 
 
-        if (ImGui::CollapsingHeader(ICON_MD_TUNE " 슬라이더 샘플 ")) {
-            // [슬라이더 샘플]
+        if (ImGui::BeginCollapsingHeader(ICON_MD_TUNE " 슬라이더 샘플 ")) {
+            // [드래그 슬라이더 샘플]
+            ImGui::BeginChild("##slider", ImVec2(0, 150), true);
+
+            ImGui::PushItemWidth(300);
             static float drag = 0.0f;
             static float slider = 0.0f;
             ImGui::DragFloat("드레그", &drag);
             ImGui::Dummy(ImVec2(0, 10));
             ImGui::SliderFloat("슬라이더", &slider, 0.0f, 1.0f);
+
+            // [범위 슬라이더 샘플]
+            static float price_min = 20.0f;
+            static float price_max = 80.0f;
+            ImGui::SliderFloatRange("Price Range", &price_min, &price_max, 0.0f, 100.0f, "%.1f");
+
+            ImGui::PopItemWidth();
+            ImGui::EndChild();
+
+            ImGui::EndCollapsingHeader(ICON_MD_TUNE " 슬라이더 샘플 ");
         }
 
 
@@ -142,6 +151,10 @@ int main() {
            }
            ImGui::EndChild();
         }
+
+
+
+
 
 
 
