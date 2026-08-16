@@ -26,6 +26,7 @@
 #include "ui_joystick.h"
 #include "ui_points.h"
 #include "ui_stepbar.h"
+#include "ui_widgets.h"
 
 
 #define SKYBOX_ON 1  // 1: 스카이 박스 보임, 0: 스카이박스 안보임

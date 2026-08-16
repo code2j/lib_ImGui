@@ -9,97 +9,8 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 namespace CustomImGui {
 
-    bool BeginAnimatedCollapsingHeader(const char* label, bool default_open = false) {
-        ImGuiWindow* window = ImGui::GetCurrentWindow();
-        if (window->SkipItems) return false;
-
-        ImGuiContext& g = *GImGui;
-        ImGuiID id = window->GetID(label);
-
-        bool is_open = window->StateStorage.GetInt(id, default_open ? 1 : 0);
-        float anim_t = window->StateStorage.GetFloat(id + 1, is_open ? 1.0f : 0.0f);
-        float max_height = window->StateStorage.GetFloat(id + 2, 0.0f);
-
-        bool calculating_height = (is_open && max_height == 0.0f);
-
-        ImVec2 pos = window->DC.CursorPos;
-        ImVec2 size(ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeight());
-        ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
-
-        ImGui::ItemSize(size);
-        if (!ImGui::ItemAdd(bb, id)) {
-            return false;
-        }
-
-        bool hovered, held;
-        bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
-        if (pressed) {
-            is_open = !is_open;
-            window->StateStorage.SetInt(id, is_open ? 1 : 0);
-        }
-
-        ImU32 col = ImGui::GetColorU32((held && hovered) ? ImGuiCol_HeaderActive : hovered ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
-        ImGui::RenderFrame(bb.Min, bb.Max, col, true, ImGui::GetStyle().FrameRounding);
-
-        ImVec2 arrow_pos(bb.Min.x + ImGui::GetStyle().FramePadding.x, bb.Min.y + ImGui::GetStyle().FramePadding.y);
-        ImGui::RenderArrow(window->DrawList, arrow_pos, ImGui::GetColorU32(ImGuiCol_Text), is_open ? ImGuiDir_Down : ImGuiDir_Right);
-
-        ImVec2 text_pos(arrow_pos.x + g.FontSize + ImGui::GetStyle().FramePadding.x * 2.0f, arrow_pos.y);
-        ImGui::RenderText(text_pos, label);
-
-        if (!calculating_height) {
-            float speed = ImGui::GetIO().DeltaTime * 7.0f;
-            anim_t = ImClamp(anim_t + (is_open ? speed : -speed), 0.0f, 1.0f);
-            window->StateStorage.SetFloat(id + 1, anim_t);
-        }
-
-        if (anim_t > 0.0f || calculating_height) {
-            float current_height = calculating_height ? 0.0f : (max_height * anim_t);
-            float alpha = calculating_height ? 0.0f : anim_t;
-
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
-
-            ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-            ImGuiChildFlags child_flags = 0;
-
-            if (calculating_height || (is_open && anim_t >= 1.0f)) {
-                child_flags |= ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY;
-                current_height = 0.0f;
-            }
-
-            ImGui::BeginChild(id + 3, ImVec2(0, current_height), child_flags, window_flags);
-            return true;
-        }
-
-        return false;
-    }
-
-    void EndAnimatedCollapsingHeader(const char* label) {
-        // 1. Child 윈도우 내부에서 그려진 내용물의 높이를 먼저 계산합니다.
-        float height = ImGui::GetCursorPosY() + ImGui::GetStyle().WindowPadding.y;
-
-        // 2. Child 윈도우를 닫고 적용했던 스타일을 해제합니다.
-        ImGui::EndChild();
-        ImGui::PopStyleVar(3);
-
-        // 3. [핵심 수정] EndChild() 이후에 부모 윈도우를 가져와야 정상적으로 상태를 저장할 수 있습니다.
-        ImGuiWindow* window = ImGui::GetCurrentWindow();
-        ImGuiID id = window->GetID(label);
-
-        bool is_open = window->StateStorage.GetInt(id, 0);
-        float anim_t = window->StateStorage.GetFloat(id + 1, 0.0f);
-        float max_height = window->StateStorage.GetFloat(id + 2, 0.0f);
-
-        // 4. 최초 측정 시(max_height == 0) 이거나 완전히 열려있을 때 높이를 갱신합니다.
-        if (is_open && (max_height == 0.0f || anim_t >= 1.0f)) {
-            window->StateStorage.SetFloat(id + 2, height);
-        }
-    }
 
 } // namespace CustomImGui
-
 
 int main() {
     ImGui::init("테스트 프로그램", 1280, 720);
@@ -169,7 +80,9 @@ int main() {
             ImGui::Dummy(ImVec2(0, 20));
         }
 
-        if (ImGui::CollapsingHeader(ICON_MD_STEPPERS " 상태 바 ")) {
+
+        if (ImGui::BeginCollapsingHeader(ICON_MD_STEPPERS " 상태 바 ", false)) {
+
             const char* status_labels[] = {
                 "시스템 시작",
                 "시스템 초기화",
@@ -187,8 +100,10 @@ int main() {
             ImGui::StatusStepBar("##AccountStatusStepBar", &current_account_status, status_labels, 4);
             ImGui::EndChild();
             ImGui::PopStyleVar();
-        }
 
+
+            ImGui::EndCollapsingHeader(ICON_MD_STEPPERS " 상태 바 ");
+        }
 
         if (ImGui::CollapsingHeader(ICON_MD_IMAGE " 이미지 ")) {
             // 토클 이미지 보이기
@@ -229,22 +144,7 @@ int main() {
         }
 
 
-        static float volume = 0.5f;
-        static bool is_fullscreen = false;
 
-        if (CustomImGui::BeginAnimatedCollapsingHeader("고급 설정 (Animated)", false)) {
-
-            ImGui::Text("이곳에 부드럽게 펼쳐질 내용물들을 넣습니다.");
-            ImGui::SliderFloat("볼륨", &volume, 0.0f, 1.0f);
-            ImGui::Checkbox("전체 화면", &is_fullscreen);
-
-            if (ImGui::Button("적용하기")) {
-                // 동작
-            }
-
-
-            CustomImGui::EndAnimatedCollapsingHeader("고급 설정 (Animated)");
-        }
 
         ImGui::End();
 
