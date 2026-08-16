@@ -19,75 +19,71 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
     bool calculating_height = (is_open && max_height == 0.0f);
 
     // =========================================================================
-    // 헤더 UI 영역 계산 (양끝 여백 없애기)
+    // 헤더 UI 영역 계산
     // =========================================================================
     ImVec2 pos = window->DC.CursorPos;
     float frame_height = ImGui::GetFrameHeight();
 
     ImRect bb;
-    bb.Min.x = window->WorkRect.Min.x; // 현재 작업 영역의 시작점
-    bb.Max.x = window->WorkRect.Max.x; // 현재 작업 영역의 끝점
+    bb.Min.x = window->WorkRect.Min.x;
+    bb.Max.x = window->WorkRect.Max.x;
     bb.Min.y = pos.y;
     bb.Max.y = pos.y + frame_height;
 
-    // ImGui의 기본 CollapsingHeader처럼 양끝으로 배경을 살짝 더 확장 (여백 제거)
     const float outer_extend = IM_TRUNC(window->WindowPadding.x * 0.5f);
     bb.Min.x -= outer_extend;
     bb.Max.x += outer_extend;
 
     // 아이템 크기 등록
     ImGui::ItemSize(ImVec2(window->WorkRect.Max.x - pos.x, frame_height));
-    if (!ImGui::ItemAdd(bb, id)) {
-        return false;
+
+    // [수정 핵심 1] 화면 밖으로 벗어났다고 바로 return false를 하면 안 됩니다!
+    // is_visible 상태만 저장하고, 클릭이나 텍스트 렌더링만 스킵해야 합니다.
+    bool is_visible = ImGui::ItemAdd(bb, id);
+
+    if (is_visible) {
+        // 클릭 상호작용 처리
+        bool hovered, held;
+        bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
+        if (pressed) {
+            is_open = !is_open;
+            window->StateStorage.SetInt(id, is_open ? 1 : 0);
+        }
+
+        // 배경 렌더링
+        ImU32 bg_col = ImGui::GetColorU32((held && hovered) ? ImGuiCol_HeaderActive : hovered ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
+        ImGui::RenderFrame(bb.Min, bb.Max, bg_col, false, ImGui::GetStyle().FrameRounding);
+
+        ImVec2 padding = ImGui::GetStyle().FramePadding;
+        ImU32 text_col = ImGui::GetColorU32(ImGuiCol_Text);
+
+        // 우측 끝 V자 화살표(Chevron) 렌더링
+        ImVec2 chevron_center = ImVec2(bb.Max.x - padding.x - g.FontSize * 0.5f, bb.Min.y + frame_height * 0.5f);
+        float chevron_size = 6.5f;
+        ImVec2 p1, p2, p3;
+
+        if (is_open) {
+            p1 = ImVec2(chevron_center.x - chevron_size, chevron_center.y + chevron_size * 0.4f);
+            p2 = ImVec2(chevron_center.x, chevron_center.y - chevron_size * 0.6f);
+            p3 = ImVec2(chevron_center.x + chevron_size, chevron_center.y + chevron_size * 0.4f);
+        } else {
+            p1 = ImVec2(chevron_center.x - chevron_size, chevron_center.y - chevron_size * 0.4f);
+            p2 = ImVec2(chevron_center.x, chevron_center.y + chevron_size * 0.6f);
+            p3 = ImVec2(chevron_center.x + chevron_size, chevron_center.y - chevron_size * 0.4f);
+        }
+
+        ImVec2 points[3] = { p1, p2, p3 };
+        window->DrawList->AddPolyline(points, 3, text_col, 0, 2.5f);
+
+        // 텍스트 좌측 정렬 및 클리핑 렌더링
+        ImVec2 text_pos(window->WorkRect.Min.x + padding.x, bb.Min.y + padding.y);
+        ImVec2 clip_rect_max = ImVec2(bb.Max.x - padding.x * 2.0f - g.FontSize, bb.Max.y);
+        ImGui::RenderTextClipped(text_pos, clip_rect_max, label, NULL, NULL);
     }
-
-    // 클릭 상호작용 처리
-    bool hovered, held;
-    bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
-    if (pressed) {
-        is_open = !is_open;
-        window->StateStorage.SetInt(id, is_open ? 1 : 0);
-    }
-
-    // 배경 렌더링
-    ImU32 bg_col = ImGui::GetColorU32((held && hovered) ? ImGuiCol_HeaderActive : hovered ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
-    ImGui::RenderFrame(bb.Min, bb.Max, bg_col, false, ImGui::GetStyle().FrameRounding);
-
-    ImVec2 padding = ImGui::GetStyle().FramePadding;
-    ImU32 text_col = ImGui::GetColorU32(ImGuiCol_Text);
-
-    // =========================================================================
-    // [수정됨] 텍스트와 화살표 위치 정렬
-    // =========================================================================
-
-    // 1. 우측 끝 V자 화살표(Chevron) 렌더링
-    // -> window->WorkRect.Max.x 대신 확장된 배경인 bb.Max.x를 사용하여 위치 일치
-    ImVec2 chevron_center = ImVec2(bb.Max.x - padding.x - g.FontSize * 0.5f, bb.Min.y + frame_height * 0.5f);
-    float chevron_size = 6.5f;
-    ImVec2 p1, p2, p3;
-
-    if (is_open) {
-        p1 = ImVec2(chevron_center.x - chevron_size, chevron_center.y + chevron_size * 0.4f);
-        p2 = ImVec2(chevron_center.x, chevron_center.y - chevron_size * 0.6f);
-        p3 = ImVec2(chevron_center.x + chevron_size, chevron_center.y + chevron_size * 0.4f);
-    } else {
-        p1 = ImVec2(chevron_center.x - chevron_size, chevron_center.y - chevron_size * 0.4f);
-        p2 = ImVec2(chevron_center.x, chevron_center.y + chevron_size * 0.6f);
-        p3 = ImVec2(chevron_center.x + chevron_size, chevron_center.y - chevron_size * 0.4f);
-    }
-
-    ImVec2 points[3] = { p1, p2, p3 };
-    window->DrawList->AddPolyline(points, 3, text_col, 0, 2.5f);
-
-    // 2. 텍스트 좌측 정렬 및 클리핑 렌더링
-    // -> 클리핑 영역(clip_rect_max) 역시 bb.Max.x 기준으로 넓혀서 화살표 직전까지 텍스트가 보이게 함
-    ImVec2 text_pos(window->WorkRect.Min.x + padding.x, bb.Min.y + padding.y);
-    ImVec2 clip_rect_max = ImVec2(bb.Max.x - padding.x * 2.0f - g.FontSize, bb.Max.y);
-    ImGui::RenderTextClipped(text_pos, clip_rect_max, label, NULL, NULL);
 
     // =========================================================================
 
-    // 애니메이션 프레임 업데이트
+    // 헤더가 화면 밖에 있어도 애니메이션 프레임은 무조건 업데이트 되어야 함
     if (!calculating_height) {
         float speed = ImGui::GetIO().DeltaTime * 7.0f;
         anim_t = ImClamp(anim_t + (is_open ? speed : -speed), 0.0f, 1.0f);
@@ -95,6 +91,7 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
     }
 
     // 내용 영역 (Child Window) 열기
+    // 헤더가 화면에 안 보여도 내용물(Child) 공간은 계속 유지되어야 스크롤이 튕기지 않음
     if (anim_t > 0.0f || calculating_height) {
         float current_height = calculating_height ? 0.0f : (max_height * anim_t);
         float alpha = calculating_height ? 0.0f : anim_t;
@@ -107,7 +104,8 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
         ImGuiChildFlags child_flags = 0;
 
         if (calculating_height || (is_open && anim_t >= 1.0f)) {
-            child_flags |= ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY;
+            // [수정 핵심 2] 가로 크기 피드백 루프 방지를 위해 AutoResizeY(세로)만 적용
+            child_flags |= ImGuiChildFlags_AutoResizeY;
             current_height = 0.0f;
         }
 

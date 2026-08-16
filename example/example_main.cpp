@@ -36,7 +36,7 @@ int main() {
 
 
 
-        if (ImGui::CollapsingHeader(ICON_MD_CHAT_INFO " 알림 버튼 샘플 ")) {
+        if (ImGui::BeginCollapsingHeader(ICON_MD_CHAT_INFO " 알림 버튼 샘플 ")) {
             // [알림 버튼 샘플]
             if (ImGui::Button(" 알림 정보 ")) {
                 ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "정보 알림이 표시 됩니다."));
@@ -56,6 +56,8 @@ int main() {
             if (ImGui::Button(" 알림 에러 ")) {
                 ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Error, "에러 알림이 표시 됩니다."));
             }
+
+            ImGui::EndCollapsingHeader(ICON_MD_CHAT_INFO " 알림 버튼 샘플 ");
         }
 
 
@@ -82,11 +84,12 @@ int main() {
         }
 
 
-        if (ImGui::CollapsingHeader(ICON_MD_JOYSTICK " 조이스틱 샘플 ")) {
+        if (ImGui::BeginCollapsingHeader(ICON_MD_JOYSTICK " 조이스틱 샘플 ")) {
             // [조이스틱 샘플]
             ImVec2 joy;
             ImGui::joystic(&joy);
             ImGui::Dummy(ImVec2(0, 20));
+            ImGui::EndCollapsingHeader(ICON_MD_JOYSTICK " 조이스틱 샘플 ");
         }
 
 
@@ -114,42 +117,44 @@ int main() {
             ImGui::EndCollapsingHeader(ICON_MD_STEPPERS " 상태 바 ");
         }
 
-        if (ImGui::CollapsingHeader(ICON_MD_IMAGE " 이미지 ")) {
+        if (ImGui::BeginCollapsingHeader(ICON_MD_IMAGE " 이미지 ")) {
             // 토클 이미지 보이기
-           static bool show_image = false;
-           if (ImGui::ToggleButton("이미지 보이기", &show_image)) {
-               ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "이미지가 표시됩니다."));
-               std::cout << "cout으로 출력된 메세지는 로그에 나타납니다." << std::endl;
-           }
-           ImGui::SameLine();
-           ImGui::Text("이미지 보이기");
+            static bool show_image = false;
+            if (ImGui::ToggleButton("이미지 보이기", &show_image)) {
+                ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "이미지가 표시됩니다."));
+                std::cout << "cout으로 출력된 메세지는 로그에 나타납니다." << std::endl;
+            }
+            ImGui::SameLine();
+            ImGui::Text("이미지 보이기");
 
             // ImGui::Checkbox()
 
 
 
-           ImGui::BeginChild("child", ImVec2(0, 0), true);
-           if (show_image) {
-               ImVec2 avail = ImGui::GetContentRegionAvail();
-               float img_aspect = (float) texture1->width / (float) texture1->height;
-               float avail_aspect = avail.x / avail.y;
+            ImGui::BeginChild("child", ImVec2(0, 0), true);
+            if (show_image) {
+                ImVec2 avail = ImGui::GetContentRegionAvail();
+                float img_aspect = (float) texture1->width / (float) texture1->height;
+                float avail_aspect = avail.x / avail.y;
 
-               ImVec2 size;
-               if (avail_aspect > img_aspect) {
+                ImVec2 size;
+                if (avail_aspect > img_aspect) {
                    // 가용 영역이 더 넓음 - 높이에 맞춤
                    size.y = avail.y;
                    size.x = size.y * img_aspect;
-               } else {
+                } else {
                    // 가용 영역이 더 좁음 - 너비에 맞춤
                    size.x = avail.x;
                    size.y = size.x / img_aspect;
-               }
+                }
 
-               ImGui::Image(texture1->id, size);
-               ImGui::Image(texture2->id, size);
-               ImGui::Image(texture3->id, size);
-           }
-           ImGui::EndChild();
+                ImGui::Image(texture1->id, size);
+                ImGui::Image(texture2->id, size);
+                ImGui::Image(texture3->id, size);
+            }
+            ImGui::EndChild();
+            ImGui::EndCollapsingHeader(ICON_MD_IMAGE " 이미지 ");
+
         }
 
 
