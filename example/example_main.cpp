@@ -94,7 +94,6 @@ int main() {
 
 
         if (ImGui::BeginCollapsingHeader(ICON_MD_STEPPERS " 상태 바 ", false)) {
-
             const char* status_labels[] = {
                 "시스템 시작",
                 "시스템 초기화",
@@ -104,15 +103,30 @@ int main() {
 
             static int current_account_status = 2;
 
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0);
-            ImGui::BeginChild("상태바", ImVec2(0, 150), true);
-            if (ImGui::InputInt("상태", &current_account_status)) {
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+            ImGui::BeginChild("상태바", ImVec2(0, 200), true);
+
+            // 1. 스테이터스 바 렌더링 (상단 위치)
+            ImGui::StatusStepBar("##AccountStatusStepBar", &current_account_status, status_labels, 4);
+
+            ImGui::Dummy(ImVec2(0, 10.0f)); // 바 위젯과의 여백 확보
+
+            // 2. InputInt 위젯 가로 중앙 정렬 처리
+            float input_width = 140.0f; // InputInt의 너비 지정
+            float avail_width = ImGui::GetContentRegionAvail().x;
+            float offset_x = (avail_width - input_width) * 0.5f;
+
+            if (offset_x > 0.0f)
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
+
+            ImGui::PushItemWidth(input_width);
+            if (ImGui::InputInt("##상태", &current_account_status)) {
                 current_account_status = std::max(0, std::min(current_account_status, 3));
             }
-            ImGui::StatusStepBar("##AccountStatusStepBar", &current_account_status, status_labels, 4);
+            ImGui::PopItemWidth();
+
             ImGui::EndChild();
             ImGui::PopStyleVar();
-
 
             ImGui::EndCollapsingHeader(ICON_MD_STEPPERS " 상태 바 ");
         }

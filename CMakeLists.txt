@@ -35,11 +35,9 @@ add_library(imgui
         src/ui_loader_texture.cpp
         src/ui_logger.cpp
         src/ui_notify.cpp
-        src/ui_toggle.cpp
         src/ui_axis.cpp
         src/ui_joystick.cpp
         src/ui_points.cpp
-        src/ui_stepbar.cpp
         src/ui_widgets.cpp
 )
 
