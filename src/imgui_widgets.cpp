@@ -1269,12 +1269,33 @@ bool ImGui::Checkbox(const char* label, bool* v)
     if (is_visible)
     {
         RenderNavCursor(total_bb, id);
-        RenderFrame(check_bb.Min, check_bb.Max, GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg), true, style.FrameRounding);
-        ImU32 check_col = GetColorU32(ImGuiCol_CheckMark);
+
+        // [수정된 부분] 체크 상태에 따른 배경색 결정 및 테두리 여부
+        ImU32 frame_col;
+        bool render_border; // 테두리를 그릴지 여부
+
+        if (*v || mixed_value)
+        {
+            // 활성화되었을 때는 버튼 색상 적용 및 테두리 켜기
+            frame_col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+            render_border = true;
+        }
+        else
+        {
+            // 비활성화되었을 때는 기존 프레임 배경색 적용 및 테두리 켜기
+            frame_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+            render_border = true;
+        }
+
+        // RenderFrame의 4번째 인자가 테두리(border) 렌더링 여부입니다.
+        RenderFrame(check_bb.Min, check_bb.Max, frame_col, render_border, style.FrameRounding);
+
+        // [수정된 부분] 체크 마크 색상을 텍스트 색상으로 변경
+        ImU32 check_col = GetColorU32(ImGuiCol_Text);
+
         if (mixed_value)
         {
             // Undocumented tristate/mixed/indeterminate checkbox (#2644)
-            // This may seem awkwardly designed because the aim is to make ImGuiItemFlags_MixedValue supported by all widgets (not just checkbox)
             ImVec2 pad(ImMax(1.0f, IM_TRUNC(square_sz / 3.6f)), ImMax(1.0f, IM_TRUNC(square_sz / 3.6f)));
             window->DrawList->AddRectFilled(check_bb.Min + pad, check_bb.Max - pad, check_col, style.FrameRounding);
         }
@@ -1371,7 +1392,7 @@ bool ImGui::RadioButton(const char* label, bool active)
         MarkItemEdited(id);
 
     RenderNavCursor(total_bb, id);
-    const int num_segment = window->DrawList->_CalcCircleAutoSegmentCount(radius);
+    const int num_segment = 300; // window->DrawList->_CalcCircleAutoSegmentCount(radius);
 
     // --- 디자인 수정 부분 ---
     // 1. 바깥쪽 원 (배경)
@@ -4040,6 +4061,10 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
     {
         const float button_size = GetFrameHeight();
 
+        // [핵심 변경] 첫 번째 버튼이 렌더링되어 설정된 너비 값을 소모하기 전에 전체 길이를 미리 캐싱합니다.
+        const float full_width = CalcItemWidth();
+        const float input_width = ImMax(1.0f, full_width - (button_size + style.ItemInnerSpacing.x) * 2);
+
         BeginGroup(); // The only purpose of the group here is to allow the caller to query item data e.g. IsItemActive()
         PushID(label);
 
@@ -4072,14 +4097,13 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
         style.FramePadding = backup_frame_padding;
         SameLine(0, style.ItemInnerSpacing.x);
 
-        float input_width = ImMax(1.0f, CalcItemWidth() - (button_size + style.ItemInnerSpacing.x) * 2);
+        // 미리 계산해둔 input_width를 적용하여 원래의 위젯 전체 길이가 보장되도록 설정
         SetNextItemWidth(input_width);
 
         ImVec2 input_pos = window->DC.CursorPos;
         ImGuiID input_id = window->GetID("");
         bool is_active = (g.ActiveId == input_id);
 
-        // 입력 중이 아닐 때는 기본 좌측 정렬 텍스트를 숨김 (투명 처리)
         if (!is_active)
             PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 
@@ -4089,7 +4113,6 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
                 value_changed = true;
         }
 
-        // 입력 중이 아닐 때 텍스트를 직접 가운데에 렌더링
         if (!is_active)
         {
             PopStyleColor();
@@ -4100,7 +4123,6 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
                 input_pos.y + style.FramePadding.y
             );
 
-            // 영역 밖으로 텍스트가 삐져나가지 않도록 클리핑 적용
             ImVec2 clip_min = input_pos;
             ImVec2 clip_max = ImVec2(input_pos.x + input_width, input_pos.y + button_size);
 
@@ -7328,7 +7350,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
         if (display_frame)
         {
             const ImU32 bg_col = GetColorU32((held && hovered) ? ImGuiCol_HeaderActive : hovered ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
-            RenderFrame(frame_bb.Min, frame_bb.Max, bg_col, true, style.FrameRounding);
+            RenderFrame(frame_bb.Min, frame_bb.Max, bg_col, false, style.FrameRounding);
             RenderNavCursor(frame_bb, id, nav_render_cursor_flags);
             if (span_all_columns && !span_all_columns_label)
                 TablePopBackgroundChannel();
@@ -7360,7 +7382,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
         if (!is_leaf)
         {
             ImVec2 chevron_center = ImVec2(frame_bb.Max.x - padding.x - g.FontSize * 0.5f, frame_bb.Min.y + frame_height * 0.5f);
-            float chevron_size = 4.5f;
+            float chevron_size = 6.5f;
             ImVec2 p1, p2, p3;
 
             if (is_open) {
@@ -7375,8 +7397,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
                 p3 = ImVec2(chevron_center.x + chevron_size, chevron_center.y - chevron_size * 0.4f);
             }
 
-            window->DrawList->AddLine(p1, p2, text_col, 1.5f);
-            window->DrawList->AddLine(p2, p3, text_col, 1.5f);
+            ImVec2 points[3] = { p1, p2, p3 };
+            window->DrawList->AddPolyline(points, 3, text_col, 0, 2.5f);
         }
 
         // =========================================================================

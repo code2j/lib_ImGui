@@ -238,50 +238,60 @@ int main() {
 
             ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0);
             ImGui::BeginChild("상태바", ImVec2(0, 150), true);
-            ImGui::InputInt("상태", &current_account_status);
+            if (ImGui::InputInt("상태", &current_account_status)) {
+                current_account_status = std::max(0, std::min(current_account_status, 3));
+            }
             ImGui::StatusStepBar("##AccountStatusStepBar", &current_account_status, status_labels, 4);
             ImGui::EndChild();
             ImGui::PopStyleVar();
         }
 
 
+        if (ImGui::CollapsingHeader(ICON_MD_IMAGE " 이미지 ")) {
+            // 토클 이미지 보이기
+           static bool show_image = false;
+           if (ImGui::ToggleButton("이미지 보이기", &show_image)) {
+               ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "이미지가 표시됩니다."));
+               std::cout << "cout으로 출력된 메세지는 로그에 나타납니다." << std::endl;
+           }
+           ImGui::SameLine();
+           ImGui::Text("이미지 보이기");
+
+            // ImGui::Checkbox()
 
 
 
+           ImGui::BeginChild("child", ImVec2(0, 0), true);
+           if (show_image) {
+               ImVec2 avail = ImGui::GetContentRegionAvail();
+               float img_aspect = (float) texture1->width / (float) texture1->height;
+               float avail_aspect = avail.x / avail.y;
 
-        // 토클 이미지 보이기
-        static bool show_image = false;
-        if (ImGui::ToggleButton("이미지 보이기", &show_image)) {
-            ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "이미지가 표시됩니다."));
-            std::cout << "cout으로 출력된 메세지는 로그에 나타납니다." << std::endl;
+               ImVec2 size;
+               if (avail_aspect > img_aspect) {
+                   // 가용 영역이 더 넓음 - 높이에 맞춤
+                   size.y = avail.y;
+                   size.x = size.y * img_aspect;
+               } else {
+                   // 가용 영역이 더 좁음 - 너비에 맞춤
+                   size.x = avail.x;
+                   size.y = size.x / img_aspect;
+               }
+
+               ImGui::Image(texture1->id, size);
+               ImGui::Image(texture2->id, size);
+               ImGui::Image(texture3->id, size);
+           }
+           ImGui::EndChild();
         }
-        ImGui::SameLine();
-        ImGui::Text("이미지 보이기");
 
-
-        ImGui::BeginChild("child", ImVec2(0, 0), true);
-        if (show_image) {
-            ImVec2 avail = ImGui::GetContentRegionAvail();
-            float img_aspect = (float) texture1->width / (float) texture1->height;
-            float avail_aspect = avail.x / avail.y;
-
-            ImVec2 size;
-            if (avail_aspect > img_aspect) {
-                // 가용 영역이 더 넓음 - 높이에 맞춤
-                size.y = avail.y;
-                size.x = size.y * img_aspect;
-            } else {
-                // 가용 영역이 더 좁음 - 너비에 맞춤
-                size.x = avail.x;
-                size.y = size.x / img_aspect;
-            }
-
-            ImGui::Image(texture1->id, size);
-            ImGui::Image(texture2->id, size);
-            ImGui::Image(texture3->id, size);
-        }
-        ImGui::EndChild();
         ImGui::End();
+
+
+
+
+
+
 
 
         ImGui::ShowDemoWindow();

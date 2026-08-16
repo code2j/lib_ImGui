@@ -235,6 +235,12 @@ namespace ImGui
 
         style.WindowMenuButtonPosition = ImGuiDir_None; // 탭 최소화 버튼 제거
 
+        // ---------------------------------------------------------------
+        // 안티엘리어싱 설정
+        // ---------------------------------------------------------------
+        style.AntiAliasedLines          = true;
+        style.AntiAliasedFill           = true;
+        style.AntiAliasedLinesUseTex    = true;
 
         // ---------------------------------------------------------------
         // 폰트 설정
