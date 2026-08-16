@@ -38,8 +38,6 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
     // 아이템 크기 등록
     ImGui::ItemSize(ImVec2(window->WorkRect.Max.x - pos.x, frame_height));
 
-    // [수정 핵심 1] 화면 밖으로 벗어났다고 바로 return false를 하면 안 됩니다!
-    // is_visible 상태만 저장하고, 클릭이나 텍스트 렌더링만 스킵해야 합니다.
     bool is_visible = ImGui::ItemAdd(bb, id);
 
     if (is_visible) {
@@ -58,23 +56,27 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
         ImVec2 padding = ImGui::GetStyle().FramePadding;
         ImU32 text_col = ImGui::GetColorU32(ImGuiCol_Text);
 
-        // 우측 끝 V자 화살표(Chevron) 렌더링
+        // =========================================================================
+        // [수정] 우측 끝 V자 화살표(Chevron) 방향 변경 (닫힘: 오른쪽, 열림: 아래)
+        // =========================================================================
         ImVec2 chevron_center = ImVec2(bb.Max.x - padding.x - g.FontSize * 0.5f, bb.Min.y + frame_height * 0.5f);
-        float chevron_size = 6.5f;
+        float chevron_size = 5.0f; // 화살표 크기 조절
         ImVec2 p1, p2, p3;
 
         if (is_open) {
-            p1 = ImVec2(chevron_center.x - chevron_size, chevron_center.y + chevron_size * 0.4f);
-            p2 = ImVec2(chevron_center.x, chevron_center.y - chevron_size * 0.6f);
-            p3 = ImVec2(chevron_center.x + chevron_size, chevron_center.y + chevron_size * 0.4f);
-        } else {
+            // 열림 (아래쪽 향함: v)
             p1 = ImVec2(chevron_center.x - chevron_size, chevron_center.y - chevron_size * 0.4f);
             p2 = ImVec2(chevron_center.x, chevron_center.y + chevron_size * 0.6f);
             p3 = ImVec2(chevron_center.x + chevron_size, chevron_center.y - chevron_size * 0.4f);
+        } else {
+            // 닫힘 (오른쪽 향함: >)
+            p1 = ImVec2(chevron_center.x - chevron_size * 0.4f, chevron_center.y - chevron_size);
+            p2 = ImVec2(chevron_center.x + chevron_size * 0.6f, chevron_center.y);
+            p3 = ImVec2(chevron_center.x - chevron_size * 0.4f, chevron_center.y + chevron_size);
         }
 
         ImVec2 points[3] = { p1, p2, p3 };
-        window->DrawList->AddPolyline(points, 3, text_col, 0, 2.5f);
+        window->DrawList->AddPolyline(points, 3, text_col, 0, 2.0f);
 
         // 텍스트 좌측 정렬 및 클리핑 렌더링
         ImVec2 text_pos(window->WorkRect.Min.x + padding.x, bb.Min.y + padding.y);
@@ -84,7 +86,7 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
 
     // =========================================================================
 
-    // 헤더가 화면 밖에 있어도 애니메이션 프레임은 무조건 업데이트 되어야 함
+    // 애니메이션 프레임 업데이트
     if (!calculating_height) {
         float speed = ImGui::GetIO().DeltaTime * 7.0f;
         anim_t = ImClamp(anim_t + (is_open ? speed : -speed), 0.0f, 1.0f);
@@ -92,7 +94,6 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
     }
 
     // 내용 영역 (Child Window) 열기
-    // 헤더가 화면에 안 보여도 내용물(Child) 공간은 계속 유지되어야 스크롤이 튕기지 않음
     if (anim_t > 0.0f || calculating_height) {
         float current_height = calculating_height ? 0.0f : (max_height * anim_t);
         float alpha = calculating_height ? 0.0f : anim_t;
@@ -105,7 +106,6 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
         ImGuiChildFlags child_flags = 0;
 
         if (calculating_height || (is_open && anim_t >= 1.0f)) {
-            // [수정 핵심 2] 가로 크기 피드백 루프 방지를 위해 AutoResizeY(세로)만 적용
             child_flags |= ImGuiChildFlags_AutoResizeY;
             current_height = 0.0f;
         }

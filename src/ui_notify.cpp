@@ -152,7 +152,7 @@ namespace ImGui
 
     ImGuiContext& g = *GImGui;
     float delta_time = ImGui::GetIO().DeltaTime;
-    float anim_speed = 1.0f; // 위치 이동 애니메이션 속도 (클수록 빠름)
+    float anim_speed = 12.0f; // 위치 이동 애니메이션 속도 (클수록 빠름)
 
     float target_height = 0.f;
 

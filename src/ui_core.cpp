@@ -698,7 +698,7 @@ namespace ImGui
         // ImGui log 렌더링
         // ---------------------------------------------------------------
         if (ImGuiExt::show_log_window)
-            loggr.draw(" " ICON_MD_EDIT_DOCUMENT " 로그 ", &ImGuiExt::show_log_window);
+            loggr.draw(" " ICON_MD_SUBJECT " 로그 ", &ImGuiExt::show_log_window);
 
 
         // ---------------------------------------------------------------

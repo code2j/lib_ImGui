@@ -33,67 +33,75 @@ int main() {
         ImGui::Begin(" " ICON_MD_TUNE " 제어 패널 ");
 
 
-
-
-
-        if (ImGui::BeginCollapsingHeader(ICON_MD_CHAT_INFO " 알림 버튼 샘플 ")) {
+        if (ImGui::BeginCollapsingHeader(ICON_MD_CHAT_INFO " Notification Example ")) {
             // [알림 버튼 샘플]
             if (ImGui::Button(" 알림 정보 ")) {
                 ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "정보 알림이 표시 됩니다."));
+                std::cout << "[Info ] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
             }
             ImGui::SameLine();
 
             if (ImGui::Button(" 알림 성공 ")) {
                 ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Success, "성공 알림이 표시 됩니다."));
+                std::cout << "[Succ ] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
             }
             ImGui::SameLine();
 
             if (ImGui::Button(" 알림 경고 ")) {
                 ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Warning, "경고 알림이 표시 됩니다."));
+                std::cout << "[Warn ] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
             }
             ImGui::SameLine();
 
             if (ImGui::Button(" 알림 에러 ")) {
                 ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Error, "에러 알림이 표시 됩니다."));
+                std::cout << "[Error] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
             }
 
-            ImGui::EndCollapsingHeader(ICON_MD_CHAT_INFO " 알림 버튼 샘플 ");
+            ImGui::EndCollapsingHeader(ICON_MD_CHAT_INFO " Notification Example ");
         }
 
-
-        if (ImGui::BeginCollapsingHeader(ICON_MD_TUNE " 슬라이더 샘플 ")) {
+        if (ImGui::BeginCollapsingHeader(ICON_MD_TUNE " Slider Example ")) {
             // [드래그 슬라이더 샘플]
-            ImGui::BeginChild("##slider", ImVec2(0, 150), true);
-
+            ImGui::BeginChild("##slider", ImVec2(0, 190), true);
             ImGui::PushItemWidth(300);
-            static float drag = 0.0f;
-            static float slider = 0.0f;
-            ImGui::DragFloat("드레그", &drag);
-            ImGui::Dummy(ImVec2(0, 10));
-            ImGui::SliderFloat("슬라이더", &slider, 0.0f, 1.0f);
+
+            static float drag = 10.0f;
+            ImGui::DragFloat("Drag", &drag);
+            ImGui::Dummy(ImVec2(0, 1));
+
+            static float slider = 0.314f;
+            ImGui::SliderFloat("Slider", &slider, 0.0f, 1.0f);
+            ImGui::Dummy(ImVec2(0, 1));
 
             // [범위 슬라이더 샘플]
-            static float price_min = 20.0f;
-            static float price_max = 80.0f;
-            ImGui::SliderFloatRange("Price Range", &price_min, &price_max, 0.0f, 100.0f, "%.1f");
+            static float price_min = 0.0f;
+            static float price_max = 10.0f;
+            ImGui::SliderFloatRange("Range", &price_min, &price_max, 0.0f, 10.0f, "%.1f");
+            ImGui::Dummy(ImVec2(0, 1));
+
+            static int cnt = 1.0;
+            if (ImGui::InputInt("Input", &cnt)) {
+                cnt = std::max(static_cast<int>(price_min), std::min(cnt, static_cast<int>(price_max)));
+            }
+            ImGui::Dummy(ImVec2(0, 1));
+
 
             ImGui::PopItemWidth();
             ImGui::EndChild();
 
-            ImGui::EndCollapsingHeader(ICON_MD_TUNE " 슬라이더 샘플 ");
+            ImGui::EndCollapsingHeader(ICON_MD_TUNE " Slider Example ");
         }
 
-
-        if (ImGui::BeginCollapsingHeader(ICON_MD_JOYSTICK " 조이스틱 샘플 ")) {
+        if (ImGui::BeginCollapsingHeader(ICON_MD_JOYSTICK " Joystick Example ")) {
             // [조이스틱 샘플]
             ImVec2 joy;
             ImGui::joystic(&joy);
             ImGui::Dummy(ImVec2(0, 20));
-            ImGui::EndCollapsingHeader(ICON_MD_JOYSTICK " 조이스틱 샘플 ");
+            ImGui::EndCollapsingHeader(ICON_MD_JOYSTICK " Joystick Example ");
         }
 
-
-        if (ImGui::BeginCollapsingHeader(ICON_MD_STEPPERS " 상태 바 ", false)) {
+        if (ImGui::BeginCollapsingHeader(ICON_MD_STEPPERS " Status Step Example ", false)) {
             const char* status_labels[] = {
                 "시스템 시작",
                 "시스템 초기화",
@@ -128,24 +136,20 @@ int main() {
             ImGui::EndChild();
             ImGui::PopStyleVar();
 
-            ImGui::EndCollapsingHeader(ICON_MD_STEPPERS " 상태 바 ");
+            ImGui::EndCollapsingHeader(ICON_MD_STEPPERS " Status Step Example ");
         }
 
-        if (ImGui::BeginCollapsingHeader(ICON_MD_IMAGE " 이미지 ")) {
+        if (ImGui::BeginCollapsingHeader(ICON_MD_IMAGE " Image Example ")) {
             // 토클 이미지 보이기
             static bool show_image = false;
             if (ImGui::ToggleButton("이미지 보이기", &show_image)) {
                 ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "이미지가 표시됩니다."));
-                std::cout << "cout으로 출력된 메세지는 로그에 나타납니다." << std::endl;
             }
             ImGui::SameLine();
             ImGui::Text("이미지 보이기");
 
-            // ImGui::Checkbox()
 
-
-
-            ImGui::BeginChild("child", ImVec2(0, 0), true);
+            ImGui::BeginChild("child", ImVec2(0, 400), true);
             if (show_image) {
                 ImVec2 avail = ImGui::GetContentRegionAvail();
                 float img_aspect = (float) texture1->width / (float) texture1->height;
@@ -167,15 +171,9 @@ int main() {
                 ImGui::Image(texture3->id, size);
             }
             ImGui::EndChild();
-            ImGui::EndCollapsingHeader(ICON_MD_IMAGE " 이미지 ");
+            ImGui::EndCollapsingHeader(ICON_MD_IMAGE " Image Example ");
 
         }
-
-
-
-
-
-
 
 
         ImGui::End();
