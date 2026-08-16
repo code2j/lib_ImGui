@@ -1,5 +1,7 @@
 #include "ui_notify.h"
 
+#include "imgui_internal.h"
+
 void ImGuiToast::set_title(const char *format, va_list args) { vsnprintf(this->title, sizeof(this->title), format, args); }
 
 void ImGuiToast::set_content(const char *format, va_list args) { vsnprintf(this->content, sizeof(this->content), format, args); }
@@ -143,102 +145,123 @@ namespace ImGui
     }
 
     void RenderNotifications()
+{
+    const auto viewport = GetMainViewport();
+    const auto vp_pos = viewport->WorkPos;
+    const auto vp_size = viewport->WorkSize;
+
+    ImGuiContext& g = *GImGui;
+    float delta_time = ImGui::GetIO().DeltaTime;
+    float anim_speed = 1.0f; // 위치 이동 애니메이션 속도 (클수록 빠름)
+
+    float target_height = 0.f;
+
+    // 만료된 토스트를 안전하게 삭제하기 위한 지연 삭제 인덱스
+    int remove_index = -1;
+
+    for (auto i = 0; i < notifications.size(); i++)
     {
-        const auto viewport = GetMainViewport();
-        const auto vp_pos = viewport->WorkPos;
-        const auto vp_size = viewport->WorkSize;
+        auto* current_toast = &notifications[i];
 
-        float height = 0.f;
-
-        for (auto i = 0; i < notifications.size(); i++)
+        // 만료 체크
+        if (current_toast->get_phase() == ImGuiToastPhase_Expired)
         {
-            auto* current_toast = &notifications[i];
-
-            // 만료된 토스트 제거
-            if (current_toast->get_phase() == ImGuiToastPhase_Expired)
-            {
-                RemoveNotification(i);
-                continue;
-            }
-
-            const auto icon = current_toast->get_icon();
-            const auto content = current_toast->get_content();
-            const auto opacity = current_toast->get_fade_percent();
-
-            // 색상 가져오기 및 0.0f ~ 1.0f 범위로 정규화 (기존 코드가 0~255를 반환하므로 보정)
-            auto text_color = current_toast->get_color();
-            if (text_color.x > 1.0f || text_color.y > 1.0f || text_color.z > 1.0f) {
-                text_color.x /= 255.0f;
-                text_color.y /= 255.0f;
-                text_color.z /= 255.0f;
-            }
-            text_color.w = opacity;
-
-            char window_name[50]{};
-            snprintf(window_name, sizeof(window_name), "##TOAST%d", i);
-
-            // =======================================================
-            // 이미지 스타일 커스텀 적용 시작
-            // =======================================================
-            auto raw_bg_color = current_toast->get_bg_color();
-            ImVec4 bg_color = ImVec4(
-                raw_bg_color.x / 255.0f,
-                raw_bg_color.y / 255.0f,
-                raw_bg_color.z / 255.0f,
-                opacity
-            );
-
-            ImVec4 border_color = text_color; // 테두리는 기존 텍스트/아이콘 색상과 동일하게 유지
-
-            PushStyleColor(ImGuiCol_WindowBg, bg_color);
-            PushStyleColor(ImGuiCol_Border, border_color);
-            PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f); // 테두리 두께 1px
-            PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);   // 둥근 모서리
-            PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f)); // 상하좌우 넉넉한 내부 여백
-            // =======================================================
-
-            SetNextWindowBgAlpha(opacity);
-            SetNextWindowPos(ImVec2(vp_pos.x + vp_size.x - NOTIFY_PADDING_X, vp_pos.y + vp_size.y - NOTIFY_PADDING_Y - height), ImGuiCond_Always, ImVec2(1.0f, 1.0f));
-
-            Begin(window_name, NULL, NOTIFY_TOAST_FLAGS);
-
-            {
-                PushTextWrapPos(vp_size.x / 3.f);
-
-                bool was_title_rendered = false;
-
-                // 아이콘 렌더링
-                if (!NOTIFY_NULL_OR_EMPTY(icon))
-                {
-                    TextColored(text_color, "%s", icon);
-                    was_title_rendered = true;
-                }
-
-
-                // 컨텐츠 렌더링 (단일 줄 구성으로 자연스럽게 이어지도록 처리)
-                if (!NOTIFY_NULL_OR_EMPTY(content))
-                {
-                    if (was_title_rendered)
-                    {
-                        // 타이틀/아이콘 바로 옆에 텍스트가 오도록 간격 조정
-                        SameLine(0.0f, 10.0f);
-                    }
-                    Text("%s", content);
-                }
-
-                PopTextWrapPos();
-            }
-
-            height += GetWindowHeight() + NOTIFY_PADDING_MESSAGE_Y;
-
-            End();
-
-            // =======================================================
-            // 스타일 덮어쓰기 해제 (다른 UI에 영향을 주지 않도록 복구)
-            // =======================================================
-            PopStyleVar(3);
-            PopStyleColor(2);
+            if (remove_index == -1) remove_index = i;
+            continue;
         }
+
+        const auto icon = current_toast->get_icon();
+        const auto content = current_toast->get_content();
+        const auto opacity = current_toast->get_fade_percent();
+
+        auto text_color = current_toast->get_color();
+        if (text_color.x > 1.0f || text_color.y > 1.0f || text_color.z > 1.0f) {
+            text_color.x /= 255.0f;
+            text_color.y /= 255.0f;
+            text_color.z /= 255.0f;
+        }
+        text_color.w = opacity;
+
+        char window_name[50]{};
+        snprintf(window_name, sizeof(window_name), "##TOAST%d", i);
+
+        // =======================================================
+        // [핵심 수정] 위치 보간 (Smooth Y-Position Animation)
+        // =======================================================
+        // 알림 고유 ID 생성을 위해 토스트 포인터를 ID로 사용
+        ImGuiID toast_id = ImGui::GetID((const void*)current_toast);
+        ImGuiStorage* storage = ImGui::GetStateStorage();
+
+        // 현재 애니메이션 적용 중인 height 위치 값 가져오기 (처음 생성 시 target_height로 초기화)
+        float current_height = storage->GetFloat(toast_id, target_height);
+
+        // 부드러운 위치 보간 (Target Y 위치로 슬라이딩)
+        current_height = ImLerp(current_height, target_height, delta_time * anim_speed);
+        if (ImAbs(current_height - target_height) < 0.1f)
+            current_height = target_height;
+
+        storage->SetFloat(toast_id, current_height);
+        // =======================================================
+
+        auto raw_bg_color = current_toast->get_bg_color();
+        ImVec4 bg_color = ImVec4(
+            raw_bg_color.x / 255.0f,
+            raw_bg_color.y / 255.0f,
+            raw_bg_color.z / 255.0f,
+            opacity
+        );
+
+        ImVec4 border_color = text_color;
+
+        PushStyleColor(ImGuiCol_WindowBg, bg_color);
+        PushStyleColor(ImGuiCol_Border, border_color);
+        PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+        PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
+        PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
+
+        SetNextWindowBgAlpha(opacity);
+        // 고정 height 대신 보간된 current_height를 적용
+        SetNextWindowPos(ImVec2(vp_pos.x + vp_size.x - NOTIFY_PADDING_X, vp_pos.y + vp_size.y - NOTIFY_PADDING_Y - current_height), ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+
+        Begin(window_name, NULL, NOTIFY_TOAST_FLAGS);
+
+        {
+            PushTextWrapPos(vp_size.x / 3.f);
+
+            bool was_title_rendered = false;
+
+            if (!NOTIFY_NULL_OR_EMPTY(icon))
+            {
+                TextColored(text_color, "%s", icon);
+                was_title_rendered = true;
+            }
+
+            if (!NOTIFY_NULL_OR_EMPTY(content))
+            {
+                if (was_title_rendered)
+                {
+                    SameLine(0.0f, 10.0f);
+                }
+                Text("%s", content);
+            }
+
+            PopTextWrapPos();
+        }
+
+        // 다음 토스트가 올라갈 목표 Y 위치 누적
+        target_height += GetWindowHeight() + NOTIFY_PADDING_MESSAGE_Y;
+
+        End();
+
+        PopStyleVar(3);
+        PopStyleColor(2);
     }
+
+    // 만료된 토스트 제거
+    if (remove_index != -1)
+    {
+        RemoveNotification(remove_index);
+    }
+}
 }
 
