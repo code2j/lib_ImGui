@@ -84,6 +84,7 @@ public:
     auto get_phase() -> const ImGuiToastPhase;
     auto get_fade_percent() -> const float;
     static auto get_tick_count() -> const unsigned long long;
+    auto get_progress_percent() -> const float;
     auto get_bg_color() -> const ImVec4;
 
 public:

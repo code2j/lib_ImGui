@@ -180,8 +180,10 @@ int main() {
 
 
 
-
-
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(255, 255, 255, 20));
+        ImGui::Begin("창");
+        ImGui::End();
+        ImGui::PopStyleColor();
 
 
 
