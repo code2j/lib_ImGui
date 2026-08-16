@@ -100,96 +100,110 @@ namespace ImGui
 
 
         // ---------------------------------------------------------------
-        // ImGui Ui 색상 & 모양 스타일 설정
+        // 테마 색상 변수 정의
         // ---------------------------------------------------------------
         ImGuiStyle& style = ImGui::GetStyle();
         ImVec4* colors = style.Colors;
 
-        ImVec4 discord_blue         = ImVec4(0.364705882, 0.411764706, 0.941176471, 1.00); // discord blue
-        ImVec4 discord_dark_blue    = ImVec4(0.235294118, 0.258823529, 0.529411765, 1.00); // discord dark blue
-        ImVec4 discord_active_blee  = ImVec4(0.247058824, 0.290196078, 0.635294118, 1.00); // discord dark blue
-        ImVec4 discord_red          = ImVec4(0.709803922, 0.254901961, 0.235294118, 1.00); // discord red
+        ImVec4 theme_text          = ImColor(228, 228, 230);
+        ImVec4 theme_transparent   = ImColor(0, 0, 0, 0);
 
-        ImVec4 discord_deactive_tab = ImVec4(0.02745098, 0.02745098, 0.035294118, 1.00);   // rgb(7, 7, 9)
-        ImVec4 discord_tab_focused  = ImVec4(0.070588235, 0.070588235, 0.078431373, 1.00); // rgb(18, 18, 20)
-        ImVec4 discord_active_tab   = ImVec4(0.141176471, 0.141176471, 0.152941176, 1.00); // rgb(36, 36, 39)
-        ImVec4 discord_gb1          = ImVec4(0.047058824, 0.047058824, 0.054901961, 1.00); // rgb(12, 12, 14)
-        ImVec4 discord_gb2          = ImVec4(0.043137255, 0.043137255, 0.047058824, 1.00); // rgb(11, 11, 12)
-        ImVec4 discord_boader       = ImVec4(0.17254902, 0.17254902, 0.184313725, 1.00);   // rgb(44, 44, 47)
+        ImVec4 theme_blue          = ImColor(93, 105, 240);
+        ImVec4 theme_blue_hover    = ImColor(73, 85, 185);
+        ImVec4 theme_blue_active   = ImColor(63, 74, 162);
+        ImVec4 theme_red           = ImColor(181, 65, 60);
 
-        ImVec4 discord_scroll       = ImVec4(0.360784314, 0.364705882, 0.403921569, 1.00); // rgb(92, 93, 103)
+        ImVec4 theme_tab_inactive  = ImColor(7, 7, 9);
+        ImVec4 theme_tab_focused   = ImColor(18, 18, 20);
+        ImVec4 theme_tab_active    = ImColor(36, 36, 39);
 
+        ImVec4 theme_bg_primary    = ImColor(12, 12, 14);
+        ImVec4 theme_bg_secondary  = ImColor(11, 11, 12);
+        ImVec4 theme_border        = ImColor(44, 44, 47);
 
-        colors[ImGuiCol_Text]                  = ImVec4(0.92, 0.93, 0.94, 1.00); // 가독성을 위한 밝은 회색 Text
-        colors[ImGuiCol_TextDisabled]          = ImVec4(0.50, 0.52, 0.54, 1.00); // 비활성화된 Text를 위한 옅은 회색
-        colors[ImGuiCol_WindowBg]              = discord_deactive_tab;           // 약간 푸른빛이 도는 어두운 Background
-        colors[ImGuiCol_ChildBg]               = discord_gb1;                    // Child 요소를 위한 약간 더 밝은 색상
-        colors[ImGuiCol_PopupBg]               = discord_gb1; // Popup Background
-        colors[ImGuiCol_MenuBarBg]             = discord_gb1;                    // Menu Bar Background
-
-        colors[ImGuiCol_Border]                = discord_boader;                 // 부드러운 Border 색상
-        colors[ImGuiCol_BorderShadow]          = ImVec4(0.00, 0.00, 0.00, 0.00); // Border Shadow 없음
-        colors[ImGuiCol_FrameBg]               = discord_gb2;                    // Frame Background
-        colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.00, 0.00, 0.00, 0.00); // Frame Hover 효과
-        colors[ImGuiCol_FrameBgActive]         = ImVec4(0.00, 0.00, 0.00, 0.00); // Active Frame Background
-
-        colors[ImGuiCol_TitleBg]               = discord_deactive_tab;            // Title Background
-        colors[ImGuiCol_TitleBgActive]         = discord_deactive_tab;            // Active Title Background
-        colors[ImGuiCol_TitleBgCollapsed]      = discord_deactive_tab;            // Collapsed Title Background
-
-        colors[ImGuiCol_ScrollbarBg]           = ImVec4(0, 0.0, 0.0, 0.00); // Scrollbar Background
-        colors[ImGuiCol_ScrollbarGrab]         = discord_scroll; // Scrollbar Grab을 위한 어두운 강조색
-        colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.28, 0.30, 0.32, 1.00); // Scrollbar Grab Hover
-        colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.32, 0.34, 0.36, 1.00); // Scrollbar Grab Active
-
-        colors[ImGuiCol_CheckMark]             = discord_blue; // 짙은 파란색 Checkmark
-
-        colors[ImGuiCol_SliderGrab]            = discord_blue; // 짙은 파란색 Slider Grab
-        colors[ImGuiCol_SliderGrabActive]      = discord_dark_blue; // Active Slider Grab
-
-        colors[ImGuiCol_Button]                = discord_blue;                   // 짙은 파란색 Button
-        colors[ImGuiCol_ButtonHovered]         = discord_dark_blue;              // Button Hover 효과
-        colors[ImGuiCol_ButtonActive]          = discord_active_blee;            // Active Button
-
-        colors[ImGuiCol_Header]                = discord_blue;                   // Button과 비슷한 Header 색상
-        colors[ImGuiCol_HeaderHovered]         = discord_dark_blue;              // Header Hover 효과
-        colors[ImGuiCol_HeaderActive]          = discord_active_blee;            // Active Header
-
-        colors[ImGuiCol_Separator]             = ImVec4(0.28, 0.29, 0.30, 1.00); // Separator 색상
-        colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00); // Separator Hover 효과
-        colors[ImGuiCol_SeparatorActive]       = ImVec4(0.46, 0.56, 0.66, 1.00); // Active Separator
-        colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 1.00); // Resize Grip
-        colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00); // Resize Grip Hover 효과
-        colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00); // Active Resize Grip
-
-        colors[ImGuiCol_Tab]                   = discord_deactive_tab;            // 비활성 Tab
-        colors[ImGuiCol_TabHovered]            = discord_tab_focused;            // Tab Hover 효과
-        colors[ImGuiCol_TabSelected]           = discord_active_tab;                   // Active Tab 색상
-        colors[ImGuiCol_TabUnfocused]          = discord_deactive_tab;              // 포커스를 잃은(Unfocused) Tab
-        colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.24, 0.34, 0.44, 1.00); // Active 상태지만 포커스를 잃은 Tab
-        colors[ImGuiCol_TabSelectedOverline]   = ImVec4(0.00, 0.00, 0.00, 0.00); // 활성화된 탭 테두리
-        colors[ImGuiCol_TabDimmed]             = discord_deactive_tab;
-        colors[ImGuiCol_TabDimmedSelected]     = discord_active_tab;
-
-        colors[ImGuiCol_PlotLines]             = ImVec4(0.46, 0.56, 0.66, 1.00); // Plot Lines
-        colors[ImGuiCol_PlotLinesHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00); // Plot Lines Hover 효과
-        colors[ImGuiCol_PlotHistogram]         = ImVec4(0.36, 0.46, 0.56, 1.00); // Histogram 색상
-        colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(0.40, 0.50, 0.60, 1.00); // Histogram Hover 효과
-
-        colors[ImGuiCol_TableHeaderBg]         = ImVec4(0.20, 0.22, 0.24, 1.00); // Table Header Background
-        colors[ImGuiCol_TableBorderStrong]     = ImVec4(0.28, 0.29, 0.30, 1.00); // Table을 위한 짙은 Border
-        colors[ImGuiCol_TableBorderLight]      = ImVec4(0.24, 0.25, 0.26, 1.00); // Table을 위한 옅은 Border
-        colors[ImGuiCol_TableRowBg]            = ImVec4(0.20, 0.22, 0.24, 1.00); // Table Row Background
-        colors[ImGuiCol_TableRowBgAlt]         = ImVec4(0.22, 0.24, 0.26, 1.00); // 교차(Alternate) Row Background
-
-        colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.24, 0.34, 0.44, 0.35); // 선택된 Text Background
-        colors[ImGuiCol_DragDropTarget]        = ImVec4(0.46, 0.56, 0.66, 0.90); // Drag and Drop Target
+        ImVec4 theme_scrollbar        = ImColor(92, 93, 103, 255);
+        ImVec4 theme_scrollbar_hover  = ImVec4(0.28, 0.30, 0.32, 1.00);
+        ImVec4 theme_scrollbar_active = ImVec4(0.32, 0.34, 0.36, 1.00);
 
 
-        colors[ImGuiCol_NavHighlight]          = ImVec4(0.46, 0.56, 0.66, 1.00); // Navigation Highlight
-        colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00, 1.00, 1.00, 0.70); // Windowing Highlight
-        colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80, 0.80, 0.80, 0.20); // Windowing을 위한 어두운(Dim) Background
-        colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80, 0.80, 0.80, 0.35); // Modal Window를 위한 어두운(Dim) Background
+        // ---------------------------------------------------------------
+        // ImGui 색상 적용
+        // ---------------------------------------------------------------
+        // [Text]
+        colors[ImGuiCol_Text]                  = theme_text;
+        colors[ImGuiCol_TextDisabled]          = ImVec4(0.50, 0.52, 0.54, 1.00);
+        colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.24, 0.34, 0.44, 0.35);
+        colors[ImGuiCol_DragDropTarget]        = theme_blue_active;
+        // [Background]
+        colors[ImGuiCol_WindowBg]              = theme_tab_inactive;
+        colors[ImGuiCol_ChildBg]               = theme_bg_primary;
+        colors[ImGuiCol_PopupBg]               = theme_bg_primary;
+        colors[ImGuiCol_MenuBarBg]             = theme_bg_primary;
+        // [Border]
+        colors[ImGuiCol_Border]                = theme_border;
+        colors[ImGuiCol_BorderShadow]          = theme_transparent;
+        // [Frame]
+        colors[ImGuiCol_FrameBg]               = theme_bg_secondary;
+        colors[ImGuiCol_FrameBgHovered]        = theme_transparent;
+        colors[ImGuiCol_FrameBgActive]         = theme_transparent;
+        // [Title]
+        colors[ImGuiCol_TitleBg]               = theme_tab_inactive;
+        colors[ImGuiCol_TitleBgActive]         = theme_tab_inactive;
+        colors[ImGuiCol_TitleBgCollapsed]      = theme_tab_inactive;
+        // [Scrollbar]
+        colors[ImGuiCol_ScrollbarBg]           = theme_transparent;
+        colors[ImGuiCol_ScrollbarGrab]         = theme_scrollbar;
+        colors[ImGuiCol_ScrollbarGrabHovered]  = theme_scrollbar_hover;
+        colors[ImGuiCol_ScrollbarGrabActive]   = theme_scrollbar_active;
+        // [Checkbox]
+        colors[ImGuiCol_CheckMark]             = theme_blue;
+        // [Slider]
+        colors[ImGuiCol_SliderGrab]            = theme_blue;
+        colors[ImGuiCol_SliderGrabActive]      = theme_blue_hover;
+        // [Button]
+        colors[ImGuiCol_Button]                = theme_blue;
+        colors[ImGuiCol_ButtonHovered]         = theme_blue_hover;
+        colors[ImGuiCol_ButtonActive]          = theme_blue_active;
+        // [Header]
+        colors[ImGuiCol_Header]                = theme_blue;
+        colors[ImGuiCol_HeaderHovered]         = theme_blue_hover;
+        colors[ImGuiCol_HeaderActive]          = theme_blue_active;
+        // [Separator]
+        colors[ImGuiCol_Separator]             = ImVec4(0.28, 0.29, 0.30, 1.00);
+        colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00);
+        colors[ImGuiCol_SeparatorActive]       = ImVec4(0.46, 0.56, 0.66, 1.00);
+        // [Resize Grip]
+        colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 1.00);
+        colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00);
+        colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00);
+        // [Tab]
+        colors[ImGuiCol_Tab]                   = theme_tab_inactive;
+        colors[ImGuiCol_TabHovered]            = theme_tab_focused;
+        colors[ImGuiCol_TabSelected]           = theme_tab_active;
+        colors[ImGuiCol_TabUnfocused]          = theme_tab_inactive;
+        colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.24, 0.34, 0.44, 1.00);
+        colors[ImGuiCol_TabSelectedOverline]   = theme_transparent;
+        colors[ImGuiCol_TabDimmed]             = theme_tab_inactive;
+        colors[ImGuiCol_TabDimmedSelected]     = theme_tab_active;
+        // [Plot]
+        colors[ImGuiCol_PlotLines]             = ImVec4(0.46, 0.56, 0.66, 1.00);
+        colors[ImGuiCol_PlotLinesHovered]      = ImVec4(0.46, 0.56, 0.66, 1.00);
+        colors[ImGuiCol_PlotHistogram]         = ImVec4(0.36, 0.46, 0.56, 1.00);
+        colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(0.40, 0.50, 0.60, 1.00);
+        // [Table]
+        colors[ImGuiCol_TableHeaderBg]         = ImVec4(0.20, 0.22, 0.24, 1.00);
+        colors[ImGuiCol_TableBorderStrong]     = ImVec4(0.28, 0.29, 0.30, 1.00);
+        colors[ImGuiCol_TableBorderLight]      = ImVec4(0.24, 0.25, 0.26, 1.00);
+        colors[ImGuiCol_TableRowBg]            = ImVec4(0.20, 0.22, 0.24, 1.00);
+        colors[ImGuiCol_TableRowBgAlt]         = ImVec4(0.22, 0.24, 0.26, 1.00);
+        // [Nav]
+        colors[ImGuiCol_NavHighlight]          = ImVec4(0.46, 0.56, 0.66, 1.00);
+        colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00, 1.00, 1.00, 0.70);
+        colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80, 0.80, 0.80, 0.20);
+        colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80, 0.80, 0.80, 0.35);
+        // [Docking]
+        colors[ImGuiCol_DockingPreview]        = theme_blue_active;
+        colors[ImGuiCol_DockingEmptyBg]        = theme_blue_hover;
 
 
 
