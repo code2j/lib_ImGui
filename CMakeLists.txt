@@ -39,6 +39,7 @@ add_library(imgui
         src/ui_axis.cpp
         src/ui_joystick.cpp
         src/ui_points.cpp
+        src/ui_stepbar.cpp
 )
 
 
