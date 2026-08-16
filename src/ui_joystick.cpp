@@ -6,10 +6,8 @@
 
 namespace ImGui
 {
-    bool joystic(const char* title, ImVec2* out)
+    bool joystic(ImVec2* out)
     {
-        ImGui::Begin(title);
-
         // 1. 패드 기본 설정
         ImVec2 pad_size(200.0f, 200.0f);
         ImVec2 p = ImGui::GetCursorScreenPos();
@@ -147,8 +145,6 @@ namespace ImGui
 
         // 텍스트 출력
         draw_list->AddText(text_pos, IM_COL32(220, 220, 220, 255), text_buf);
-
-        ImGui::End();
 
         // 최종적으로 값 변경 여부를 리턴
         return value_changed;
