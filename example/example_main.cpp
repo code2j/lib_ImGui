@@ -35,6 +35,21 @@ int main() {
         ImGui::DragFloat("드레그", &slider);
         ImGui::SliderFloat("슬라이더", &slider, 0.0f, 1.0f);
 
+        if (ImGui::Button("알림1")) {
+            ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "정보 알림이 표시 됩니다."));
+        }
+        if (ImGui::Button("알림2")) {
+            ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Success, "성공 알림이 표시 됩니다."));
+        }
+        if (ImGui::Button("알림3")) {
+            ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Warning, "경고 알림이 표시 됩니다."));
+        }
+        if (ImGui::Button("알림4")) {
+            ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Error, "에러 알림이 표시 됩니다."));
+        }
+
+
+
         // 조이스틱
         ImVec2 joy;
         ImGui::joystic(" " ICON_MD_JOYSTICK " 조이스틱 ", &joy);

@@ -124,8 +124,8 @@ namespace ImGui
         colors[ImGuiCol_TextDisabled]          = ImVec4(0.50, 0.52, 0.54, 1.00); // 비활성화된 Text를 위한 옅은 회색
         colors[ImGuiCol_WindowBg]              = discord_deactive_tab;           // 약간 푸른빛이 도는 어두운 Background
         colors[ImGuiCol_ChildBg]               = discord_gb1;                    // Child 요소를 위한 약간 더 밝은 색상
-        colors[ImGuiCol_PopupBg]               = ImVec4(0.18, 0.18, 0.20, 1.00); // Popup Background
-        colors[ImGuiCol_MenuBarBg]             = ImVec4(0.20, 0.20, 0.22, 1.00); // Menu Bar Background
+        colors[ImGuiCol_PopupBg]               = discord_gb1; // Popup Background
+        colors[ImGuiCol_MenuBarBg]             = discord_gb1;                    // Menu Bar Background
 
         colors[ImGuiCol_Border]                = discord_boader;                 // 부드러운 Border 색상
         colors[ImGuiCol_BorderShadow]          = ImVec4(0.00, 0.00, 0.00, 0.00); // Border Shadow 없음
@@ -474,9 +474,9 @@ namespace ImGui
         ImGui::SetCursorPosY(0.0f);
 
 
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
 
         if (ImGui::Button(ICON_MD_SETTINGS, ImVec2(settingsBtnWidth, TITLEBAR_HEIGHT))) {
             ImGui::OpenPopup("SettingsPopup");
@@ -488,8 +488,13 @@ namespace ImGui
         if (ImGui::BeginPopup("SettingsPopup")) {
             ImGui::Text("설정");
             ImGui::Separator();
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
             ImGui::Checkbox("3D 뷰포트", & ImGuiExt::show_3d_viewport);
             ImGui::Checkbox("로그", &ImGuiExt::show_log_window);
+
+            ImGui::PopStyleVar();
+
             ImGui::EndPopup();
         }
 
@@ -497,9 +502,9 @@ namespace ImGui
         ImGui::SameLine(viewport->Size.x - closeBtnWidth - maxBtnWidth);
         ImGui::SetCursorPosY(0.0f);
 
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
 
         // 창 상태에 따라 아이콘 텍스트 분기 처리
         const char* maxIcon = IsWindowMaximized() ? ICON_MD_FULLSCREEN_EXIT : ICON_MD_FULLSCREEN;
@@ -519,7 +524,7 @@ namespace ImGui
         ImGui::SetCursorPosY(0.0f);
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(181, 65, 66, 1.00));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(181, 65, 66, 255));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
 
 

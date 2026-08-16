@@ -12,7 +12,12 @@ namespace ImGui
 
         float height = ImGui::GetFrameHeight() * 0.6f;
         float width = height * 1.99f;
-        float radius = height * 0.50f;
+
+        // 위치와 배경 계산을 위한 바깥쪽 반지름
+        float outer_radius = height * 0.50f;
+
+        // 실제 그려질 하얀색 원의 크기 (원하는 크기로 이 배율을 조절하세요. 예: 0.6f, 0.7f 등)
+        float inner_radius = outer_radius * 0.7f;
 
         bool turned_on = false; // 켜졌는지 여부 기록
 
@@ -64,7 +69,9 @@ namespace ImGui
         draw_list->AddRect(p, ImVec2(p.x + width, p.y + height), col_border, height * 0.5f, 0, border_thickness);
 
         // 안쪽 원형 토글 그리기
-        draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 255));
+        // 중심축 계산은 outer_radius를 사용하고, 그리는 크기는 inner_radius를 사용합니다.
+        ImVec2 circle_center = ImVec2(p.x + outer_radius + t * (width - outer_radius * 2.0f), p.y + outer_radius);
+        draw_list->AddCircleFilled(circle_center, inner_radius, IM_COL32(255, 255, 255, 255));
 
         return turned_on; // OFF->ON으로 켜지는 순간에만 true 반환
     }

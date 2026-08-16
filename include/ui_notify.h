@@ -77,7 +77,6 @@ private:
 public:
 	// Getters
     auto get_title() -> char* ;
-    auto get_default_title() -> const char*;
     auto get_color() -> const ImVec4;
     auto get_icon() -> const char*;
     auto get_content() -> char* ;
@@ -85,6 +84,7 @@ public:
     auto get_phase() -> const ImGuiToastPhase;
     auto get_fade_percent() -> const float;
     static auto get_tick_count() -> const unsigned long long;
+    auto get_bg_color() -> const ImVec4;
 
 public:
 	// Constructors

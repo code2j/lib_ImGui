@@ -68,7 +68,9 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
     // ===============================================================
     ImGui::BeginChild("Sidebar", ImVec2(sidebar_width, 0), false);
 
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
     // 로그 지우기 버튼
@@ -92,7 +94,7 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
         auto_scroll = !auto_scroll;
     }
 
-    ImGui::PopStyleColor(); // 텍스트 색상 Pop
+    ImGui::PopStyleColor(3); // 텍스트 색상 Pop
 
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("자동 스크롤");
