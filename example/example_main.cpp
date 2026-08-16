@@ -96,7 +96,7 @@ int main() {
         if (ImGui::BeginCollapsingHeader(ICON_MD_JOYSTICK " Joystick Example ")) {
             // [조이스틱 샘플]
             ImVec2 joy;
-            ImGui::joystic(&joy);
+            ImGui::Joystic(&joy);
             ImGui::Dummy(ImVec2(0, 20));
             ImGui::EndCollapsingHeader(ICON_MD_JOYSTICK " Joystick Example ");
         }
@@ -175,22 +175,13 @@ int main() {
 
         }
 
-
         ImGui::End();
-
-
-
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(255, 255, 255, 20));
-        ImGui::Begin("창");
-        ImGui::End();
-        ImGui::PopStyleColor();
-
 
 
         ImGui::ShowDemoWindow();
 
         ImGui::Begin(" " ICON_MD_GAMEPAD " TF 컨트롤 ");
-        ImGui::tf_widget(&tf_control);
+        ImGui::TransformControl(&tf_control);
         ImGui::End();
 
         points.move(tf_control);

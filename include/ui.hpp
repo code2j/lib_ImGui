@@ -22,7 +22,6 @@
 #include "ui_logger.h"
 #include "ui_notify.h"
 #include "ui_loader.h"
-#include "ui_joystick.h"
 #include "ui_points.h"
 #include "ui_widgets.h"
 

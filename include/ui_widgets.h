@@ -1,6 +1,8 @@
 #pragma once
 
 #include "imgui.h"
+#include "eigen3/Eigen/Dense"
+
 
 namespace ImGui
 {
@@ -27,4 +29,15 @@ namespace ImGui
     // Status Step Bar
     // ====================================================
     bool StatusStepBar(const char* str_id, int* current_step, const char** step_labels, int num_steps);
+
+    // ====================================================
+    // Joystick
+    // ====================================================
+    bool Joystic(ImVec2* out);
+
+    // ====================================================
+    // Transform Widget
+    // ====================================================
+    bool TransformControl(Eigen::Matrix4d* matrix);
+
 }
