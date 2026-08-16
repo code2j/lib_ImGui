@@ -105,63 +105,68 @@ namespace ImGui
         ImGuiStyle& style = ImGui::GetStyle();
         ImVec4* colors = style.Colors;
 
-        ImVec4 theme_text          = ImColor(228, 228, 230);
-        ImVec4 theme_transparent   = ImColor(0, 0, 0, 0);
 
-        ImVec4 theme_blue          = ImColor(93, 105, 240);
-        ImVec4 theme_blue_hover    = ImColor(73, 85, 185);
-        ImVec4 theme_blue_active   = ImColor(63, 74, 162);
-        ImVec4 theme_red           = ImColor(181, 65, 60);
+        ImVec4 color_primary        = ImColor(7, 7, 9);
+        ImVec4 color_secondary      = ImColor(12, 12, 14);
+        ImVec4 color_accent         = ImColor(93, 105, 240);
 
-        ImVec4 theme_tab_inactive  = ImColor(7, 7, 9);
-        ImVec4 theme_tab_focused   = ImColor(18, 18, 20);
-        ImVec4 theme_tab_active    = ImColor(36, 36, 39);
+        ImVec4 color_red            = ImColor(181, 65, 60);
 
-        ImVec4 theme_bg_primary    = ImColor(12, 12, 14);
-        ImVec4 theme_bg_secondary  = ImColor(11, 11, 12);
-        ImVec4 theme_border        = ImColor(44, 44, 47);
+        ImVec4 color_text           = ImColor(228, 228, 230);
+        ImVec4 color_transparent    = ImColor(0, 0, 0, 0);
+
+        ImVec4 theme_blue_hover     = ImColor(73, 85, 185);
+        ImVec4 theme_blue_active    = ImColor(63, 74, 162);
+
+        ImVec4 theme_tab_focused    = ImColor(18, 18, 20);
+        ImVec4 theme_tab_active     = ImColor(36, 36, 39);
+
+        ImVec4 theme_bg_secondary   = ImColor(11, 11, 12);
+        ImVec4 theme_border         = ImColor(44, 44, 47);
 
         ImVec4 theme_scrollbar        = ImColor(92, 93, 103, 255);
         ImVec4 theme_scrollbar_hover  = ImVec4(0.28, 0.30, 0.32, 1.00);
         ImVec4 theme_scrollbar_active = ImVec4(0.32, 0.34, 0.36, 1.00);
+
+        
 
 
         // ---------------------------------------------------------------
         // ImGui 색상 적용
         // ---------------------------------------------------------------
         // [Text]
-        colors[ImGuiCol_Text]                  = theme_text;
+        colors[ImGuiCol_Text]                  = color_text;
         colors[ImGuiCol_TextDisabled]          = ImVec4(0.50, 0.52, 0.54, 1.00);
         colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.24, 0.34, 0.44, 0.35);
         colors[ImGuiCol_DragDropTarget]        = theme_blue_active;
         // [Background]
-        colors[ImGuiCol_WindowBg]              = theme_tab_inactive;
-        colors[ImGuiCol_ChildBg]               = theme_bg_primary;
-        colors[ImGuiCol_PopupBg]               = theme_bg_primary;
-        colors[ImGuiCol_MenuBarBg]             = theme_bg_primary;
+        colors[ImGuiCol_WindowBg]              = color_primary;
+        colors[ImGuiCol_ChildBg]               = color_secondary;
+        colors[ImGuiCol_PopupBg]               = color_secondary;
+        colors[ImGuiCol_MenuBarBg]             = color_secondary;
         // [Border]
         colors[ImGuiCol_Border]                = theme_border;
-        colors[ImGuiCol_BorderShadow]          = theme_transparent;
+        colors[ImGuiCol_BorderShadow]          = color_transparent;
         // [Frame]
         colors[ImGuiCol_FrameBg]               = theme_bg_secondary;
-        colors[ImGuiCol_FrameBgHovered]        = theme_transparent;
-        colors[ImGuiCol_FrameBgActive]         = theme_transparent;
+        colors[ImGuiCol_FrameBgHovered]        = color_transparent;
+        colors[ImGuiCol_FrameBgActive]         = color_transparent;
         // [Title]
-        colors[ImGuiCol_TitleBg]               = theme_tab_inactive;
-        colors[ImGuiCol_TitleBgActive]         = theme_tab_inactive;
-        colors[ImGuiCol_TitleBgCollapsed]      = theme_tab_inactive;
+        colors[ImGuiCol_TitleBg]               = color_primary;
+        colors[ImGuiCol_TitleBgActive]         = color_primary;
+        colors[ImGuiCol_TitleBgCollapsed]      = color_primary;
         // [Scrollbar]
-        colors[ImGuiCol_ScrollbarBg]           = theme_transparent;
+        colors[ImGuiCol_ScrollbarBg]           = color_transparent;
         colors[ImGuiCol_ScrollbarGrab]         = theme_scrollbar;
         colors[ImGuiCol_ScrollbarGrabHovered]  = theme_scrollbar_hover;
         colors[ImGuiCol_ScrollbarGrabActive]   = theme_scrollbar_active;
         // [Checkbox]
-        colors[ImGuiCol_CheckMark]             = theme_blue;
+        colors[ImGuiCol_CheckMark]             = color_accent;
         // [Slider]
-        colors[ImGuiCol_SliderGrab]            = theme_blue;
+        colors[ImGuiCol_SliderGrab]            = color_accent;
         colors[ImGuiCol_SliderGrabActive]      = theme_blue_hover;
         // [Button]
-        colors[ImGuiCol_Button]                = theme_blue;
+        colors[ImGuiCol_Button]                = color_accent;
         colors[ImGuiCol_ButtonHovered]         = theme_blue_hover;
         colors[ImGuiCol_ButtonActive]          = theme_blue_active;
         // [Header]
@@ -177,18 +182,18 @@ namespace ImGui
         colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00);
         colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00);
         // [Tab]
-        colors[ImGuiCol_Tab]                   = theme_tab_inactive;
+        colors[ImGuiCol_Tab]                   = color_primary;
         colors[ImGuiCol_TabHovered]            = theme_tab_focused;
         colors[ImGuiCol_TabSelected]           = theme_tab_active;
-        colors[ImGuiCol_TabUnfocused]          = theme_tab_inactive;
+        colors[ImGuiCol_TabUnfocused]          = color_primary;
         colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.24, 0.34, 0.44, 1.00);
-        colors[ImGuiCol_TabSelectedOverline]   = theme_transparent;
-        colors[ImGuiCol_TabDimmed]             = theme_tab_inactive;
+        colors[ImGuiCol_TabSelectedOverline]   = color_transparent;
+        colors[ImGuiCol_TabDimmed]             = color_primary;
         colors[ImGuiCol_TabDimmedSelected]     = theme_tab_active;
         // [Plot]
-        colors[ImGuiCol_PlotLines]             = theme_blue;
+        colors[ImGuiCol_PlotLines]             = color_accent;
         colors[ImGuiCol_PlotLinesHovered]      = theme_blue_hover;
-        colors[ImGuiCol_PlotHistogram]         = theme_blue;
+        colors[ImGuiCol_PlotHistogram]         = color_accent;
         colors[ImGuiCol_PlotHistogramHovered]  = theme_blue_hover;
         // [Table]
         colors[ImGuiCol_TableHeaderBg]         = ImVec4(0.20, 0.22, 0.24, 1.00);
@@ -504,7 +509,7 @@ namespace ImGui
         ImGui::PopStyleColor(3);
 
         // 설정 팝업 정의 (팝업 위치도 동일하게 조정)
-        ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - closeBtnWidth - maxBtnWidth - settingsBtnWidth, viewport->Pos.y + TITLEBAR_HEIGHT));
+        ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - (closeBtnWidth + maxBtnWidth + settingsBtnWidth) * 2, viewport->Pos.y + TITLEBAR_HEIGHT));
         if (ImGui::BeginPopup("SettingsPopup")) {
             ImGui::Text("설정");
             ImGui::Separator();
