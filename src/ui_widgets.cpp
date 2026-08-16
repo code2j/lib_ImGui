@@ -362,14 +362,35 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
         ImU32 tooltip_bg_col = IM_COL32(25, 25, 28, 255);
         ImU32 tooltip_border_col = IM_COL32(55, 55, 60, 255);
 
+        // 1. 말풍선 둥근 사각형 배경 & 테두리
         window->DrawList->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
         window->DrawList->AddRect(tooltip_min, tooltip_max, tooltip_border_col, 6.0f);
 
+        // 꼬리 꼭짓점 기본 좌표 (사각형 하단 선 기준)
         ImVec2 p1 = ImVec2(active_x - 6.0f, tooltip_max.y);
         ImVec2 p2 = ImVec2(active_x + 6.0f, tooltip_max.y);
-        ImVec2 p3 = ImVec2(active_x, tooltip_max.y + 5.0f);
-        window->DrawList->AddTriangleFilled(p1, p2, p3, tooltip_bg_col);
+        ImVec2 p3 = ImVec2(active_x, tooltip_max.y + 6.0f); // 꼬리 끝(아래)
 
+        // 2. 몸통과 꼬리가 만나는 부분의 테두리를 확실하게 지우기
+        // 높이 2px짜리 배경색 사각형을 테두리 위에 덮어씌워 잔상을 없앱니다.
+        window->DrawList->AddRectFilled(
+            ImVec2(p1.x + 0.5f, tooltip_max.y - 1.0f),
+            ImVec2(p2.x - 0.5f, tooltip_max.y + 1.0f),
+            tooltip_bg_col
+        );
+
+        // 3. 꼬리 배경 삼각형 그리기
+        // 틈새가 안 생기도록 삼각형 윗변을 사각형 안쪽(위)으로 1픽셀 밀어 올려서 그립니다.
+        ImVec2 fill_p1 = ImVec2(p1.x, tooltip_max.y - 1.0f);
+        ImVec2 fill_p2 = ImVec2(p2.x, tooltip_max.y - 1.0f);
+        window->DrawList->AddTriangleFilled(fill_p1, fill_p2, p3, tooltip_bg_col);
+
+        // 4. 꼬리 테두리 (V자 선)
+        // 테두리 선이 사각형 바닥선에서 딱 떨어지게 연결됩니다.
+        ImVec2 tail_pts[3] = { p1, p3, p2 };
+        window->DrawList->AddPolyline(tail_pts, 3, tooltip_border_col, 0, 1.0f);
+
+        // 5. 텍스트 렌더링
         window->DrawList->AddText(tooltip_min + padding, IM_COL32(230, 230, 230, 255), value_buf);
     }
     // ==========================================

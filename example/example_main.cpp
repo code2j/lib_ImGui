@@ -179,7 +179,6 @@ int main() {
 
         ImGui::ShowDemoWindow();
 
-        ImGui::ShowStyleEditor();
 
         ImGui::Begin(" " ICON_MD_GAMEPAD " TF 컨트롤 ");
         ImGui::TransformControl(&tf_control);

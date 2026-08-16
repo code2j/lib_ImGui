@@ -510,9 +510,9 @@ namespace ImGui
             ImGui::Separator();
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 
-            ImGui::Checkbox("3D 뷰포트", & ImGuiExt::show_3d_viewport);
-            ImGui::Checkbox("로그", &ImGuiExt::show_log_window);
-            ImGui::Checkbox("컬러 에디터", &ImGuiExt::show_color_edit);
+            ImGui::Checkbox("3D Viewport", & ImGuiExt::show_3d_viewport);
+            ImGui::Checkbox("Logger", &ImGuiExt::show_log_window);
+            ImGui::Checkbox("Style Editor", &ImGuiExt::show_style_edit);
 
             ImGui::PopStyleVar();
 
@@ -705,7 +705,7 @@ namespace ImGui
         // ---------------------------------------------------------------
         // Color Editer
         // ---------------------------------------------------------------
-        if (ImGuiExt::show_color_edit) {
+        if (ImGuiExt::show_style_edit) {
             ImGui::Begin("Style Editor");
             ImGui::ShowStyleEditor(&ImGui::GetStyle());
             ImGui::End();
