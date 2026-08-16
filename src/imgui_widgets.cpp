@@ -3443,17 +3443,36 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
         format = DataTypeGetInfo(data_type)->PrintFmt;
 
     // =========================================================================
-    // --- [수정된 부분] 그랩(손잡이) 선택 시에만 조절 가능하도록 판별 로직 추가 ---
+    // [헬퍼 람다] ImGui 내부의 grab_bb 중심점을 트랙 양끝(frame_bb)으로 꽉 차게 매핑
+    // =========================================================================
+    auto GetMappedGrabCenter = [&](const ImRect& g_bb) -> ImVec2 {
+        float grab_padding = 2.0f; // ImGui 내부 슬라이더 패딩
+        float g_w = g_bb.GetWidth();
+
+        // ImGui 내부에서 grab 중심이 실제로 이동할 수 있는 최소/최대 위치
+        float internal_min_c = frame_bb.Min.x + grab_padding + g_w * 0.5f;
+        float internal_max_c = frame_bb.Max.x - grab_padding - g_w * 0.5f;
+
+        // 현재 값의 진행률 (0.0 ~ 1.0) 계산
+        float t = 0.0f;
+        if (internal_max_c > internal_min_c)
+            t = ImClamp((g_bb.GetCenter().x - internal_min_c) / (internal_max_c - internal_min_c), 0.0f, 1.0f);
+
+        // 시각적 트랙의 양 끝단으로 다시 매핑
+        float mapped_x = ImLerp(frame_bb.Min.x, frame_bb.Max.x, t);
+        return ImVec2(mapped_x, frame_bb.GetCenter().y);
+    };
+
+    // =========================================================================
+    // --- 그랩(손잡이) 선택 시에만 조절 가능하도록 판별 로직 추가 ---
     // =========================================================================
 
-    // 1. 값의 변화 없이 현재 그랩의 위치(Bounding Box)를 계산하기 위한 가상 호출
     ImRect current_grab_bb;
     {
         ImGuiID backup_active_id = g.ActiveId;
         bool backup_mouse_down = g.IO.MouseDown[0];
         bool backup_mouse_clicked = g.IO.MouseClicked[0];
 
-        // 상태가 변하지 않도록 임시로 클릭 판정을 해제
         g.ActiveId = 0;
         g.IO.MouseDown[0] = false;
         g.IO.MouseClicked[0] = false;
@@ -3463,36 +3482,31 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
 
         SliderBehavior(frame_bb, id, data_type, dummy_data, p_min, p_max, format, flags, &current_grab_bb);
 
-        // 원상 복구
         g.ActiveId = backup_active_id;
         g.IO.MouseDown[0] = backup_mouse_down;
         g.IO.MouseClicked[0] = backup_mouse_clicked;
     }
 
-    // 2. 렌더링될 실제 그랩(원형) 크기를 기반으로 상호작용 가능한 히트박스 생성
-    ImVec2 current_grab_center = ImVec2(current_grab_bb.GetCenter().x, frame_bb.GetCenter().y);
-    float grab_hitbox_radius = 9.0f + 4.0f; // 시각적 그랩 반지름(9.0f) + 클릭 여유 공간(4.0f)
+    // [수정됨] 단순히 GetCenter()를 쓰지 않고 화면 끝에 맞게 보정된 위치 사용
+    ImVec2 current_grab_center = GetMappedGrabCenter(current_grab_bb);
+    float grab_hitbox_radius = 9.0f + 4.0f;
     ImRect interact_grab_bb(
         current_grab_center.x - grab_hitbox_radius, frame_bb.Min.y - 4.0f,
         current_grab_center.x + grab_hitbox_radius, frame_bb.Max.y + 4.0f
     );
 
     const bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
-
-    // 3. 클릭이 발생했지만, 마우스가 그랩 영역 밖인지 확인
     bool is_clicking_outside_grab = hovered && IsMouseClicked(0, ImGuiInputFlags_None, id) && !interact_grab_bb.Contains(g.IO.MousePos);
 
     bool backup_clicked = g.IO.MouseClicked[0];
     bool backup_down = g.IO.MouseDown[0];
 
-    // 그랩 바깥쪽을 클릭했다면 해당 프레임의 클릭 이벤트를 임시로 지워 SliderBehavior가 반응하지 않게 함
     if (is_clicking_outside_grab)
     {
         g.IO.MouseClicked[0] = false;
         g.IO.MouseDown[0] = false;
     }
     // =========================================================================
-
 
     bool temp_input_is_active = temp_input_allowed && TempInputIsActive(id);
 
@@ -3532,15 +3546,11 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     ImRect grab_bb;
     const bool value_changed = SliderBehavior(frame_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
 
-    // =========================================================================
-    // 무시했던 마우스 클릭 상태를 원상 복구
-    // =========================================================================
     if (is_clicking_outside_grab)
     {
         g.IO.MouseClicked[0] = backup_clicked;
         g.IO.MouseDown[0] = backup_down;
     }
-    // =========================================================================
 
     if (value_changed)
         MarkItemEdited(id);
@@ -3550,67 +3560,59 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     // ==========================================
     RenderNavCursor(frame_bb, id);
 
-    // 트랙 높이 및 좌표 계산
-    float track_height = 4.0f; // 얇은 막대기 두께
+    float track_height = 4.0f;
     ImVec2 track_min = ImVec2(frame_bb.Min.x, frame_bb.GetCenter().y - track_height * 0.5f);
     ImVec2 track_max = ImVec2(frame_bb.Max.x, frame_bb.GetCenter().y + track_height * 0.5f);
 
-    // 1. 전체 배경 트랙 (어두운 회색)
+    // 1. 전체 배경 트랙
     ImU32 bg_track_col = IM_COL32(65, 65, 70, 255);
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
 
-    // 2. 왼쪽 채워진 트랙 (이전 요청의 커스텀 블루 색상 적용)
+    // [수정됨] 그려질 그랩의 위치도 보정된 위치로 적용
+    ImVec2 grab_center = GetMappedGrabCenter(grab_bb);
+    float grab_radius = 9.0f;
+
+    // 2. 왼쪽 채워진 트랙
     ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
-    if (grab_bb.Max.x > grab_bb.Min.x)
+    if (grab_center.x > frame_bb.Min.x)
     {
-        // 그랩의 중심까지만 색을 채웁니다.
-        ImVec2 fill_max = ImVec2(grab_bb.GetCenter().x, track_max.y);
+        ImVec2 fill_max = ImVec2(grab_center.x, track_max.y);
         window->DrawList->AddRectFilled(track_min, fill_max, fill_track_col, track_height * 0.5f);
     }
-
-    // 그랩 중심점과 크기
-    ImVec2 grab_center = ImVec2(grab_bb.GetCenter().x, frame_bb.GetCenter().y);
-    float grab_radius = 9.0f; // 얇은 트랙보다 크게 강조된 원형 손잡이
 
     // 3. 완전한 흰색 원형 그랩
     window->DrawList->AddCircleFilled(grab_center, grab_radius, IM_COL32(255, 255, 255, 255));
 
-    // 값 포맷팅 (툴팁에 표시하기 위함)
     char value_buf[64];
     DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
 
-    // 4. 조작 중일 때 팝업되는 말풍선(Tooltip) 디자인
-    if (g.ActiveId == id) // 클릭하거나 드래그 중일 때만 표시
+    // 4. 말풍선(Tooltip) 디자인
+    if (g.ActiveId == id)
     {
         ImVec2 text_size = CalcTextSize(value_buf);
-        ImVec2 padding(10.0f, 6.0f); // 말풍선 내부 여백
-        float tooltip_y_offset = 12.0f; // 원형 그랩에서 말풍선까지의 띄움 간격
+        ImVec2 padding(10.0f, 6.0f);
+        float tooltip_y_offset = 12.0f;
 
-        // 말풍선 사각형 크기 계산
         ImVec2 tooltip_min = ImVec2(grab_center.x - text_size.x * 0.5f - padding.x, grab_center.y - grab_radius - tooltip_y_offset - text_size.y - padding.y * 2.0f);
         ImVec2 tooltip_max = ImVec2(grab_center.x + text_size.x * 0.5f + padding.x, grab_center.y - grab_radius - tooltip_y_offset);
 
-        ImU32 tooltip_bg_col = IM_COL32(25, 25, 28, 255);     // 아주 어두운 말풍선 배경
-        ImU32 tooltip_border_col = IM_COL32(55, 55, 60, 255); // 은은한 말풍선 테두리
+        ImU32 tooltip_bg_col = IM_COL32(25, 25, 28, 255);
+        ImU32 tooltip_border_col = IM_COL32(55, 55, 60, 255);
 
-        // 말풍선 둥근 배경 및 테두리
         window->DrawList->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
         window->DrawList->AddRect(tooltip_min, tooltip_max, tooltip_border_col, 6.0f);
 
-        // 말풍선 아래 뾰족한 삼각형(꼬리)
         ImVec2 p1 = ImVec2(grab_center.x - 6.0f, tooltip_max.y);
         ImVec2 p2 = ImVec2(grab_center.x + 6.0f, tooltip_max.y);
         ImVec2 p3 = ImVec2(grab_center.x, tooltip_max.y + 5.0f);
         window->DrawList->AddTriangleFilled(p1, p2, p3, tooltip_bg_col);
 
-        // 텍스트 출력
         window->DrawList->AddText(tooltip_min + padding, IM_COL32(230, 230, 230, 255), value_buf);
     }
     // ==========================================
     // --- 이미지 스타일 커스텀 렌더링 끝 ---
     // ==========================================
 
-    // 우측 레이블 (ex: "사운드보드 음량" 같은 요소) 렌더링
     if (label_size.x > 0.0f)
         RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, frame_bb.Min.y + style.FramePadding.y), label);
 
@@ -4040,40 +4042,107 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
 
         BeginGroup(); // The only purpose of the group here is to allow the caller to query item data e.g. IsItemActive()
         PushID(label);
-        SetNextItemWidth(ImMax(1.0f, CalcItemWidth() - (button_size + style.ItemInnerSpacing.x) * 2));
-        if (InputText("", buf, IM_COUNTOF(buf), flags)) // PushId(label) + "" gives us the expected ID from outside point of view
-            value_changed = DataTypeApplyFromText(buf, data_type, p_data, format, (flags & ImGuiInputTextFlags_ParseEmptyRefVal) ? p_data_default : NULL);
-        IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Inputable);
 
-        // Step buttons
         const ImVec2 backup_frame_padding = style.FramePadding;
+
+        // 1. 좌측 '<' 버튼
         style.FramePadding.x = style.FramePadding.y;
         if (flags & ImGuiInputTextFlags_ReadOnly)
             BeginDisabled();
         PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
-        SameLine(0, style.ItemInnerSpacing.x);
-        if (ButtonEx("-", ImVec2(button_size, button_size)))
+
+        PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
+        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
+        if (ButtonEx("<", ImVec2(button_size, button_size)))
         {
             DataTypeApplyOp(data_type, '-', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
             value_changed = true;
         }
-        SameLine(0, style.ItemInnerSpacing.x);
-        if (ButtonEx("+", ImVec2(button_size, button_size)))
-        {
-            DataTypeApplyOp(data_type, '+', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
-            value_changed = true;
-        }
+
+        PopStyleVar();
+        PopStyleColor(3);
         PopItemFlag();
         if (flags & ImGuiInputTextFlags_ReadOnly)
             EndDisabled();
 
+        // 2. 중앙 InputText
+        style.FramePadding = backup_frame_padding;
+        SameLine(0, style.ItemInnerSpacing.x);
+
+        float input_width = ImMax(1.0f, CalcItemWidth() - (button_size + style.ItemInnerSpacing.x) * 2);
+        SetNextItemWidth(input_width);
+
+        ImVec2 input_pos = window->DC.CursorPos;
+        ImGuiID input_id = window->GetID("");
+        bool is_active = (g.ActiveId == input_id);
+
+        // 입력 중이 아닐 때는 기본 좌측 정렬 텍스트를 숨김 (투명 처리)
+        if (!is_active)
+            PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+        if (InputText("", buf, IM_COUNTOF(buf), flags))
+        {
+            if (DataTypeApplyFromText(buf, data_type, p_data, format, (flags & ImGuiInputTextFlags_ParseEmptyRefVal) ? p_data_default : NULL))
+                value_changed = true;
+        }
+
+        // 입력 중이 아닐 때 텍스트를 직접 가운데에 렌더링
+        if (!is_active)
+        {
+            PopStyleColor();
+
+            ImVec2 text_size = CalcTextSize(buf);
+            ImVec2 text_pos = ImVec2(
+                input_pos.x + (input_width - text_size.x) * 0.5f,
+                input_pos.y + style.FramePadding.y
+            );
+
+            // 영역 밖으로 텍스트가 삐져나가지 않도록 클리핑 적용
+            ImVec2 clip_min = input_pos;
+            ImVec2 clip_max = ImVec2(input_pos.x + input_width, input_pos.y + button_size);
+
+            window->DrawList->PushClipRect(clip_min, clip_max, true);
+            window->DrawList->AddText(text_pos, GetColorU32(ImGuiCol_Text), buf);
+            window->DrawList->PopClipRect();
+        }
+        IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Inputable);
+
+        // 3. 우측 '>' 버튼
+        SameLine(0, style.ItemInnerSpacing.x);
+        style.FramePadding.x = style.FramePadding.y;
+        if (flags & ImGuiInputTextFlags_ReadOnly)
+            BeginDisabled();
+        PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
+
+        PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
+        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
+        if (ButtonEx(">", ImVec2(button_size, button_size)))
+        {
+            DataTypeApplyOp(data_type, '+', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
+            value_changed = true;
+        }
+
+        PopStyleVar();
+        PopStyleColor(3);
+        PopItemFlag();
+        if (flags & ImGuiInputTextFlags_ReadOnly)
+            EndDisabled();
+
+        style.FramePadding = backup_frame_padding;
+
+        // 4. 우측 Label
         const char* label_end = FindRenderedTextEnd(label);
         if (label != label_end)
         {
             SameLine(0, style.ItemInnerSpacing.x);
             TextEx(label, label_end);
         }
-        style.FramePadding = backup_frame_padding;
 
         PopID();
         EndGroup();
