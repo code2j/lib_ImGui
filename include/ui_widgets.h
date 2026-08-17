@@ -15,7 +15,7 @@ namespace ImGui
     // ====================================================
     // Title Button
     // ====================================================
-    bool TitleButton(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags);
+    bool ButtonX(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags);
 
 
     // ====================================================

@@ -74,7 +74,7 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
     // 로그 지우기 버튼
-    if (ImGui::TitleButton(ICON_MD_DELETE, BUTTON_SIZE, ImGuiButtonFlags_None)) {
+    if (ImGui::ButtonX(ICON_MD_DELETE, BUTTON_SIZE, ImGuiButtonFlags_None)) {
         clear();
     }
 
@@ -90,7 +90,7 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
     }
 
-    if (ImGui::TitleButton(ICON_MD_WRAP_TEXT, BUTTON_SIZE, ImGuiButtonFlags_None)) {
+    if (ImGui::ButtonX(ICON_MD_WRAP_TEXT, BUTTON_SIZE, ImGuiButtonFlags_None)) {
         auto_scroll = !auto_scroll;
     }
 

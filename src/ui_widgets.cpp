@@ -140,7 +140,7 @@ void ImGui::EndCollapsingHeader(const char* label)
     }
 }
 
-bool ImGui::TitleButton(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags)
+bool ImGui::ButtonX(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags)
 {
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -417,8 +417,8 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
         ImVec2 tooltip_min = ImVec2(active_x - text_size.x * 0.5f - padding.x, track_y - grab_top_offset - tooltip_y_offset - text_size.y - padding.y * 2.0f);
         ImVec2 tooltip_max = ImVec2(active_x + text_size.x * 0.5f + padding.x, track_y - grab_top_offset - tooltip_y_offset);
 
-        ImU32 tooltip_bg_col = IM_COL32(25, 25, 28, 255);
-        ImU32 tooltip_border_col = IM_COL32(55, 55, 60, 255);
+        ImU32 tooltip_bg_col     = GetColorU32(ImGuiCol_FrameBg);
+        ImU32 tooltip_border_col = GetColorU32(ImGuiCol_Border);
 
         // 1. 말풍선 둥근 사각형 배경 & 테두리
         window->DrawList->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
@@ -449,7 +449,7 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
         window->DrawList->AddPolyline(tail_pts, 3, tooltip_border_col, 0, 1.0f);
 
         // 5. 텍스트 렌더링
-        window->DrawList->AddText(tooltip_min + padding, IM_COL32(230, 230, 230, 255), value_buf);
+        window->DrawList->AddText(tooltip_min + padding, GetColorU32(ImGuiCol_Text), value_buf);
     }
     // ==========================================
     // --- 커스텀 렌더링 끝 ---
@@ -589,13 +589,14 @@ bool ImGui::StatusStepBar(const char *str_id, int *current_step, const char **st
     ImDrawList* draw_list = window->DrawList;
 
     // 색상 정의
-    ImVec4 active_col_v     = ImColor(87, 242, 135);    // 부드러운 그린 (활성)
-    ImVec4 inactive_col_v   = ImColor(36, 36, 49);      // 다크 그레이 (비활성)
-    ImVec4 hover_col_v      = ImColor(44, 44, 47);      // 호버 색상
+    ImVec4 active_col_v     = ImGuiExt::theme_id ? ImColor(87, 242, 135):ImColor(98, 192, 115);    // 부드러운 그린 (활성)
+    ImVec4 inactive_col_v   = ImGuiExt::theme_id ? ImColor(36, 36, 49) : ImColor(200, 200, 200);   // 다크 그레이 (비활성) [dark/white]
+    ImVec4 hover_col_v      = ImGuiExt::theme_id ? ImColor(44, 44, 47) : ImColor(180, 180, 180);   // 호버 색상
 
-    ImU32 text_active_col = IM_COL32(240, 240, 240, 255);
-    ImU32 text_inactive_col = IM_COL32(130, 130, 130, 255);
-    ImU32 icon_col = IM_COL32(20, 20, 20, 255);
+
+    ImU32 text_active_col   = ImGuiExt::theme_id ? IM_COL32(240, 240, 240, 255) : IM_COL32(40, 40, 45, 255); // [dark/white]
+    ImU32 text_inactive_col = ImGuiExt::theme_id ? IM_COL32(130, 130, 130, 255) : IM_COL32(190, 190, 190, 255);
+    ImU32 icon_col          = ImGuiExt::theme_id ? IM_COL32(20, 20, 20, 255)    : IM_COL32(240, 240, 240, 240);
 
     float delta_time = GetIO().DeltaTime;
     float anim_speed = 10.0f; // 애니메이션 속도
@@ -1029,19 +1030,19 @@ bool ImGui::ThemeSelector(int* current_theme)
     ImGui::ThemePreviewData themes[2] = {
         {
             "Light Mode",
-            IM_COL32(240, 243, 249, 255), // Bg: 밝은 회청색
-            IM_COL32(255, 255, 255, 255), // Panel: 순백색
-            IM_COL32(59, 104, 255, 255),  // Primary: 블루
-            IM_COL32(255, 99, 132, 255),  // Secondary: 핑크/레드
-            IM_COL32(50, 50, 55, 255)     // Text: 어두운 회색
+            ImColor(251, 251, 251),  // Bg
+            ImColor(235, 235, 237),   // Panel
+            ImColor(93, 105, 240),    // Primary
+            ImColor(246, 246, 246),   // Secondary
+            ImColor(40, 40, 45)       // Text
         },
         {
             "Dark Mode",
-            ImGui::GetColorU32(ImGuiCol_WindowBg),  // Bg
-            ImGui::GetColorU32(ImGuiCol_ChildBg),   // Panel
-            ImGui::GetColorU32(ImGuiCol_Button),    // Primary
-            ImGui::GetColorU32(ImGuiCol_FrameBg),   // Secondary
-            ImGui::GetColorU32(ImGuiCol_Text)       // Text
+            ImColor(7, 7, 9),       // Bg
+            ImColor(12, 12, 14),   // Panel
+            ImColor(93, 105, 240), // Primary
+            ImColor(11, 11, 12),   // Secondary
+            ImColor(228, 228, 230) // Text
         }
     };
 
@@ -1085,8 +1086,7 @@ bool ImGui::ThemeSelector(int* current_theme)
         // 1. 카드 배경 및 테두리 (Hover & Selection)
         // ==========================================
         ImU32 card_bg = ImGui::GetColorU32(ImGuiCol_WindowBg); // 현재 ImGui 테마의 윈도우 배경색 사용
-        ImU32 border_col = is_selected ? theme.PrimaryColor :
-                           (hovered ? IM_COL32(150, 150, 150, 100) : IM_COL32(100, 100, 100, 50));
+        ImU32 border_col = is_selected ? theme.PrimaryColor : (hovered ? IM_COL32(0, 0, 0, 0) : IM_COL32(0, 0, 0, 0));
 
         window->DrawList->AddRectFilled(bb.Min, bb.Max, card_bg, rounding);
         window->DrawList->AddRect(bb.Min, bb.Max, border_col, rounding, 0, is_selected ? 2.0f : 1.0f);

@@ -506,7 +506,7 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
 
-        if (ImGui::TitleButton(ICON_MD_SETTINGS, ImVec2(settingsBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
+        if (ImGui::ButtonX(ICON_MD_SETTINGS, ImVec2(settingsBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
             ImGui::OpenPopup("SettingsPopup");
         }
 
@@ -540,7 +540,7 @@ namespace ImGui
         // 창 상태에 따라 아이콘 텍스트 분기 처리
         const char* maxIcon = IsWindowMaximized() ? ICON_MD_FULLSCREEN_EXIT : ICON_MD_FULLSCREEN;
 
-        if (ImGui::TitleButton(maxIcon, ImVec2(maxBtnWidth, ::TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
+        if (ImGui::ButtonX(maxIcon, ImVec2(maxBtnWidth, ::TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
             if (IsWindowMaximized()) {
                 RestoreWindow();  // 최대화 상태라면 원래 크기로 복원
             } else {
@@ -559,7 +559,7 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
 
 
-        if (ImGui::TitleButton(ICON_MD_CLOSE, ImVec2(closeBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
+        if (ImGui::ButtonX(ICON_MD_CLOSE, ImVec2(closeBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
             ImGuiExt::should_close_app = true;
         }
 

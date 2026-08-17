@@ -43,7 +43,7 @@ Index of this file:
 #include "imgui.h"
 #ifndef IMGUI_DISABLE
 #include "imgui_internal.h"
-
+#include "ui_widgets.h"
 // System includes
 #include <stdint.h>     // intptr_t
 
@@ -803,7 +803,7 @@ bool ImGui::ButtonEx(const char* label, const ImVec2& size_arg, ImGuiButtonFlags
     if (g.LogEnabled)
         LogSetNextTextDecoration("[", "]");
 
-    PushStyleColor(ImGuiCol_Text, IM_COL32(228, 228, 230, 255));
+    PushStyleColor(ImGuiCol_Text, IM_COL32(240, 240, 240, 255));
     RenderTextClipped(bb.Min + style.FramePadding, bb.Max - style.FramePadding, label, NULL, &label_size, style.ButtonTextAlign, &bb);
     PopStyleColor();
 
@@ -1267,13 +1267,13 @@ bool ImGui::Checkbox(const char* label, bool* v)
         MarkItemEdited(id);
     }
 
-    const ImRect check_bb(pos, pos + ImVec2(square_sz, square_sz));
+    const ImRect check_bb(pos, pos + ImVec2(square_sz-0.1, square_sz-0.1));
     const bool mixed_value = (g.LastItemData.ItemFlags & ImGuiItemFlags_MixedValue) != 0;
     if (is_visible)
     {
         RenderNavCursor(total_bb, id);
 
-        // [수정된 부분] 체크 상태에 따른 배경색 결정 및 테두리 여부
+        // 체크 상태에 따른 배경색 결정 및 테두리 여부
         ImU32 frame_col;
         bool render_border; // 테두리를 그릴지 여부
 
@@ -1293,8 +1293,8 @@ bool ImGui::Checkbox(const char* label, bool* v)
         // RenderFrame의 4번째 인자가 테두리(border) 렌더링 여부입니다.
         RenderFrame(check_bb.Min, check_bb.Max, frame_col, render_border, style.FrameRounding);
 
-        // [수정된 부분] 체크 마크 색상을 텍스트 색상으로 변경
-        ImU32 check_col = GetColorU32(ImGuiCol_Text);
+        // 체크 마크 색상을 텍스트 색상으로 변경
+        ImU32 check_col = ImColor(255, 255, 255); //GetColorU32(ImGuiCol_Text);
 
         if (mixed_value)
         {
@@ -3631,8 +3631,8 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
         ImVec2 tooltip_min = ImVec2(grab_center.x - text_size.x * 0.5f - padding.x, grab_center.y - grab_radius - tooltip_y_offset - text_size.y - padding.y * 2.0f);
         ImVec2 tooltip_max = ImVec2(grab_center.x + text_size.x * 0.5f + padding.x, grab_center.y - grab_radius - tooltip_y_offset);
 
-        ImU32 tooltip_bg_col = IM_COL32(25, 25, 28, 255);
-        ImU32 tooltip_border_col = IM_COL32(55, 55, 60, 255);
+        ImU32 tooltip_bg_col     = GetColorU32(ImGuiCol_FrameBg);
+        ImU32 tooltip_border_col = GetColorU32(ImGuiCol_Border);
 
         // 1. 말풍선 둥근 사각형 배경 & 테두리
         window->DrawList->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
@@ -3664,7 +3664,7 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
         window->DrawList->AddPolyline(tail_pts, 3, tooltip_border_col, 0, 1.0f);
 
         // 5. 텍스트 렌더링
-        window->DrawList->AddText(tooltip_min + padding, IM_COL32(230, 230, 230, 255), value_buf);
+        window->DrawList->AddText(tooltip_min + padding, GetColorU32(ImGuiCol_Text), value_buf);
     }
     // ==========================================
     // --- 이미지 스타일 커스텀 렌더링 끝 ---
@@ -4113,11 +4113,11 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
         PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 
         PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 125));
-        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(100, 100, 100, 125));
+        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-        if (ButtonEx("<", ImVec2(button_size, button_size)))
+        if (ButtonX("<", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
         {
             DataTypeApplyOp(data_type, '-', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
             value_changed = true;
@@ -4176,11 +4176,11 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
         PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 
         PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 125));
-        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(100, 100, 100, 125));
+        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-        if (ButtonEx(">", ImVec2(button_size, button_size)))
+        if (ButtonX(">", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
         {
             DataTypeApplyOp(data_type, '+', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
             value_changed = true;
