@@ -798,7 +798,7 @@ bool ImGui::ButtonEx(const char* label, const ImVec2& size_arg, ImGuiButtonFlags
     // Render
     const ImU32 col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
     RenderNavCursor(bb, id);
-    RenderFrame(bb.Min, bb.Max, col, false, style.FrameRounding);
+    RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
 
     if (g.LogEnabled)
         LogSetNextTextDecoration("[", "]");
@@ -3606,7 +3606,14 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     }
 
     // 3. 완전한 흰색 원형 그랩
+    // 3. 완전한 흰색 원형 그랩 및 테두리(보더) 추가
     window->DrawList->AddCircleFilled(grab_center, grab_radius, IM_COL32(255, 255, 255, 255));
+
+    // 보더(테두리) 색상 및 두께 설정
+    ImU32 grab_border_col = GetColorU32(ImGuiCol_Border); //IM_COL32(200, 200, 200, 255); // 밝은 회색 (원하는 색상으로 변경 가능)
+    float grab_border_thickness = 1.0f;                   // 테두리 두께
+
+    window->DrawList->AddCircle(grab_center, grab_radius, grab_border_col, 0, grab_border_thickness);
 
     char value_buf[64];
     DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
