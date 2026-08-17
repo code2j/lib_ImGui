@@ -2221,7 +2221,6 @@ bool ImGui::Combo(const char* label, int* current_item, const char* (*getter)(vo
         is_dark = false;
     }
 
-
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -2231,33 +2230,61 @@ bool ImGui::Combo(const char* label, int* current_item, const char* (*getter)(vo
     if (*current_item >= 0 && *current_item < items_count)
         preview_value = getter(user_data, *current_item);
 
-    if (popup_max_height_in_items != -1 && !(g.NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasSizeConstraint))
-        SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, CalcMaxPopupHeightFromItemCount(popup_max_height_in_items)));
-
-    // 1. Popup 열림 상태 확인 (활성화 시 테두리 색상을 주기 위함)
     ImGuiID id = window->GetID(label);
     ImGuiID popup_id = ImHashStr("##ComboPopup", 0, id);
+
+    // 1. Popup 열림 상태 확인
     bool is_open = IsPopupOpen(popup_id, ImGuiPopupFlags_None);
 
-    // 2. Main Frame 스타일 적용 (열려있을 때만 파란색 테두리)
+    // 2. 애니메이션 진행률(anim_t) 업데이트 로직
+    float anim_t = window->StateStorage.GetFloat(id + 1, 0.0f);
+    if (is_open) {
+        float speed = ImGui::GetIO().DeltaTime * 12.0f; // 속도 조절 (높을수록 빠르게 열림)
+        anim_t = ImClamp(anim_t + speed, 0.0f, 1.0f);
+    } else {
+        anim_t = 0.0f; // 팝업이 닫히면 ImGui 구조상 즉시 사라지므로 바로 리셋
+    }
+    window->StateStorage.SetFloat(id + 1, anim_t);
+
+    // 3. 애니메이션 높이(Size Constraint) 계산 및 적용
+    if (!(g.NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasSizeConstraint))
+    {
+        float max_height = CalcMaxPopupHeightFromItemCount(popup_max_height_in_items != -1 ? popup_max_height_in_items : items_count);
+        float current_height = ImMax(max_height * anim_t, 1.0f); // 0.0f 할당 시 에러 방지
+        SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, current_height));
+    }
+
+    // 애니메이션이 진행 중일 때는 스크롤바를 숨겨서 깔끔하게 연출
+    bool is_animating = (anim_t > 0.0f && anim_t < 1.0f);
+    if (is_animating) {
+        PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
+    }
+
+    // 4. Main Frame 스타일 적용
     if (is_open)
     {
         PushStyleColor(ImGuiCol_Border, ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
     }
-    PushStyleColor(ImGuiCol_FrameBg, GetColorU32(ImGuiCol_FrameBg)); // 약간 어두운 기본 배경
+    PushStyleColor(ImGuiCol_FrameBg, GetColorU32(ImGuiCol_FrameBg));
 
-    // 3. Popup 창 스타일 미리 적용 (BeginCombo 내부에서 팝업을 시작하므로 미리 Push)
+    // 5. Popup 창 스타일 및 배경 Alpha 페이드 인 적용
     PushStyleVar(ImGuiStyleVar_PopupRounding, 6.0f);
-    PushStyleColor(ImGuiCol_PopupBg,  GetColorU32(ImGuiCol_ChildBg));
+    ImVec4 popup_bg = ImGui::ColorConvertU32ToFloat4(GetColorU32(ImGuiCol_ChildBg));
+    popup_bg.w *= anim_t; // 투명도 애니메이션 반영
+    PushStyleColor(ImGuiCol_PopupBg, ImGui::ColorConvertFloat4ToU32(popup_bg));
 
     bool combo_started = BeginCombo(label, preview_value, ImGuiComboFlags_None);
 
+    // 스타일 복구
     PopStyleColor(1); // FrameBg 복구
     if (is_open)
     {
         PopStyleVar(); // FrameBorderSize 복구
         PopStyleColor(); // Border 복구
+    }
+    if (is_animating) {
+        PopStyleVar(); // ScrollbarSize 복구
     }
 
     if (!combo_started)
@@ -2267,15 +2294,14 @@ bool ImGui::Combo(const char* label, int* current_item, const char* (*getter)(vo
         return false;
     }
 
-    // Display items
+    // --- 여기서부터 Popup 내부 ---
+    // Selectable 기본 배경 등 내부 요소들에 대한 페이드 인 적용
+    PushStyleVar(ImGuiStyleVar_Alpha, anim_t);
+
     bool value_changed = false;
     ImGuiListClipper clipper;
     clipper.Begin(items_count);
     clipper.IncludeItemByIndex(*current_item);
-
-
-
-
 
     while (clipper.Step())
     {
@@ -2288,7 +2314,7 @@ bool ImGui::Combo(const char* label, int* current_item, const char* (*getter)(vo
             PushID(i);
             const bool item_selected = (i == *current_item);
 
-            // 선택된 아이템의 쨍한 기본 하이라이트 색상 제거 (이미지와 동일하게 마우스 오버 시에만 살짝 밝아지도록 설정)
+            // 선택된 아이템 하이라이트 색상 제거 및 마우스 오버 처리
             if (item_selected)
             {
                 PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
@@ -2301,29 +2327,30 @@ bool ImGui::Combo(const char* label, int* current_item, const char* (*getter)(vo
                 PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
             }
 
-            // 항목 높이 및 여백(Padding) 적용
             ImVec2 pos = ImGui::GetCursorScreenPos();
             float avail_width = ImGui::GetContentRegionAvail().x;
-            float item_height = ImGui::GetTextLineHeight() + 16.0f; // 항목 위아래에 8px씩 여백 추가
+            float item_height = ImGui::GetTextLineHeight() + 16.0f;
 
-            // 텍스트는 수동으로 그리기 위해 Selectable 라벨은 숨김("##item") 처리
             if (Selectable("##item", item_selected, ImGuiSelectableFlags_None, ImVec2(0, item_height)))
             {
                 value_changed = true;
                 *current_item = i;
             }
 
-            // 텍스트 수동 렌더링 (가운데 정렬)
+            // Alpha 채널 계산 (0 ~ 255)
+            int alpha_255 = (int)(255.0f * anim_t);
+
+            // 텍스트 렌더링 (Alpha 적용)
             ImVec2 text_pos = ImVec2(pos.x + 10.0f, pos.y + (item_height - ImGui::GetTextLineHeight()) * 0.5f);
-            ImGui::GetWindowDrawList()->AddText(text_pos, is_dark ? IM_COL32(230, 230, 230, 255) : IM_COL32(40, 40, 25, 255), item_text);
+            ImU32 text_col = is_dark ? IM_COL32(230, 230, 230, alpha_255) : IM_COL32(40, 40, 25, alpha_255);
+            ImGui::GetWindowDrawList()->AddText(text_pos, text_col, item_text);
 
-
-
-            // 선택된 항목이면 우측에 하얀색 체크마크(✓) 렌더링
+            // 체크마크 렌더링 (Alpha 적용)
             if (item_selected)
             {
                 ImVec2 check_pos = ImVec2(pos.x + avail_width - 24.0f, pos.y + (item_height - 14.0f) * 0.5f);
-                ImGui::RenderCheckMark(ImGui::GetWindowDrawList(), check_pos, is_dark ?  IM_COL32(255, 255, 255, 255) :  IM_COL32(40, 40, 25, 255), 14.0f);
+                ImU32 check_col = is_dark ? IM_COL32(255, 255, 255, alpha_255) : IM_COL32(40, 40, 25, alpha_255);
+                ImGui::RenderCheckMark(ImGui::GetWindowDrawList(), check_pos, check_col, 14.0f);
                 PopStyleColor(3);
             }
             else
@@ -2338,6 +2365,7 @@ bool ImGui::Combo(const char* label, int* current_item, const char* (*getter)(vo
         }
     }
 
+    PopStyleVar(); // Alpha 복구
     EndCombo();
 
     PopStyleColor(); // PopupBg 복구

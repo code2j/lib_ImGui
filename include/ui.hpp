@@ -68,14 +68,14 @@ namespace ImGuiExt
 
 namespace ImGui
 {
-
-
-
     void init(const char* title, int width = 1280, int height = 720);
     void destroy();
     bool should_close();
     bool context(std::function<void()> func);   // Gui 실행 컨텍스트
     void load_config(const char* path);         // config 파일 불러오기
+
+    void style_white();
+    void style_dark();
 
 
     // =====================================================

@@ -513,19 +513,36 @@ bool ImGui::ToggleButton(const char* str_id, bool* v)
     // 렌더링 (t 대신 부드러운 anim_t 사용)
     // =========================================================================
     ImU32 col_bg;
+
     if (ImGui::IsItemHovered())
     {
-        col_bg = ImGui::GetColorU32(ImLerp(
-            ImVec4(31.0f / 255.0f, 31.0f / 255.0f, 32.0f / 255.0f, 1.0f),   // Hovered OFF
-            ImVec4(113.0f / 255.0f, 125.0f / 255.0f, 255.0f / 255.0f, 1.0f), // Hovered ON
-            anim_t));
+        if (ImGuiExt::theme_id == 1) { // Dark 테마
+            col_bg = ImGui::GetColorU32(ImLerp(
+                ImVec4(31.0f / 255.0f, 31.0f / 255.0f, 32.0f / 255.0f, 1.0f),    // Hovered OFF (어두운 회색)
+                ImVec4(113.0f / 255.0f, 125.0f / 255.0f, 255.0f / 255.0f, 1.0f), // Hovered ON (밝은 푸른색)
+                anim_t));
+        }
+        else { // White 테마
+            col_bg = ImGui::GetColorU32(ImLerp(
+                ImVec4(185.0f / 255.0f, 195.0f / 255.0f, 235.0f / 255.0f, 1.0f), // Hovered OFF (조금 더 진한 흐린 푸른색)
+                ImVec4(113.0f / 255.0f, 125.0f / 255.0f, 255.0f / 255.0f, 1.0f), // Hovered ON (밝은 푸른색)
+                anim_t));
+        }
     }
     else
     {
-        col_bg = ImGui::GetColorU32(ImLerp(
-            ImVec4(11.0f / 255.0f, 11.0f / 255.0f, 12.0f / 255.0f, 1.0f),   // Normal OFF
-            ImVec4(93.0f / 255.0f, 105.0f / 255.0f, 240.0f / 255.0f, 1.0f), // Normal ON
-            anim_t));
+        if (ImGuiExt::theme_id == 1) { // Dark 테마
+            col_bg = ImGui::GetColorU32(ImLerp(
+                ImVec4(11.0f / 255.0f, 11.0f / 255.0f, 12.0f / 255.0f, 1.0f),   // Normal OFF (매우 어두운 회색)
+                ImVec4(93.0f / 255.0f, 105.0f / 255.0f, 240.0f / 255.0f, 1.0f), // Normal ON (푸른색)
+                anim_t));
+        }
+        else { // White 테마
+            col_bg = ImGui::GetColorU32(ImLerp(
+                ImVec4(205.0f / 255.0f, 215.0f / 255.0f, 245.0f / 255.0f, 1.0f), // Normal OFF (연하고 흐린 푸른색)
+                ImVec4(93.0f / 255.0f, 105.0f / 255.0f, 240.0f / 255.0f, 1.0f),  // Normal ON (푸른색)
+                anim_t));
+        }
     }
 
     // 배경(채우기) 그리기
