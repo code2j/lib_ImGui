@@ -3,6 +3,8 @@
 #include "imgui_internal.h"
 #include <cstdint>
 
+#include "ui.hpp"
+
 
 bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
 {
@@ -136,6 +138,50 @@ void ImGui::EndCollapsingHeader(const char* label)
     if (is_open && (max_height == 0.0f || anim_t >= 1.0f)) {
         window->StateStorage.SetFloat(id + 2, height);
     }
+}
+
+bool ImGui::TitleButton(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+
+    ImVec2 pos = window->DC.CursorPos;
+    if ((flags & ImGuiButtonFlags_AlignTextBaseLine) && style.FramePadding.y < window->DC.CurrLineTextBaseOffset) // Try to vertically align buttons that are smaller/have no padding so that text baseline matches (bit hacky, since it shouldn't be a flag)
+        pos.y += window->DC.CurrLineTextBaseOffset - style.FramePadding.y;
+    ImVec2 size = CalcItemSize(size_arg, label_size.x + style.FramePadding.x * 2.0f, label_size.y + style.FramePadding.y * 2.0f);
+
+    const ImRect bb(pos, pos + size);
+    ItemSize(size, style.FramePadding.y);
+    if (!ItemAdd(bb, id))
+        return false;
+
+    bool hovered, held;
+    bool pressed = ButtonBehavior(bb, id, &hovered, &held, flags);
+
+    // Render
+    const ImU32 col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+    RenderNavCursor(bb, id);
+    RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
+
+    if (g.LogEnabled)
+        LogSetNextTextDecoration("[", "]");
+
+    // PushStyleColor(ImGuiCol_Text, IM_COL32(228, 228, 230, 255));
+    RenderTextClipped(bb.Min + style.FramePadding, bb.Max - style.FramePadding, label, NULL, &label_size, style.ButtonTextAlign, &bb);
+    // PopStyleColor();
+
+    // Automatically close popups
+    //if (pressed && !(flags & ImGuiButtonFlags_DontClosePopups) && (window->Flags & ImGuiWindowFlags_Popup))
+    //    CloseCurrentPopup();
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags);
+    return pressed;
 }
 
 bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, float v_bound_min, float v_bound_max, const char* format)
@@ -273,7 +319,7 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
     ImVec2 track_min = ImVec2(frame_bb.Min.x, track_y - track_height * 0.5f);
     ImVec2 track_max = ImVec2(frame_bb.Max.x, track_y + track_height * 0.5f);
 
-    ImU32 bg_track_col = IM_COL32(65, 65, 70, 255);
+    ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab); //IM_COL32(65, 65, 70, 255);
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
 
     ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
@@ -283,64 +329,76 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
         fill_track_col, track_height * 0.5f);
 
     ImU32 grab_col = IM_COL32(255, 255, 255, 255);
+    ImU32 grab_border_col = GetColorU32(ImGuiCol_Border);
+    float grab_border_thickness = 1.0f;
+
     float tri_w = 7.0f;
     float tri_h = 9.0f;
 
-    auto AddRoundedTriangleFilled = [](ImDrawList* draw_list, ImVec2 p1, ImVec2 p2, ImVec2 p3, float radius, ImU32 col)
+    auto AddRoundedTriangle = [](ImDrawList* draw_list, ImVec2 p1, ImVec2 p2, ImVec2 p3, float radius, ImU32 fill_col, ImU32 border_col, float border_thickness)
     {
-        ImVec2 pts[3] = { p1, p2, p3 };
+        // 경로를 생성하는 부분을 람다로 묶음 (채우기와 테두리에 각각 사용하기 위함)
+        auto build_path = [&]() {
+            ImVec2 pts[3] = { p1, p2, p3 };
+            for (int i = 0; i < 3; i++)
+            {
+                ImVec2 prev = pts[(i + 2) % 3];
+                ImVec2 curr = pts[i];
+                ImVec2 next = pts[(i + 1) % 3];
 
-        for (int i = 0; i < 3; i++)
+                ImVec2 v1 = ImVec2(prev.x - curr.x, prev.y - curr.y);
+                ImVec2 v2 = ImVec2(next.x - curr.x, next.y - curr.y);
+
+                float len1 = std::sqrt(v1.x * v1.x + v1.y * v1.y);
+                float len2 = std::sqrt(v2.x * v2.x + v2.y * v2.y);
+                if (len1 > 0.0f) { v1.x /= len1; v1.y /= len1; }
+                if (len2 > 0.0f) { v2.x /= len2; v2.y /= len2; }
+
+                float angle1 = std::atan2(v1.y, v1.x);
+                float angle2 = std::atan2(v2.y, v2.x);
+
+                float diff = angle2 - angle1;
+                while (diff < -IM_PI) diff += IM_PI * 2.0f;
+                while (diff > IM_PI) diff -= IM_PI * 2.0f;
+
+                angle2 = angle1 + diff;
+
+                draw_list->PathArcTo(curr, radius, angle1, angle2, 6);
+            }
+        };
+
+        // 1. 내부 칠하기
+        build_path();
+        draw_list->PathFillConvex(fill_col);
+
+        // 2. 테두리(보더) 그리기
+        if (border_thickness > 0.0f)
         {
-            ImVec2 prev = pts[(i + 2) % 3];
-            ImVec2 curr = pts[i];
-            ImVec2 next = pts[(i + 1) % 3];
-
-            // 변 벡터 계산
-            ImVec2 v1 = ImVec2(prev.x - curr.x, prev.y - curr.y);
-            ImVec2 v2 = ImVec2(next.x - curr.x, next.y - curr.y);
-
-            float len1 = std::sqrt(v1.x * v1.x + v1.y * v1.y);
-            float len2 = std::sqrt(v2.x * v2.x + v2.y * v2.y);
-            if (len1 > 0.0f) { v1.x /= len1; v1.y /= len1; }
-            if (len2 > 0.0f) { v2.x /= len2; v2.y /= len2; }
-
-            float angle1 = std::atan2(v1.y, v1.x);
-            float angle2 = std::atan2(v2.y, v2.x);
-
-            // [핵심] 호를 항상 렌더링 내부 방향(짧은 쪽)으로 그리도록 각도 정규화
-            float diff = angle2 - angle1;
-            while (diff < -IM_PI) diff += IM_PI * 2.0f;
-            while (diff > IM_PI) diff -= IM_PI * 2.0f;
-
-            angle2 = angle1 + diff;
-
-            draw_list->PathArcTo(curr, radius, angle1, angle2, 6);
+            build_path();
+            draw_list->PathStroke(border_col, ImDrawFlags_Closed, border_thickness);
         }
-
-        draw_list->PathFillConvex(col);
     };
 
     float corner_radius = 2.0f; // 둥근 모서리 반지름 (1.5f ~ 2.5f 추천)
 
-    // 왼쪽 그랩 (▶ 둥근 모양)
-    AddRoundedTriangleFilled(
+    // 왼쪽 그랩 (▶ 둥근 모양 + 보더)
+    AddRoundedTriangle(
         window->DrawList,
         ImVec2(lx - tri_w, track_y - tri_h),
         ImVec2(lx + tri_w, track_y),
         ImVec2(lx - tri_w, track_y + tri_h),
         corner_radius,
-        grab_col
+        grab_col, grab_border_col, grab_border_thickness
     );
 
-    // 오른쪽 그랩 (◀ 둥근 모양)
-    AddRoundedTriangleFilled(
+    // 오른쪽 그랩 (◀ 둥근 모양 + 보더)
+    AddRoundedTriangle(
         window->DrawList,
         ImVec2(rx + tri_w, track_y - tri_h),
         ImVec2(rx + tri_w, track_y + tri_h),
         ImVec2(rx - tri_w, track_y),
         corner_radius,
-        grab_col
+        grab_col, grab_border_col, grab_border_thickness
     );
 
     // 툴팁 표시
@@ -531,9 +589,9 @@ bool ImGui::StatusStepBar(const char *str_id, int *current_step, const char **st
     ImDrawList* draw_list = window->DrawList;
 
     // 색상 정의
-    ImVec4 active_col_v = ImVec4(98.0f/255.0f, 192.0f/255.0f, 115.0f/255.0f, 1.0f);   // 부드러운 그린 (활성)
-    ImVec4 inactive_col_v = ImVec4(43.0f/255.0f, 45.0f/255.0f, 49.0f/255.0f, 1.0f);   // 다크 그레이 (비활성)
-    ImVec4 hover_col_v = ImVec4(65.0f/255.0f, 67.0f/255.0f, 74.0f/255.0f, 1.0f);       // 호버 색상
+    ImVec4 active_col_v     = ImColor(87, 242, 135);    // 부드러운 그린 (활성)
+    ImVec4 inactive_col_v   = ImColor(36, 36, 49);      // 다크 그레이 (비활성)
+    ImVec4 hover_col_v      = ImColor(44, 44, 47);      // 호버 색상
 
     ImU32 text_active_col = IM_COL32(240, 240, 240, 255);
     ImU32 text_inactive_col = IM_COL32(130, 130, 130, 255);
@@ -955,6 +1013,152 @@ bool ImGui::TransformControl(Eigen::Matrix4d* matrix)
     ImGui::PopID();
 
     return is_changed;
+}
+
+bool ImGui::ThemeSelector(int* current_theme)
+{
+    bool value_changed = false;
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+
+    // 두 가지 테마 정의 (Light / Dark)
+    ImGui::ThemePreviewData themes[2] = {
+        {
+            "Light Mode",
+            IM_COL32(240, 243, 249, 255), // Bg: 밝은 회청색
+            IM_COL32(255, 255, 255, 255), // Panel: 순백색
+            IM_COL32(59, 104, 255, 255),  // Primary: 블루
+            IM_COL32(255, 99, 132, 255),  // Secondary: 핑크/레드
+            IM_COL32(50, 50, 55, 255)     // Text: 어두운 회색
+        },
+        {
+            "Dark Mode",
+            ImGui::GetColorU32(ImGuiCol_WindowBg),  // Bg
+            ImGui::GetColorU32(ImGuiCol_ChildBg),   // Panel
+            ImGui::GetColorU32(ImGuiCol_Button),    // Primary
+            ImGui::GetColorU32(ImGuiCol_FrameBg),   // Secondary
+            ImGui::GetColorU32(ImGuiCol_Text)       // Text
+        }
+    };
+
+    // 카드 크기 설정
+    const ImVec2 card_size(140.0f, 130.0f);
+    const float preview_h = 90.0f; // 상단 미리보기 영역 높이
+    const float rounding = 8.0f;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(16.0f, 10.0f));
+
+    for (int i = 0; i < 2; i++)
+    {
+        if (i > 0) ImGui::SameLine();
+
+        ImGui::PushID(i);
+
+        const ImGui::ThemePreviewData& theme = themes[i];
+        bool is_selected = (*current_theme == i);
+
+        // 카드의 Bounding Box 계산
+        ImVec2 pos = window->DC.CursorPos;
+        ImRect bb(pos, ImVec2(pos.x + card_size.x, pos.y + card_size.y));
+
+        ImGui::ItemSize(bb, style.FramePadding.y);
+        if (!ImGui::ItemAdd(bb, window->GetID("##ThemeCard")))
+        {
+            ImGui::PopID();
+            continue;
+        }
+
+        // 클릭 이벤트 처리
+        bool hovered, held;
+        bool pressed = ImGui::ButtonBehavior(bb, window->GetID("##ThemeCard"), &hovered, &held);
+        if (pressed)
+        {
+            *current_theme = i;
+            value_changed = true;
+        }
+
+        // ==========================================
+        // 1. 카드 배경 및 테두리 (Hover & Selection)
+        // ==========================================
+        ImU32 card_bg = ImGui::GetColorU32(ImGuiCol_WindowBg); // 현재 ImGui 테마의 윈도우 배경색 사용
+        ImU32 border_col = is_selected ? theme.PrimaryColor :
+                           (hovered ? IM_COL32(150, 150, 150, 100) : IM_COL32(100, 100, 100, 50));
+
+        window->DrawList->AddRectFilled(bb.Min, bb.Max, card_bg, rounding);
+        window->DrawList->AddRect(bb.Min, bb.Max, border_col, rounding, 0, is_selected ? 2.0f : 1.0f);
+
+        // ==========================================
+        // 2. 미니 UI 미리보기 (상단)
+        // ==========================================
+        ImVec2 p_min = ImVec2(bb.Min.x + 2.0f, bb.Min.y + 2.0f);
+        ImVec2 p_max = ImVec2(bb.Max.x - 2.0f, bb.Min.y + preview_h);
+
+        // 미리보기 전체 배경
+        window->DrawList->AddRectFilled(p_min, p_max, theme.BgColor, rounding - 2.0f, ImDrawFlags_RoundCornersTop);
+
+        // 가짜 UI: 상단 헤더 (Header)
+        ImVec2 header_p_max = ImVec2(p_max.x, p_min.y + 16.0f);
+        window->DrawList->AddRectFilled(p_min, header_p_max, theme.PanelColor, rounding - 2.0f, ImDrawFlags_RoundCornersTop);
+        // 헤더 안의 가짜 텍스트 (타이틀)
+        window->DrawList->AddRectFilled(ImVec2(p_min.x + 8.0f, p_min.y + 6.0f), ImVec2(p_min.x + 40.0f, p_min.y + 10.0f), theme.TextColor);
+
+        // 가짜 UI: 좌측 사이드바 (Sidebar)
+        ImVec2 sidebar_p_max = ImVec2(p_min.x + 30.0f, p_max.y);
+        window->DrawList->AddRectFilled(ImVec2(p_min.x, header_p_max.y + 4.0f), sidebar_p_max, theme.PanelColor, 0.0f);
+        // 사이드바 안의 가짜 메뉴 아이템들
+        for (int j = 0; j < 3; j++) {
+            float sy = header_p_max.y + 12.0f + (j * 12.0f);
+            window->DrawList->AddRectFilled(ImVec2(p_min.x + 6.0f, sy), ImVec2(p_min.x + 24.0f, sy + 4.0f), theme.TextColor);
+        }
+
+        // 가짜 UI: 메인 컨텐츠 영역 패널
+        ImVec2 content_min = ImVec2(p_min.x + 38.0f, header_p_max.y + 12.0f);
+        ImVec2 content_max = ImVec2(p_max.x - 8.0f, p_max.y - 8.0f);
+        window->DrawList->AddRectFilled(content_min, content_max, theme.PanelColor, 4.0f);
+
+        // 가짜 UI: Primary Button
+        ImVec2 btn1_min = ImVec2(content_min.x + 8.0f, content_min.y + 8.0f);
+        ImVec2 btn1_max = ImVec2(content_min.x + 40.0f, content_min.y + 20.0f);
+        window->DrawList->AddRectFilled(btn1_min, btn1_max, theme.PrimaryColor, 3.0f);
+
+        // 가짜 UI: Secondary Button / Badge
+        ImVec2 btn2_min = ImVec2(btn1_max.x + 6.0f, content_min.y + 8.0f);
+        ImVec2 btn2_max = ImVec2(btn2_min.x + 18.0f, content_min.y + 20.0f);
+        window->DrawList->AddRectFilled(btn2_min, btn2_max, theme.SecondaryColor, 3.0f);
+
+        // 가짜 UI: 본문 텍스트 줄
+        for (int j = 0; j < 2; j++) {
+            float ty = btn1_max.y + 10.0f + (j * 8.0f);
+            float width = (j == 0) ? 35.0f : 20.0f; // 두 번째 줄은 짧게
+            window->DrawList->AddRectFilled(ImVec2(content_min.x + 8.0f, ty), ImVec2(content_min.x + 8.0f + width, ty + 3.0f), theme.TextColor);
+        }
+
+        // 미리보기와 아래 텍스트 사이의 구분선
+        window->DrawList->AddLine(ImVec2(bb.Min.x, p_max.y), ImVec2(bb.Max.x, p_max.y), IM_COL32(100, 100, 100, 50));
+
+        // ==========================================
+        // 3. 하단 테마 이름 텍스트
+        // ==========================================
+        ImVec2 text_size = ImGui::CalcTextSize(theme.Name);
+        ImVec2 text_pos = ImVec2(
+            bb.Min.x + (card_size.x - text_size.x) * 0.5f,
+            bb.Min.y + preview_h + ((card_size.y - preview_h) - text_size.y) * 0.5f
+        );
+
+        // 선택된 상태면 Primary 색상으로, 아니면 기본 텍스트 색상으로 출력
+        ImU32 name_col = is_selected ? theme.PrimaryColor : ImGui::GetColorU32(ImGuiCol_Text);
+        window->DrawList->AddText(text_pos, name_col, theme.Name);
+
+        ImGui::PopID();
+    }
+
+    ImGui::PopStyleVar();
+
+    return value_changed;
 }
 
 

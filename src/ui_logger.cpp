@@ -69,12 +69,12 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
     ImGui::BeginChild("Sidebar", ImVec2(sidebar_width, 0), false);
 
     ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
     // 로그 지우기 버튼
-    if (ImGui::Button(ICON_MD_DELETE, BUTTON_SIZE)) {
+    if (ImGui::TitleButton(ICON_MD_DELETE, BUTTON_SIZE, ImGuiButtonFlags_None)) {
         clear();
     }
 
@@ -90,7 +90,7 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
     }
 
-    if (ImGui::Button(ICON_MD_WRAP_TEXT, BUTTON_SIZE)) {
+    if (ImGui::TitleButton(ICON_MD_WRAP_TEXT, BUTTON_SIZE, ImGuiButtonFlags_None)) {
         auto_scroll = !auto_scroll;
     }
 

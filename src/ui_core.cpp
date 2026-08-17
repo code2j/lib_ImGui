@@ -106,29 +106,31 @@ namespace ImGui
         ImVec4* colors = style.Colors;
 
 
-        ImVec4 color_primary        = ImColor(7, 7, 9);
-        ImVec4 color_secondary      = ImColor(12, 12, 14);
-        ImVec4 color_accent         = ImColor(93, 105, 240);
+        ImVec4 color_bg                 = ImColor(7, 7, 9);
+        ImVec4 color_surf               = ImColor(12, 12, 14);
+        ImVec4 color_surf_variant       = ImColor(11, 11, 12);
 
-        ImVec4 color_red            = ImColor(181, 65, 60);
+        ImVec4 color_primary            = ImColor(93, 105, 240);
+        ImVec4 color_primary_hover      = ImColor(73, 85, 185);
+        ImVec4 color_primary_active     = ImColor(63, 74, 162);
 
-        ImVec4 color_text           = ImColor(228, 228, 230);
-        ImVec4 color_transparent    = ImColor(0, 0, 0, 0);
 
-        ImVec4 theme_blue_hover     = ImColor(73, 85, 185);
-        ImVec4 theme_blue_active    = ImColor(63, 74, 162);
+        ImVec4 color_red                = ImColor(181, 65, 60);
+        ImVec4 color_green              = ImColor(87, 242, 135);
 
-        ImVec4 theme_tab_focused    = ImColor(18, 18, 20);
-        ImVec4 theme_tab_active     = ImColor(36, 36, 39);
+        ImVec4 color_text               = ImColor(228, 228, 230);
+        ImVec4 color_text_disabled      = ImColor(128, 133, 138);
+        ImVec4 color_transparent        = ImColor(0, 0, 0, 0);
 
-        ImVec4 theme_bg_secondary   = ImColor(11, 11, 12);
-        ImVec4 theme_border         = ImColor(44, 44, 47);
 
-        ImVec4 theme_scrollbar        = ImColor(92, 93, 103, 255);
-        ImVec4 theme_scrollbar_hover  = ImVec4(0.28, 0.30, 0.32, 1.00);
-        ImVec4 theme_scrollbar_active = ImVec4(0.32, 0.34, 0.36, 1.00);
+        ImVec4 theme_tab_focused        = ImColor(18, 18, 20);
+        ImVec4 theme_tab_active         = ImColor(36, 36, 39);
 
-        
+        ImVec4 color_border             = ImColor(44, 44, 47);
+
+        ImVec4 color_scrollbar          = ImColor(92, 93, 103);
+        ImVec4 color_scrollbar_hover    = ImColor(71, 77, 82);
+        ImVec4 color_scrollbar_active   = ImColor(82, 87, 92);
 
 
         // ---------------------------------------------------------------
@@ -136,65 +138,65 @@ namespace ImGui
         // ---------------------------------------------------------------
         // [Text]
         colors[ImGuiCol_Text]                  = color_text;
-        colors[ImGuiCol_TextDisabled]          = ImVec4(0.50, 0.52, 0.54, 1.00);
-        colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.24, 0.34, 0.44, 0.35);
-        colors[ImGuiCol_DragDropTarget]        = theme_blue_active;
+        colors[ImGuiCol_TextDisabled]          = color_text_disabled;
+        colors[ImGuiCol_TextSelectedBg]        = color_primary;
+        colors[ImGuiCol_DragDropTarget]        = color_primary_active;
         // [Background]
-        colors[ImGuiCol_WindowBg]              = color_primary;
-        colors[ImGuiCol_ChildBg]               = color_secondary;
-        colors[ImGuiCol_PopupBg]               = color_secondary;
-        colors[ImGuiCol_MenuBarBg]             = color_secondary;
+        colors[ImGuiCol_WindowBg]              = color_bg;
+        colors[ImGuiCol_ChildBg]               = color_surf;
+        colors[ImGuiCol_PopupBg]               = color_surf;
+        colors[ImGuiCol_MenuBarBg]             = color_surf;
         // [Border]
-        colors[ImGuiCol_Border]                = theme_border;
+        colors[ImGuiCol_Border]                = color_border;
         colors[ImGuiCol_BorderShadow]          = color_transparent;
         // [Frame]
-        colors[ImGuiCol_FrameBg]               = theme_bg_secondary;
+        colors[ImGuiCol_FrameBg]               = color_surf_variant;
         colors[ImGuiCol_FrameBgHovered]        = color_transparent;
         colors[ImGuiCol_FrameBgActive]         = color_transparent;
         // [Title]
-        colors[ImGuiCol_TitleBg]               = color_primary;
-        colors[ImGuiCol_TitleBgActive]         = color_primary;
-        colors[ImGuiCol_TitleBgCollapsed]      = color_primary;
+        colors[ImGuiCol_TitleBg]               = color_bg;
+        colors[ImGuiCol_TitleBgActive]         = color_bg;
+        colors[ImGuiCol_TitleBgCollapsed]      = color_bg;
         // [Scrollbar]
         colors[ImGuiCol_ScrollbarBg]           = color_transparent;
-        colors[ImGuiCol_ScrollbarGrab]         = theme_scrollbar;
-        colors[ImGuiCol_ScrollbarGrabHovered]  = theme_scrollbar_hover;
-        colors[ImGuiCol_ScrollbarGrabActive]   = theme_scrollbar_active;
+        colors[ImGuiCol_ScrollbarGrab]         = color_scrollbar;
+        colors[ImGuiCol_ScrollbarGrabHovered]  = color_scrollbar_hover;
+        colors[ImGuiCol_ScrollbarGrabActive]   = color_scrollbar_active;
         // [Checkbox]
-        colors[ImGuiCol_CheckMark]             = color_accent;
+        colors[ImGuiCol_CheckMark]             = color_primary;
         // [Slider]
-        colors[ImGuiCol_SliderGrab]            = color_accent;
-        colors[ImGuiCol_SliderGrabActive]      = theme_blue_hover;
+        colors[ImGuiCol_SliderGrab]            = color_primary;
+        colors[ImGuiCol_SliderGrabActive]      = color_primary_hover;
         // [Button]
-        colors[ImGuiCol_Button]                = color_accent;
-        colors[ImGuiCol_ButtonHovered]         = theme_blue_hover;
-        colors[ImGuiCol_ButtonActive]          = theme_blue_active;
+        colors[ImGuiCol_Button]                = color_primary;
+        colors[ImGuiCol_ButtonHovered]         = color_primary_hover;
+        colors[ImGuiCol_ButtonActive]          = color_primary_active;
         // [Header]
         colors[ImGuiCol_Header]                = theme_tab_focused;
-        colors[ImGuiCol_HeaderHovered]         = theme_blue_hover;
-        colors[ImGuiCol_HeaderActive]          = theme_blue_active;
+        colors[ImGuiCol_HeaderHovered]         = color_primary_hover;
+        colors[ImGuiCol_HeaderActive]          = color_primary_active;
         // [Separator]
         colors[ImGuiCol_Separator]             = ImVec4(0.28, 0.29, 0.30, 1.00);
-        colors[ImGuiCol_SeparatorHovered]      = theme_blue_hover;
-        colors[ImGuiCol_SeparatorActive]       = theme_blue_active;
+        colors[ImGuiCol_SeparatorHovered]      = color_primary_hover;
+        colors[ImGuiCol_SeparatorActive]       = color_primary_active;
         // [Resize Grip]
         colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 1.00);
         colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00);
         colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00);
         // [Tab]
-        colors[ImGuiCol_Tab]                   = color_primary;
-        colors[ImGuiCol_TabHovered]            = theme_tab_focused;
+        colors[ImGuiCol_Tab]                   = color_bg;
+        colors[ImGuiCol_TabHovered]            = color_primary_hover;
         colors[ImGuiCol_TabSelected]           = theme_tab_active;
-        colors[ImGuiCol_TabUnfocused]          = color_primary;
+        colors[ImGuiCol_TabUnfocused]          = color_bg;
         colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.24, 0.34, 0.44, 1.00);
         colors[ImGuiCol_TabSelectedOverline]   = color_transparent;
-        colors[ImGuiCol_TabDimmed]             = color_primary;
+        colors[ImGuiCol_TabDimmed]             = color_bg;
         colors[ImGuiCol_TabDimmedSelected]     = theme_tab_active;
         // [Plot]
-        colors[ImGuiCol_PlotLines]             = color_accent;
-        colors[ImGuiCol_PlotLinesHovered]      = theme_blue_hover;
-        colors[ImGuiCol_PlotHistogram]         = color_accent;
-        colors[ImGuiCol_PlotHistogramHovered]  = theme_blue_hover;
+        colors[ImGuiCol_PlotLines]             = color_primary;
+        colors[ImGuiCol_PlotLinesHovered]      = color_primary_hover;
+        colors[ImGuiCol_PlotHistogram]         = color_primary;
+        colors[ImGuiCol_PlotHistogramHovered]  = color_primary_hover;
         // [Table]
         colors[ImGuiCol_TableHeaderBg]         = ImVec4(0.20, 0.22, 0.24, 1.00);
         colors[ImGuiCol_TableBorderStrong]     = ImVec4(0.28, 0.29, 0.30, 1.00);
@@ -202,13 +204,14 @@ namespace ImGui
         colors[ImGuiCol_TableRowBg]            = ImVec4(0.20, 0.22, 0.24, 1.00);
         colors[ImGuiCol_TableRowBgAlt]         = ImVec4(0.22, 0.24, 0.26, 1.00);
         // [Nav]
+        colors[ImGuiCol_NavCursor];
         colors[ImGuiCol_NavHighlight]          = ImVec4(0.46, 0.56, 0.66, 1.00);
-        colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00, 1.00, 1.00, 0.70);
-        colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80, 0.80, 0.80, 0.20);
+        colors[ImGuiCol_NavWindowingHighlight] = color_green;
+        colors[ImGuiCol_NavWindowingDimBg]     = color_red;
         colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80, 0.80, 0.80, 0.35);
         // [Docking]
-        colors[ImGuiCol_DockingPreview]        = theme_blue_active;
-        colors[ImGuiCol_DockingEmptyBg]        = theme_blue_hover;
+        colors[ImGuiCol_DockingPreview]        = color_primary_active;
+        colors[ImGuiCol_DockingEmptyBg]        = color_primary_hover;
 
 
 
@@ -448,7 +451,7 @@ namespace ImGui
                 ImGuiWindowFlags_NoBringToFrontOnFocus;
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.02745098, 0.02745098, 0.035294118, 1.00));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetColorU32(ImGuiCol_ChildBg));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
@@ -500,12 +503,14 @@ namespace ImGui
 
 
         ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
 
-        if (ImGui::Button(ICON_MD_SETTINGS, ImVec2(settingsBtnWidth, TITLEBAR_HEIGHT))) {
+        if (ImGui::TitleButton(ICON_MD_SETTINGS, ImVec2(settingsBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
             ImGui::OpenPopup("SettingsPopup");
         }
+
+
         ImGui::PopStyleColor(3);
 
         // 설정 팝업 정의 (팝업 위치도 동일하게 조정)
@@ -529,13 +534,13 @@ namespace ImGui
         ImGui::SetCursorPosY(0.0f);
 
         ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
 
         // 창 상태에 따라 아이콘 텍스트 분기 처리
         const char* maxIcon = IsWindowMaximized() ? ICON_MD_FULLSCREEN_EXIT : ICON_MD_FULLSCREEN;
 
-        if (ImGui::Button(maxIcon, ImVec2(maxBtnWidth, ::TITLEBAR_HEIGHT))) {
+        if (ImGui::TitleButton(maxIcon, ImVec2(maxBtnWidth, ::TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
             if (IsWindowMaximized()) {
                 RestoreWindow();  // 최대화 상태라면 원래 크기로 복원
             } else {
@@ -554,9 +559,11 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
 
 
-        if (ImGui::Button(ICON_MD_CLOSE, ImVec2(closeBtnWidth, TITLEBAR_HEIGHT))) {
+        if (ImGui::TitleButton(ICON_MD_CLOSE, ImVec2(closeBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
             ImGuiExt::should_close_app = true;
         }
+
+
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(1);
         ImGui::End();
@@ -711,7 +718,7 @@ namespace ImGui
         // Color Editer
         // ---------------------------------------------------------------
         if (ImGuiExt::show_style_edit) {
-            ImGui::Begin("Style Editor");
+            ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
             ImGui::ShowStyleEditor(&ImGui::GetStyle());
             ImGui::End();
         }

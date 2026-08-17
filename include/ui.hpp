@@ -37,6 +37,7 @@ namespace ImGuiExt
     inline bool show_3d_viewport = false; // 3d 뷰포트 보이기 여부
     inline bool show_log_window  = false; // 로거 표시 여부
     inline bool show_style_edit  = false; // 컬러 에디터 표시 여부
+    inline int  theme_id         = 1;     // 0: white, 1: dark
 
 
     // ==================================================
@@ -67,6 +68,9 @@ namespace ImGuiExt
 
 namespace ImGui
 {
+
+
+
     void init(const char* title, int width = 1280, int height = 720);
     void destroy();
     bool should_close();

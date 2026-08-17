@@ -802,7 +802,10 @@ bool ImGui::ButtonEx(const char* label, const ImVec2& size_arg, ImGuiButtonFlags
 
     if (g.LogEnabled)
         LogSetNextTextDecoration("[", "]");
+
+    PushStyleColor(ImGuiCol_Text, IM_COL32(228, 228, 230, 255));
     RenderTextClipped(bb.Min + style.FramePadding, bb.Max - style.FramePadding, label, NULL, &label_size, style.ButtonTextAlign, &bb);
+    PopStyleColor();
 
     // Automatically close popups
     //if (pressed && !(flags & ImGuiButtonFlags_DontClosePopups) && (window->Flags & ImGuiWindowFlags_Popup))
@@ -3590,7 +3593,7 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     ImVec2 track_max = ImVec2(frame_bb.Max.x, frame_bb.GetCenter().y + track_height * 0.5f);
 
     // 1. 전체 배경 트랙
-    ImU32 bg_track_col = IM_COL32(65, 65, 70, 255);
+    ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab); //IM_COL32(65, 65, 70, 255);
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
 
     // [수정됨] 그려질 그랩의 위치도 보정된 위치로 적용
@@ -4110,8 +4113,8 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
         PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 
         PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
-        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
+        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 125));
+        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(100, 100, 100, 125));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
         if (ButtonEx("<", ImVec2(button_size, button_size)))
@@ -4173,8 +4176,8 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
         PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 
         PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(39, 39, 43, 255));
-        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(34, 34, 37, 255));
+        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 125));
+        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(100, 100, 100, 125));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
         if (ButtonEx(">", ImVec2(button_size, button_size)))
