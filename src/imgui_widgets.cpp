@@ -2214,125 +2214,139 @@ static const char* Items_SingleStringGetter(void* data, int idx)
 // Old API, prefer using BeginCombo() nowadays if you can.
 bool ImGui::Combo(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx), void* user_data, int items_count, int popup_max_height_in_items)
 {
+    bool is_dark = true;
+    ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+    if (bg_color.x > (200.f/255.0f) && bg_color.y > (200.f/255.0f) && bg_color.z > (200.f/255.0f) && bg_color.w > (200.f/255.0f))
+    {
+        is_dark = false;
+    }
+
+
     ImGuiContext& g = *GImGui;
-        ImGuiWindow* window = GetCurrentWindow();
-        if (window->SkipItems)
-            return false;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
 
-        const char* preview_value = NULL;
-        if (*current_item >= 0 && *current_item < items_count)
-            preview_value = getter(user_data, *current_item);
+    const char* preview_value = NULL;
+    if (*current_item >= 0 && *current_item < items_count)
+        preview_value = getter(user_data, *current_item);
 
-        if (popup_max_height_in_items != -1 && !(g.NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasSizeConstraint))
-            SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, CalcMaxPopupHeightFromItemCount(popup_max_height_in_items)));
+    if (popup_max_height_in_items != -1 && !(g.NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasSizeConstraint))
+        SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, CalcMaxPopupHeightFromItemCount(popup_max_height_in_items)));
 
-        // 1. Popup 열림 상태 확인 (활성화 시 테두리 색상을 주기 위함)
-        ImGuiID id = window->GetID(label);
-        ImGuiID popup_id = ImHashStr("##ComboPopup", 0, id);
-        bool is_open = IsPopupOpen(popup_id, ImGuiPopupFlags_None);
+    // 1. Popup 열림 상태 확인 (활성화 시 테두리 색상을 주기 위함)
+    ImGuiID id = window->GetID(label);
+    ImGuiID popup_id = ImHashStr("##ComboPopup", 0, id);
+    bool is_open = IsPopupOpen(popup_id, ImGuiPopupFlags_None);
 
-        // 2. Main Frame 스타일 적용 (열려있을 때만 파란색 테두리)
-        if (is_open)
-        {
-            PushStyleColor(ImGuiCol_Border, ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
-            PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
-        }
-        PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.047058824, 0.047058824, 0.054901961, 1.00)); // 약간 어두운 기본 배경
+    // 2. Main Frame 스타일 적용 (열려있을 때만 파란색 테두리)
+    if (is_open)
+    {
+        PushStyleColor(ImGuiCol_Border, ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
+    }
+    PushStyleColor(ImGuiCol_FrameBg, GetColorU32(ImGuiCol_FrameBg)); // 약간 어두운 기본 배경
 
-        // 3. Popup 창 스타일 미리 적용 (BeginCombo 내부에서 팝업을 시작하므로 미리 Push)
-        PushStyleVar(ImGuiStyleVar_PopupRounding, 6.0f);
-        PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.18f, 0.18f, 0.19f, 1.0f));
+    // 3. Popup 창 스타일 미리 적용 (BeginCombo 내부에서 팝업을 시작하므로 미리 Push)
+    PushStyleVar(ImGuiStyleVar_PopupRounding, 6.0f);
+    PushStyleColor(ImGuiCol_PopupBg,  GetColorU32(ImGuiCol_ChildBg));
 
-        bool combo_started = BeginCombo(label, preview_value, ImGuiComboFlags_None);
+    bool combo_started = BeginCombo(label, preview_value, ImGuiComboFlags_None);
 
-        PopStyleColor(1); // FrameBg 복구
-        if (is_open)
-        {
-            PopStyleVar(); // FrameBorderSize 복구
-            PopStyleColor(); // Border 복구
-        }
+    PopStyleColor(1); // FrameBg 복구
+    if (is_open)
+    {
+        PopStyleVar(); // FrameBorderSize 복구
+        PopStyleColor(); // Border 복구
+    }
 
-        if (!combo_started)
-        {
-            PopStyleColor(); // PopupBg 복구
-            PopStyleVar(); // PopupRounding 복구
-            return false;
-        }
-
-        // Display items
-        bool value_changed = false;
-        ImGuiListClipper clipper;
-        clipper.Begin(items_count);
-        clipper.IncludeItemByIndex(*current_item);
-
-        while (clipper.Step())
-        {
-            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
-            {
-                const char* item_text = getter(user_data, i);
-                if (item_text == NULL)
-                    item_text = "*Unknown item*";
-
-                PushID(i);
-                const bool item_selected = (i == *current_item);
-
-                // 선택된 아이템의 쨍한 기본 하이라이트 색상 제거 (이미지와 동일하게 마우스 오버 시에만 살짝 밝아지도록 설정)
-                if (item_selected)
-                {
-                    PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-                    PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
-                    PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
-                }
-                else
-                {
-                    PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
-                    PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
-                }
-
-                // 항목 높이 및 여백(Padding) 적용
-                ImVec2 pos = ImGui::GetCursorScreenPos();
-                float avail_width = ImGui::GetContentRegionAvail().x;
-                float item_height = ImGui::GetTextLineHeight() + 16.0f; // 항목 위아래에 8px씩 여백 추가
-
-                // 텍스트는 수동으로 그리기 위해 Selectable 라벨은 숨김("##item") 처리
-                if (Selectable("##item", item_selected, ImGuiSelectableFlags_None, ImVec2(0, item_height)))
-                {
-                    value_changed = true;
-                    *current_item = i;
-                }
-
-                // 텍스트 수동 렌더링 (가운데 정렬)
-                ImVec2 text_pos = ImVec2(pos.x + 10.0f, pos.y + (item_height - ImGui::GetTextLineHeight()) * 0.5f);
-                ImGui::GetWindowDrawList()->AddText(text_pos, IM_COL32(230, 230, 230, 255), item_text);
-
-                // 선택된 항목이면 우측에 하얀색 체크마크(✓) 렌더링
-                if (item_selected)
-                {
-                    ImVec2 check_pos = ImVec2(pos.x + avail_width - 24.0f, pos.y + (item_height - 14.0f) * 0.5f);
-                    ImGui::RenderCheckMark(ImGui::GetWindowDrawList(), check_pos, IM_COL32(255, 255, 255, 255), 14.0f);
-                    PopStyleColor(3);
-                }
-                else
-                {
-                    PopStyleColor(2);
-                }
-
-                if (item_selected)
-                    SetItemDefaultFocus();
-
-                PopID();
-            }
-        }
-
-        EndCombo();
-
+    if (!combo_started)
+    {
         PopStyleColor(); // PopupBg 복구
         PopStyleVar(); // PopupRounding 복구
+        return false;
+    }
 
-        if (value_changed)
-            MarkItemEdited(g.LastItemData.ID);
+    // Display items
+    bool value_changed = false;
+    ImGuiListClipper clipper;
+    clipper.Begin(items_count);
+    clipper.IncludeItemByIndex(*current_item);
 
-        return value_changed;
+
+
+
+
+    while (clipper.Step())
+    {
+        for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+        {
+            const char* item_text = getter(user_data, i);
+            if (item_text == NULL)
+                item_text = "*Unknown item*";
+
+            PushID(i);
+            const bool item_selected = (i == *current_item);
+
+            // 선택된 아이템의 쨍한 기본 하이라이트 색상 제거 (이미지와 동일하게 마우스 오버 시에만 살짝 밝아지도록 설정)
+            if (item_selected)
+            {
+                PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+                PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
+                PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
+            }
+            else
+            {
+                PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
+                PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
+            }
+
+            // 항목 높이 및 여백(Padding) 적용
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            float avail_width = ImGui::GetContentRegionAvail().x;
+            float item_height = ImGui::GetTextLineHeight() + 16.0f; // 항목 위아래에 8px씩 여백 추가
+
+            // 텍스트는 수동으로 그리기 위해 Selectable 라벨은 숨김("##item") 처리
+            if (Selectable("##item", item_selected, ImGuiSelectableFlags_None, ImVec2(0, item_height)))
+            {
+                value_changed = true;
+                *current_item = i;
+            }
+
+            // 텍스트 수동 렌더링 (가운데 정렬)
+            ImVec2 text_pos = ImVec2(pos.x + 10.0f, pos.y + (item_height - ImGui::GetTextLineHeight()) * 0.5f);
+            ImGui::GetWindowDrawList()->AddText(text_pos, is_dark ? IM_COL32(230, 230, 230, 255) : IM_COL32(40, 40, 25, 255), item_text);
+
+
+
+            // 선택된 항목이면 우측에 하얀색 체크마크(✓) 렌더링
+            if (item_selected)
+            {
+                ImVec2 check_pos = ImVec2(pos.x + avail_width - 24.0f, pos.y + (item_height - 14.0f) * 0.5f);
+                ImGui::RenderCheckMark(ImGui::GetWindowDrawList(), check_pos, is_dark ?  IM_COL32(255, 255, 255, 255) :  IM_COL32(40, 40, 25, 255), 14.0f);
+                PopStyleColor(3);
+            }
+            else
+            {
+                PopStyleColor(2);
+            }
+
+            if (item_selected)
+                SetItemDefaultFocus();
+
+            PopID();
+        }
+    }
+
+    EndCombo();
+
+    PopStyleColor(); // PopupBg 복구
+    PopStyleVar(); // PopupRounding 복구
+
+    if (value_changed)
+        MarkItemEdited(g.LastItemData.ID);
+
+    return value_changed;
 }
 
 // Combo box helper allowing to pass an array of strings.
