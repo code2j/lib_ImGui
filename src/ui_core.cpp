@@ -295,6 +295,13 @@ namespace ImGui
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        static int last_theme = -1;
+        if (last_theme != ImGuiExt::theme_id) {
+            if (ImGuiExt::theme_id == 0) ImGui::style_white();
+            else                         ImGui::style_dark();
+            last_theme = ImGuiExt::theme_id;
+        }
+
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         int curr_w = GetScreenWidth();
         int curr_h = GetScreenHeight();
@@ -402,21 +409,21 @@ namespace ImGui
             ImGui::OpenPopup("SettingsPopup");
         }
 
-
         ImGui::PopStyleColor(3);
 
         // 설정 팝업 정의 (팝업 위치도 동일하게 조정)
         ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - (closeBtnWidth + maxBtnWidth + settingsBtnWidth) * 2, viewport->Pos.y + TITLEBAR_HEIGHT));
         if (ImGui::BeginPopup("SettingsPopup")) {
-            ImGui::Text("설정");
-            ImGui::Separator();
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 
-            ImGui::Checkbox("3D Viewport", & ImGuiExt::show_3d_viewport);
-            ImGui::Checkbox("Logger", &ImGuiExt::show_log_window);
-            ImGui::Checkbox("Style Editor", &ImGuiExt::show_style_edit);
+            ImGui::MenuItem("3D 뷰포트", "", &ImGuiExt::show_3d_viewport);
+            ImGui::MenuItem("로거", "", &ImGuiExt::show_log_window);
+            ImGui::MenuItem("스타일 에디터", "", &ImGuiExt::show_style_edit);
 
-            ImGui::PopStyleVar();
+            if (ImGui::BeginMenu("테마"))
+            {
+                ImGui::ThemeSelector(&ImGuiExt::theme_id);
+                ImGui::EndMenu();
+            }
 
             ImGui::EndPopup();
         }
@@ -650,6 +657,7 @@ namespace ImGui
         return true;
     }
 
+
     void style_white()
     {
         if (ImGuiExt::theme_id != 0) return;
@@ -765,6 +773,7 @@ namespace ImGui
         colors[ImGuiCol_DockingEmptyBg]        = color_primary_hover;
 
     }
+
 
     void style_dark()
     {
