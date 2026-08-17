@@ -21,7 +21,10 @@ namespace ImGui
     // ====================================================
     // Slider
     // ====================================================
-    bool SliderFloatRange(const char* label, float* v_min, float* v_max, float v_bound_min, float v_bound_max, const char* format = "%.3f");
+    bool Slider(const char* label, float* v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
+    bool SliderX(const char* label, float* v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
+    bool SliderRange(const char* label, float* v_min, float* v_max, float v_bound_min, float v_bound_max, const char* format = "%.1f");
+    bool SliderRangeX(const char* label, float* v_min, float* v_max, float v_bound_min, float v_bound_max, const char* format = "%.1f");
 
 
     // ====================================================

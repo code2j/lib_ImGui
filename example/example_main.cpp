@@ -30,7 +30,6 @@ int main() {
         // ImGui::Combo()
         // ImGui::BeginCombo("Combo", "Hello");
         // ImGui::EndCombo();
-        // ImGui::SliderFloat2()
 
 
     while (ImGui::context([&]() {
@@ -77,10 +76,14 @@ int main() {
             ImGui::SliderFloat("Slider", &slider, 0.0f, 1.0f);
             ImGui::Dummy(ImVec2(0, 1));
 
+            static float sliderx = 0.314f;
+            ImGui::SliderX("SlideXr", &sliderx, 0.0f, 1.0f);
+            ImGui::Dummy(ImVec2(0, 1));
+
             // [범위 슬라이더 샘플]
             static float price_min = 0.0f;
             static float price_max = 10.0f;
-            ImGui::SliderFloatRange("Range", &price_min, &price_max, 0.0f, 10.0f, "%.1f");
+            ImGui::SliderRange("Range", &price_min, &price_max, 0.0f, 10.0f, "%.1f");
             ImGui::Dummy(ImVec2(0, 1));
 
             static int cnt = 1.0;

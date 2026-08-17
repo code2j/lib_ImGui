@@ -73,7 +73,12 @@ namespace ImGui
     bool should_close();
     bool context(std::function<void()> func);   // Gui 실행 컨텍스트
     void load_config(const char* path);         // config 파일 불러오기
+    void help(const char* desc);
 
+
+    // =====================================================
+    // 테마 스타일
+    // =====================================================
     void style_white();
     void style_dark();
 

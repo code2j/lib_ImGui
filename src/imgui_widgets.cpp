@@ -3500,6 +3500,7 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
     const float w = CalcItemWidth();
+    const ImU32 color_marker = (g.NextItemData.HasFlags & ImGuiNextItemDataFlags_HasColorMarker) ? g.NextItemData.ColorMarker : 0;
 
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w, label_size.y + style.FramePadding.y * 2.0f));
@@ -3510,83 +3511,15 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     if (!ItemAdd(total_bb, id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
         return false;
 
+    // Default format string when passing NULL
     if (format == NULL)
         format = DataTypeGetInfo(data_type)->PrintFmt;
 
-    ImRect slider_bb = frame_bb;
-    slider_bb.Min.x += 5.0f;
-    slider_bb.Max.x -= 5.0f;
-
-    // =========================================================================
-    // [헬퍼 람다] ImGui 내부의 grab_bb 중심점을 트랙 양끝(frame_bb)으로 꽉 차게 매핑
-    // =========================================================================
-    auto GetMappedGrabCenter = [&](const ImRect& g_bb) -> ImVec2 {
-        float grab_padding = 2.0f;
-        float g_w = g_bb.GetWidth();
-
-        // 내부 계산도 줄어든 slider_bb를 기준으로 합니다.
-        float internal_min_c = slider_bb.Min.x + grab_padding + g_w * 0.5f;
-        float internal_max_c = slider_bb.Max.x - grab_padding - g_w * 0.5f;
-
-        float t = 0.0f;
-        if (internal_max_c > internal_min_c)
-            t = ImClamp((g_bb.GetCenter().x - internal_min_c) / (internal_max_c - internal_min_c), 0.0f, 1.0f);
-
-        // 여기서 억지로 +5를 더할 필요 없이, slider_bb 전체 영역으로 꽉 차게 매핑하면 끝납니다.
-        float mapped_x = ImLerp(slider_bb.Min.x, slider_bb.Max.x, t);
-        return ImVec2(mapped_x, frame_bb.GetCenter().y);
-    };
-
-    // =========================================================================
-    // --- 그랩(손잡이) 선택 시에만 조절 가능하도록 판별 로직 추가 ---
-    // =========================================================================
-
-    ImRect current_grab_bb;
-    {
-        ImGuiID backup_active_id = g.ActiveId;
-        bool backup_mouse_down = g.IO.MouseDown[0];
-        bool backup_mouse_clicked = g.IO.MouseClicked[0];
-
-        g.ActiveId = 0;
-        g.IO.MouseDown[0] = false;
-        g.IO.MouseClicked[0] = false;
-
-        char dummy_data[16];
-        memcpy(dummy_data, p_data, DataTypeGetInfo(data_type)->Size);
-
-        // 2. 핵심: frame_bb 대신 slider_bb를 넘겨줍니다.
-        SliderBehavior(slider_bb, id, data_type, dummy_data, p_min, p_max, format, flags, &current_grab_bb);
-
-        g.ActiveId = backup_active_id;
-        g.IO.MouseDown[0] = backup_mouse_down;
-        g.IO.MouseClicked[0] = backup_mouse_clicked;
-    }
-
-    // 클릭 판정은 수정할 필요 없이 그대로 두면 됩니다. (자동으로 따라갑니다)
-    ImVec2 current_grab_center = GetMappedGrabCenter(current_grab_bb);
-    float grab_hitbox_radius = 9.0f + 4.0f;
-    ImRect interact_grab_bb(
-        current_grab_center.x - grab_hitbox_radius, frame_bb.Min.y - 4.0f,
-        current_grab_center.x + grab_hitbox_radius, frame_bb.Max.y + 4.0f
-    );
-
     const bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
-    bool is_clicking_outside_grab = hovered && IsMouseClicked(0, ImGuiInputFlags_None, id) && !interact_grab_bb.Contains(g.IO.MousePos);
-
-    bool backup_clicked = g.IO.MouseClicked[0];
-    bool backup_down = g.IO.MouseDown[0];
-
-    if (is_clicking_outside_grab)
-    {
-        g.IO.MouseClicked[0] = false;
-        g.IO.MouseDown[0] = false;
-    }
-    // =========================================================================
-
     bool temp_input_is_active = temp_input_allowed && TempInputIsActive(id);
-
     if (!temp_input_is_active)
     {
+        // Tabbing or Ctrl+Click on Slider turns it into an input box
         const bool clicked = hovered && IsMouseClicked(0, ImGuiInputFlags_None, id);
         const bool make_active = (clicked || g.NavActivateId == id);
         if (make_active && clicked)
@@ -3595,6 +3528,7 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
             if ((clicked && g.IO.KeyCtrl) || (g.NavActivateId == id && (g.NavActivateFlags & ImGuiActivateFlags_PreferInput)))
                 temp_input_is_active = true;
 
+        // Store initial value (not used by main lib but available as a convenience but some mods e.g. to revert)
         if (make_active)
             memcpy(&g.ActiveIdValueOnActivation, p_data, DataTypeGetInfo(data_type)->Size);
 
@@ -3609,113 +3543,35 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
 
     if (temp_input_is_active)
     {
-        if (is_clicking_outside_grab)
-        {
-            g.IO.MouseClicked[0] = backup_clicked;
-            g.IO.MouseDown[0] = backup_down;
-        }
+        // Only clamp Ctrl+Click input when ImGuiSliderFlags_ClampOnInput is set (generally via ImGuiSliderFlags_AlwaysClamp)
         const bool clamp_enabled = (flags & ImGuiSliderFlags_ClampOnInput) != 0;
         return TempInputScalar(frame_bb, id, label, data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
     }
 
+    // Draw frame
+    const ImU32 frame_col = GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+    RenderNavCursor(frame_bb, id);
+    RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, false, style.FrameRounding);
+    if (color_marker != 0 && style.ColorMarkerSize > 0.0f)
+        RenderColorComponentMarker(frame_bb, GetColorU32(color_marker), style.FrameRounding);
+    RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+
+    // Slider behavior
     ImRect grab_bb;
-    const bool value_changed = SliderBehavior(slider_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
-
-    if (is_clicking_outside_grab)
-    {
-        g.IO.MouseClicked[0] = backup_clicked;
-        g.IO.MouseDown[0] = backup_down;
-    }
-
+    const bool value_changed = SliderBehavior(frame_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
     if (value_changed)
         MarkItemEdited(id);
 
-    // ==========================================
-    // --- 이미지 스타일 커스텀 렌더링 시작 ---
-    // ==========================================
-    RenderNavCursor(frame_bb, id);
+    // Render grab
+    if (grab_bb.Max.x > grab_bb.Min.x)
+        window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab), style.GrabRounding);
 
-    float track_height = 4.0f;
-    ImVec2 track_min = ImVec2(frame_bb.Min.x, frame_bb.GetCenter().y - track_height * 0.5f);
-    ImVec2 track_max = ImVec2(frame_bb.Max.x, frame_bb.GetCenter().y + track_height * 0.5f);
-
-    // 1. 전체 배경 트랙
-    ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab); //IM_COL32(65, 65, 70, 255);
-    window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
-
-    // [수정됨] 그려질 그랩의 위치도 보정된 위치로 적용
-    ImVec2 grab_center = GetMappedGrabCenter(grab_bb);
-    float grab_radius = 9.0f;
-
-    // 2. 왼쪽 채워진 트랙
-    ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
-    if (grab_center.x > frame_bb.Min.x)
-    {
-        ImVec2 fill_max = ImVec2(grab_center.x, track_max.y);
-        window->DrawList->AddRectFilled(track_min, fill_max, fill_track_col, track_height * 0.5f);
-    }
-
-    // 3. 완전한 흰색 원형 그랩
-    // 3. 완전한 흰색 원형 그랩 및 테두리(보더) 추가
-    window->DrawList->AddCircleFilled(grab_center, grab_radius, IM_COL32(255, 255, 255, 255));
-
-    // 보더(테두리) 색상 및 두께 설정
-    ImU32 grab_border_col = GetColorU32(ImGuiCol_Border); //IM_COL32(200, 200, 200, 255); // 밝은 회색 (원하는 색상으로 변경 가능)
-    float grab_border_thickness = 1.0f;                   // 테두리 두께
-
-    window->DrawList->AddCircle(grab_center, grab_radius, grab_border_col, 0, grab_border_thickness);
-
+    // Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
     char value_buf[64];
-    DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
-
-    // 4. 말풍선(Tooltip) 디자인
-    if (g.ActiveId == id)
-    {
-        ImVec2 text_size = CalcTextSize(value_buf);
-        ImVec2 padding(10.0f, 6.0f);
-        float tooltip_y_offset = 12.0f;
-
-        ImVec2 tooltip_min = ImVec2(grab_center.x - text_size.x * 0.5f - padding.x, grab_center.y - grab_radius - tooltip_y_offset - text_size.y - padding.y * 2.0f);
-        ImVec2 tooltip_max = ImVec2(grab_center.x + text_size.x * 0.5f + padding.x, grab_center.y - grab_radius - tooltip_y_offset);
-
-        ImU32 tooltip_bg_col     = GetColorU32(ImGuiCol_FrameBg);
-        ImU32 tooltip_border_col = GetColorU32(ImGuiCol_Border);
-
-        // 1. 말풍선 둥근 사각형 배경 & 테두리
-        window->DrawList->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
-        window->DrawList->AddRect(tooltip_min, tooltip_max, tooltip_border_col, 6.0f);
-
-        // 꼬리 꼭짓점 기본 좌표 (사각형 하단 선 기준)
-        ImVec2 p1 = ImVec2(grab_center.x - 6.0f, tooltip_max.y);
-        ImVec2 p2 = ImVec2(grab_center.x + 6.0f, tooltip_max.y);
-        ImVec2 p3 = ImVec2(grab_center.x, tooltip_max.y + 6.0f); // 꼬리 끝(아래)
-
-        // 2. 몸통과 꼬리가 만나는 부분의 테두리를 확실하게 지우기
-        // 높이 2px짜리 배경색 사각형을 테두리 위에 덮어씌워 잔상을 없앱니다.
-        // 양끝 모서리가 잘리지 않도록 0.5f씩 좁혀서 덮어줍니다.
-        window->DrawList->AddRectFilled(
-            ImVec2(p1.x + 0.5f, tooltip_max.y - 1.0f),
-            ImVec2(p2.x - 0.5f, tooltip_max.y + 1.0f),
-            tooltip_bg_col
-        );
-
-        // 3. 꼬리 배경 삼각형 그리기
-        // 틈새가 안 생기도록 삼각형 윗변을 사각형 안쪽(위)으로 1픽셀 밀어 올려서 그립니다.
-        ImVec2 fill_p1 = ImVec2(p1.x, tooltip_max.y - 1.0f);
-        ImVec2 fill_p2 = ImVec2(p2.x, tooltip_max.y - 1.0f);
-        window->DrawList->AddTriangleFilled(fill_p1, fill_p2, p3, tooltip_bg_col);
-
-        // 4. 꼬리 테두리 (V자 선)
-        // 테두리 선이 사각형 바닥선(tooltip_max.y)에서 딱 떨어지게 연결됩니다.
-        ImVec2 tail_pts[3] = { p1, p3, p2 };
-        window->DrawList->AddPolyline(tail_pts, 3, tooltip_border_col, 0, 1.0f);
-
-        // 5. 텍스트 렌더링
-        window->DrawList->AddText(tooltip_min + padding, GetColorU32(ImGuiCol_Text), value_buf);
-    }
-    // ==========================================
-    // --- 이미지 스타일 커스텀 렌더링 끝 ---
-    // ==========================================
+    const char* value_buf_end = value_buf + DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
+    if (g.LogEnabled)
+        LogSetNextTextDecoration("{", "}");
+    RenderTextClipped(frame_bb.Min, frame_bb.Max, value_buf, value_buf_end, NULL, ImVec2(0.5f, 0.5f));
 
     if (label_size.x > 0.0f)
         RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, frame_bb.Min.y + style.FramePadding.y), label);
