@@ -5,6 +5,31 @@
 
 #include "ui.hpp"
 
+static const float DRAGDROP_HOLD_TO_OPEN_TIMER = 0.70f;    // Time for drag-hold to activate items accepting the ImGuiButtonFlags_PressedOnDragDropHold button behavior.
+static const float DRAG_MOUSE_THRESHOLD_FACTOR = 0.50f;
+static float CalcMaxPopupHeightFromItemCount(int items_count)
+{
+    ImGuiContext& g = *GImGui;
+    if (items_count <= 0)
+        return FLT_MAX;
+    return (g.FontSize + g.Style.ItemSpacing.y) * items_count - g.Style.ItemSpacing.y + (g.Style.WindowPadding.y * 2);
+}
+// Getter for the old Combo() API: "item1\0item2\0item3\0"
+static const char* Items_SingleStringGetter(void* data, int idx)
+{
+    const char* items_separated_by_zeros = (const char*)data;
+    int items_count = 0;
+    const char* p = items_separated_by_zeros;
+    while (*p)
+    {
+        if (idx == items_count)
+            break;
+        p += ImStrlen(p) + 1;
+        items_count++;
+    }
+    return *p ? p : NULL;
+}
+
 
 bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
 {
@@ -182,6 +207,543 @@ bool ImGui::ButtonX(const char* label, const ImVec2& size_arg, ImGuiButtonFlags 
 
     IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags);
     return pressed;
+}
+
+bool ImGui::CheckboxX(const char* label, bool* v)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+
+    const float square_sz = GetFrameHeight();
+    const ImVec2 pos = window->DC.CursorPos;
+
+    // 전체 영역 계산 (현재 가용 너비를 꽉 채움)
+    const float min_width = square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f);
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+
+    // 전체 클릭/차지 영역
+    const ImRect total_bb(pos, pos + ImVec2(total_width, label_size.y + style.FramePadding.y * 2.0f));
+    ItemSize(total_bb, style.FramePadding.y);
+    const bool is_visible = ItemAdd(total_bb, id);
+    const bool is_multi_select = (g.LastItemData.ItemFlags & ImGuiItemFlags_IsMultiSelect) != 0;
+    if (!is_visible)
+        if (!is_multi_select || !g.BoxSelectState.UnclipMode || !g.BoxSelectState.UnclipRect.Overlaps(total_bb)) // Extra layer of "no logic clip" for box-select support
+        {
+            IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Checkable | (*v ? ImGuiItemStatusFlags_Checked : 0));
+            return false;
+        }
+
+    // Range-Selection/Multi-selection support (header)
+    bool checked = *v;
+    if (is_multi_select)
+        MultiSelectItemHeader(id, &checked, NULL);
+
+    bool hovered, held;
+    bool pressed = ButtonBehavior(total_bb, id, &hovered, &held);
+
+    // Range-Selection/Multi-selection support (footer)
+    if (is_multi_select)
+        MultiSelectItemFooter(id, &checked, &pressed);
+    else if (pressed)
+        checked = !checked;
+
+    if (*v != checked)
+    {
+        *v = checked;
+        pressed = true; // return value
+        MarkItemEdited(id);
+    }
+
+    // 체크박스 사각형(위젯)을 오른쪽 끝으로 배치
+    const float check_x = pos.x + total_width - square_sz;
+    const ImRect check_bb(ImVec2(check_x, pos.y), ImVec2(check_x + square_sz - 0.1f, pos.y + square_sz - 0.1f));
+
+    const bool mixed_value = (g.LastItemData.ItemFlags & ImGuiItemFlags_MixedValue) != 0;
+    if (is_visible)
+    {
+        RenderNavCursor(total_bb, id);
+
+        // 체크 상태에 따른 배경색 결정 및 테두리 여부
+        ImU32 frame_col;
+
+        if (*v || mixed_value)
+        {
+            frame_col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+        }
+        else
+        {
+            frame_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+        }
+
+        RenderFrame(check_bb.Min, check_bb.Max, frame_col, true, style.FrameRounding);
+
+        // 체크 마크 색상을 텍스트 색상으로 변경
+        ImU32 check_col = ImColor(255, 255, 255);
+
+        if (mixed_value)
+        {
+            // Undocumented tristate/mixed/indeterminate checkbox (#2644)
+            ImVec2 pad(ImMax(1.0f, IM_TRUNC(square_sz / 3.6f)), ImMax(1.0f, IM_TRUNC(square_sz / 3.6f)));
+            window->DrawList->AddRectFilled(check_bb.Min + pad, check_bb.Max - pad, check_col, style.FrameRounding);
+        }
+        else if (*v)
+        {
+            const float pad = ImMax(1.0f, IM_TRUNC(square_sz / 6.0f));
+            RenderCheckMark(window->DrawList, check_bb.Min + ImVec2(pad, pad), check_col, square_sz - pad * 2.0f);
+        }
+    }
+
+    //  라벨(텍스트)은 가장 왼쪽 시작점에 배치
+    const ImVec2 label_pos = ImVec2(pos.x, check_bb.Min.y + style.FramePadding.y);
+
+    if (g.LogEnabled)
+        LogRenderedText(&label_pos, mixed_value ? "[~]" : *v ? "[x]" : "[ ]");
+    if (is_visible && label_size.x > 0.0f)
+        RenderText(label_pos, label);
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Checkable | (*v ? ImGuiItemStatusFlags_Checked : 0));
+    return pressed;
+}
+
+bool ImGui::RadioButtonX(const char* label, int* v, int v_button)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+
+    const float square_sz = GetFrameHeight();
+    const ImVec2 pos = window->DC.CursorPos;
+
+    // 전체 영역 계산 (현재 가용 너비를 꽉 채움)
+    const float min_width = square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f);
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+
+    // 라디오 버튼 위젯(원 영역)을 오른쪽 끝으로 계산
+    const float check_x = pos.x + total_width - square_sz;
+    const ImRect check_bb(ImVec2(check_x, pos.y), ImVec2(check_x + square_sz, pos.y + square_sz));
+
+    // 전체 클릭/차지 영역
+    const ImRect total_bb(pos, pos + ImVec2(total_width, label_size.y + style.FramePadding.y * 2.0f));
+    ItemSize(total_bb, style.FramePadding.y);
+    if (!ItemAdd(total_bb, id))
+        return false;
+
+    ImVec2 center = check_bb.GetCenter();
+    center.x = IM_ROUND(center.x);
+    center.y = IM_ROUND(center.y);
+    const float radius = (square_sz - 1.0f) * 0.5f;
+
+    bool hovered, held;
+    bool pressed = ButtonBehavior(total_bb, id, &hovered, &held);
+
+    // [통합된 로직] 눌렸을 때 값을 변경
+    if (pressed)
+    {
+        *v = v_button;
+        MarkItemEdited(id);
+    }
+
+    // 현재 활성화 상태 판별 (눌림 직후의 값으로 계산하여 즉시 렌더링 반영)
+    const bool active = (*v == v_button);
+
+    RenderNavCursor(total_bb, id);
+    const int num_segment = 300; // window->DrawList->_CalcCircleAutoSegmentCount(radius);
+
+    // --- 디자인 렌더링 부분 ---
+    // 1. 바깥쪽 원 (배경)
+    ImU32 bg_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+
+    // 활성화되었을 때 배경 강조
+    if (active)
+        bg_col = GetColorU32(ImGuiCol_CheckMark);
+
+    window->DrawList->AddCircleFilled(center, radius, bg_col, num_segment);
+
+    // 2. 안쪽의 작고 채워진 흰색 원
+    if (active)
+    {
+        const float pad = ImMax(1.0f, IM_TRUNC(square_sz / 3.5f));
+        window->DrawList->AddCircleFilled(center, radius - pad, IM_COL32(255, 255, 255, 255), num_segment);
+    }
+    // ------------------------
+
+    // 테두리 선
+    if (style.FrameBorderSize > 0.0f)
+    {
+        window->DrawList->AddCircle(center + ImVec2(1, 1), radius, GetColorU32(ImGuiCol_BorderShadow), num_segment, style.FrameBorderSize);
+        window->DrawList->AddCircle(center, radius, GetColorU32(ImGuiCol_Border), num_segment, style.FrameBorderSize);
+    }
+
+    // 라벨(텍스트)은 제일 왼쪽(pos.x)으로 배치
+    ImVec2 label_pos = ImVec2(pos.x, check_bb.Min.y + style.FramePadding.y);
+
+    if (g.LogEnabled)
+        LogRenderedText(&label_pos, active ? "(x)" : "( )");
+    if (label_size.x > 0.0f)
+        RenderText(label_pos, label);
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags);
+    return pressed;
+}
+
+bool ImGui::DragScalarX(const char* label, ImGuiDataType data_type, void* p_data, float v_speed, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const float w = CalcItemWidth();
+    const ImU32 color_marker = (g.NextItemData.HasFlags & ImGuiNextItemDataFlags_HasColorMarker) ? g.NextItemData.ColorMarker : 0;
+
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+    const ImVec2 pos = window->DC.CursorPos;
+
+    // [수정] 전체 가용 영역 및 위젯이 배치될 오른쪽 좌표 계산
+    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+
+    // 드래그 위젯(입력부)을 오른쪽 끝으로 배치
+    const float frame_x = pos.x + total_width - w;
+    const ImRect frame_bb(ImVec2(frame_x, pos.y), ImVec2(frame_x + w, pos.y + label_size.y + style.FramePadding.y * 2.0f));
+
+    // 전체 차지 영역 (라벨부터 위젯 끝까지)
+    const ImRect total_bb(pos, ImVec2(pos.x + total_width, frame_bb.Max.y));
+
+    const bool temp_input_allowed = (flags & ImGuiSliderFlags_NoInput) == 0;
+    ItemSize(total_bb, style.FramePadding.y);
+    if (!ItemAdd(total_bb, id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
+        return false;
+
+    // Default format string when passing NULL
+    if (format == NULL)
+        format = DataTypeGetInfo(data_type)->PrintFmt;
+
+    const bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
+    bool temp_input_is_active = temp_input_allowed && TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        // Tabbing or Ctrl+Click on Drag turns it into an InputText
+        const bool clicked = hovered && IsMouseClicked(0, ImGuiInputFlags_None, id);
+        const bool double_clicked = (hovered && g.IO.MouseClickedCount[0] == 2 && TestKeyOwner(ImGuiKey_MouseLeft, id));
+        const bool make_active = (clicked || double_clicked || g.NavActivateId == id);
+        if (make_active && (clicked || double_clicked))
+            SetKeyOwner(ImGuiKey_MouseLeft, id);
+        if (make_active && temp_input_allowed)
+            if ((clicked && g.IO.KeyCtrl) || double_clicked || (g.NavActivateId == id && (g.NavActivateFlags & ImGuiActivateFlags_PreferInput)))
+                temp_input_is_active = true;
+
+        // (Optional) simple click (without moving) turns Drag into an InputText
+        if (g.IO.ConfigDragClickToInputText && temp_input_allowed && !temp_input_is_active)
+            if (g.ActiveId == id && hovered && g.IO.MouseReleased[0] && !IsMouseDragPastThreshold(0, g.IO.MouseDragThreshold * DRAG_MOUSE_THRESHOLD_FACTOR))
+            {
+                g.NavActivateId = id;
+                g.NavActivateFlags = ImGuiActivateFlags_PreferInput;
+                temp_input_is_active = true;
+            }
+
+        // Store initial value (not used by main lib but available as a convenience but some mods e.g. to revert)
+        if (make_active)
+            memcpy(&g.ActiveIdValueOnActivation, p_data, DataTypeGetInfo(data_type)->Size);
+
+        if (make_active && !temp_input_is_active)
+        {
+            SetActiveID(id, window);
+            SetFocusID(id, window);
+            FocusWindow(window);
+            g.ActiveIdUsingNavDirMask = (1 << ImGuiDir_Left) | (1 << ImGuiDir_Right);
+        }
+    }
+
+    if (temp_input_is_active)
+    {
+        // Only clamp Ctrl+Click input when ImGuiSliderFlags_ClampOnInput is set (generally via ImGuiSliderFlags_AlwaysClamp)
+        bool clamp_enabled = false;
+        if ((flags & ImGuiSliderFlags_ClampOnInput) && (p_min != NULL || p_max != NULL))
+        {
+            const int clamp_range_dir = (p_min != NULL && p_max != NULL) ? DataTypeCompare(data_type, p_min, p_max) : 0; // -1 when *p_min < *p_max, == 0 when *p_min == *p_max
+            if (p_min == NULL || p_max == NULL || clamp_range_dir < 0)
+                clamp_enabled = true;
+            else if (clamp_range_dir == 0)
+                clamp_enabled = DataTypeIsZero(data_type, p_min) ? ((flags & ImGuiSliderFlags_ClampZeroRange) != 0) : true;
+        }
+        return TempInputScalar(frame_bb, id, label, data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
+    }
+
+    // Draw frame
+    const ImU32 frame_col = GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+    RenderNavCursor(frame_bb, id);
+    RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, false, style.FrameRounding);
+    if (color_marker != 0 && style.ColorMarkerSize > 0.0f)
+        RenderColorComponentMarker(frame_bb, GetColorU32(color_marker), style.FrameRounding);
+
+    // --- 디자인 수정 부분: 활성화 시 커스텀 테두리 색상 적용 ---
+    if (g.ActiveId == id)
+    {
+        PushStyleColor(ImGuiCol_Border, ImVec4(0.364705882f, 0.411764706f, 0.941176471f, 1.00f));
+
+        float active_border_size = style.FrameBorderSize > 0.0f ? style.FrameBorderSize : 1.0f;
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, active_border_size);
+
+        RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+
+        PopStyleVar();
+        PopStyleColor();
+    }
+    else
+    {
+        RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+    }
+    // -------------------------------------------------------------
+
+    // Drag behavior
+    const bool value_changed = DragBehavior(id, data_type, p_data, v_speed, p_min, p_max, format, flags);
+    if (value_changed)
+        MarkItemEdited(id);
+
+    // Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
+    char value_buf[64];
+    const char* value_buf_end = value_buf + DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
+    if (g.LogEnabled)
+        LogSetNextTextDecoration("{", "}");
+    RenderTextClipped(frame_bb.Min, frame_bb.Max, value_buf, value_buf_end, NULL, ImVec2(0.5f, 0.5f));
+
+    // [수정] 라벨(텍스트)을 가장 왼쪽 위치(pos.x)에 렌더링
+    if (label_size.x > 0.0f)
+        RenderText(ImVec2(pos.x, frame_bb.Min.y + style.FramePadding.y), label);
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | (temp_input_allowed ? ImGuiItemStatusFlags_Inputable : 0));
+    return value_changed;
+}
+
+bool ImGui::Drag(const char *label, float *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return DragScalarX(label, ImGuiDataType_Float, v, v_speed, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::_combo_(const char *label, int *current_item, const char *(*getter)(void *user_data, int idx), void *user_data, int items_count, int popup_max_height_in_items)
+{
+    bool is_dark = true;
+    ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+    if (bg_color.x > (200.f/255.0f) && bg_color.y > (200.f/255.0f) && bg_color.z > (200.f/255.0f) && bg_color.w > (200.f/255.0f))
+    {
+        is_dark = false;
+    }
+
+    ImGuiContext& g = *GImGui;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    const ImGuiStyle& style = g.Style;
+
+    const char* preview_value = NULL;
+    if (*current_item >= 0 && *current_item < items_count)
+        preview_value = getter(user_data, *current_item);
+
+    // --- 좌측 라벨, 우측 위젯 레이아웃 계산 ---
+    const ImVec2 pos = window->DC.CursorPos;
+    const float w = CalcItemWidth();
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+
+    // 전체 가용 너비 및 우측 콤보박스 x좌표 계산
+    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+    const float combo_x = pos.x + total_width - w;
+
+    // 1. 라벨을 제일 왼쪽에 렌더링
+    if (label_size.x > 0.0f)
+    {
+        // Y축 중앙 정렬을 위해 FramePadding.y를 더해줍니다.
+        RenderText(ImVec2(pos.x, pos.y + style.FramePadding.y), label);
+    }
+
+    // 2. BeginCombo 위젯을 우측 끝으로 밀어내기 위해 커서 X 이동
+    window->DC.CursorPos.x = combo_x;
+    SetNextItemWidth(w); // 콤보박스 너비를 명시적으로 강제
+
+    // 3. ID 안정성을 위해 PushID로 감싼 후 숨김 라벨("##combo")을 전달
+    ImGui::PushID(label);
+
+    // 콤보 박스 및 팝업 상태 체크를 위한 ID 계산
+    ImGuiID combo_id = window->GetID("##combo");
+    ImGuiID popup_id = ImHashStr("##ComboPopup", 0, combo_id);
+
+    // 1. Popup 열림 상태 확인
+    bool is_open = IsPopupOpen(popup_id, ImGuiPopupFlags_None);
+
+    // 2. 애니메이션 진행률(anim_t) 업데이트 로직
+    float anim_t = window->StateStorage.GetFloat(combo_id + 1, 0.0f);
+    if (is_open) {
+        float speed = ImGui::GetIO().DeltaTime * 12.0f; // 속도 조절 (높을수록 빠르게 열림)
+        anim_t = ImClamp(anim_t + speed, 0.0f, 1.0f);
+    } else {
+        anim_t = 0.0f; // 팝업이 닫히면 바로 리셋
+    }
+    window->StateStorage.SetFloat(combo_id + 1, anim_t);
+
+    // 3. 애니메이션 높이(Size Constraint) 계산 및 적용
+    if (!(g.NextWindowData.HasFlags & ImGuiNextWindowDataFlags_HasSizeConstraint))
+    {
+        float max_height = CalcMaxPopupHeightFromItemCount(popup_max_height_in_items != -1 ? popup_max_height_in_items : items_count);
+        float current_height = ImMax(max_height * anim_t, 1.0f); // 0.0f 할당 시 에러 방지
+        SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, current_height));
+    }
+
+    // 애니메이션이 진행 중일 때는 스크롤바를 숨겨서 깔끔하게 연출
+    bool is_animating = (anim_t > 0.0f && anim_t < 1.0f);
+    if (is_animating) {
+        PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
+    }
+
+    // 4. Main Frame 스타일 적용
+    if (is_open)
+    {
+        PushStyleColor(ImGuiCol_Border, ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
+    }
+    PushStyleColor(ImGuiCol_FrameBg, GetColorU32(ImGuiCol_FrameBg));
+
+    // 5. Popup 창 스타일 및 배경 Alpha 페이드 인 적용
+    PushStyleVar(ImGuiStyleVar_PopupRounding, 6.0f);
+    ImVec4 popup_bg = ImGui::ColorConvertU32ToFloat4(GetColorU32(ImGuiCol_ChildBg));
+    popup_bg.w *= anim_t; // 투명도 애니메이션 반영
+    PushStyleColor(ImGuiCol_PopupBg, ImGui::ColorConvertFloat4ToU32(popup_bg));
+
+    // 실제 콤보 박스 렌더링 ("##combo"를 사용해 라벨 숨김)
+    bool combo_started = BeginCombo("##combo", preview_value, ImGuiComboFlags_None);
+
+    // 스타일 복구
+    PopStyleColor(1); // FrameBg 복구
+    if (is_open)
+    {
+        PopStyleVar(); // FrameBorderSize 복구
+        PopStyleColor(); // Border 복구
+    }
+    if (is_animating) {
+        PopStyleVar(); // ScrollbarSize 복구
+    }
+
+    if (!combo_started)
+    {
+        PopStyleColor(); // PopupBg 복구
+        PopStyleVar(); // PopupRounding 복구
+        ImGui::PopID(); // PushID 해제
+        return false;
+    }
+
+    // --- 여기서부터 Popup 내부 ---
+    PushStyleVar(ImGuiStyleVar_Alpha, anim_t);
+
+    bool value_changed = false;
+    ImGuiListClipper clipper;
+    clipper.Begin(items_count);
+    clipper.IncludeItemByIndex(*current_item);
+
+    while (clipper.Step())
+    {
+        for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+        {
+            const char* item_text = getter(user_data, i);
+            if (item_text == NULL)
+                item_text = "*Unknown item*";
+
+            PushID(i);
+            const bool item_selected = (i == *current_item);
+
+            // 다크/화이트 테마에 따른 호버 및 액티브 색상 설정
+            ImVec4 hover_color  = is_dark ? ImVec4(1.0f, 1.0f, 1.0f, 0.08f) : ImVec4(0.0f, 0.0f, 0.0f, 0.06f);
+            ImVec4 active_color = is_dark ? ImVec4(1.0f, 1.0f, 1.0f, 0.12f) : ImVec4(0.0f, 0.0f, 0.0f, 0.10f);
+
+            if (item_selected)
+            {
+                PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)); // 기본 선택 배경 투명화
+                PushStyleColor(ImGuiCol_HeaderHovered, hover_color);
+                PushStyleColor(ImGuiCol_HeaderActive, active_color);
+            }
+            else
+            {
+                PushStyleColor(ImGuiCol_HeaderHovered, hover_color);
+                PushStyleColor(ImGuiCol_HeaderActive, active_color);
+            }
+
+            // 변수 이름 중복(위의 pos)을 피하기 위해 item_pos로 변경
+            ImVec2 item_pos = ImGui::GetCursorScreenPos();
+            float avail_width = ImGui::GetContentRegionAvail().x;
+            float item_height = ImGui::GetTextLineHeight() + 16.0f;
+
+            if (Selectable("##item", item_selected, ImGuiSelectableFlags_None, ImVec2(0, item_height)))
+            {
+                value_changed = true;
+                *current_item = i;
+            }
+
+            // Alpha 채널 계산 (0 ~ 255)
+            int alpha_255 = (int)(255.0f * anim_t);
+
+            // 텍스트 렌더링 (Alpha 적용)
+            ImVec2 text_pos = ImVec2(item_pos.x + 10.0f, item_pos.y + (item_height - ImGui::GetTextLineHeight()) * 0.5f);
+            ImU32 text_col = is_dark ? IM_COL32(230, 230, 230, alpha_255) : IM_COL32(40, 40, 25, alpha_255);
+            ImGui::GetWindowDrawList()->AddText(text_pos, text_col, item_text);
+
+            // 체크마크 렌더링 (Alpha 적용)
+            if (item_selected)
+            {
+                ImVec2 check_pos = ImVec2(item_pos.x + avail_width - 24.0f, item_pos.y + (item_height - 14.0f) * 0.5f);
+                ImU32 check_col = is_dark ? IM_COL32(255, 255, 255, alpha_255) : IM_COL32(40, 40, 25, alpha_255);
+                ImGui::RenderCheckMark(ImGui::GetWindowDrawList(), check_pos, check_col, 14.0f);
+                PopStyleColor(3);
+            }
+            else
+            {
+                PopStyleColor(2);
+            }
+
+            if (item_selected)
+                SetItemDefaultFocus();
+
+            PopID();
+        }
+    }
+
+    PopStyleVar(); // Alpha 복구
+    EndCombo();
+
+    PopStyleColor(); // PopupBg 복구
+    PopStyleVar(); // PopupRounding 복구
+
+    ImGui::PopID(); // PushID 해제
+
+    if (value_changed)
+        MarkItemEdited(g.LastItemData.ID);
+
+    return value_changed;
+}
+
+bool ImGui::ComboX(const char* label, int* current_item, const char* items_separated_by_zeros, int height_in_items)
+{
+    int items_count = 0;
+    const char* p = items_separated_by_zeros;       // FIXME-OPT: Avoid computing this, or at least only when combo is open
+    while (*p)
+    {
+        p += ImStrlen(p) + 1;
+        items_count++;
+    }
+    bool value_changed = _combo_(label, current_item, Items_SingleStringGetter, (void*)items_separated_by_zeros, items_count, height_in_items);
+    return value_changed;
 }
 
 bool ImGui::SliderRange(const char* label, float* v_min, float* v_max, float v_bound_min, float v_bound_max, const char* format)
@@ -531,6 +1093,112 @@ bool ImGui::SliderRange(const char* label, float* v_min, float* v_max, float v_b
     return value_changed;
 }
 
+bool ImGui::SliderScalarX(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const float w = CalcItemWidth();
+    const ImU32 color_marker = (g.NextItemData.HasFlags & ImGuiNextItemDataFlags_HasColorMarker) ? g.NextItemData.ColorMarker : 0;
+
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+    const ImVec2 pos = window->DC.CursorPos;
+
+    // [수정] 전체 가용 영역 및 슬라이더 위젯이 배치될 오른쪽 좌표 계산
+    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+
+    // 슬라이더 위젯을 오른쪽 끝으로 배치
+    const float frame_x = pos.x + total_width - w;
+    const ImRect frame_bb(ImVec2(frame_x, pos.y), ImVec2(frame_x + w, pos.y + label_size.y + style.FramePadding.y * 2.0f));
+
+    // 전체 차지 영역 (라벨부터 슬라이더 끝까지)
+    const ImRect total_bb(pos, ImVec2(pos.x + total_width, frame_bb.Max.y));
+
+    const bool temp_input_allowed = (flags & ImGuiSliderFlags_NoInput) == 0;
+    ItemSize(total_bb, style.FramePadding.y);
+    if (!ItemAdd(total_bb, id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
+        return false;
+
+    // Default format string when passing NULL
+    if (format == NULL)
+        format = DataTypeGetInfo(data_type)->PrintFmt;
+
+    const bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
+    bool temp_input_is_active = temp_input_allowed && TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        // Tabbing or Ctrl+Click on Slider turns it into an input box
+        const bool clicked = hovered && IsMouseClicked(0, ImGuiInputFlags_None, id);
+        const bool make_active = (clicked || g.NavActivateId == id);
+        if (make_active && clicked)
+            SetKeyOwner(ImGuiKey_MouseLeft, id);
+        if (make_active && temp_input_allowed)
+            if ((clicked && g.IO.KeyCtrl) || (g.NavActivateId == id && (g.NavActivateFlags & ImGuiActivateFlags_PreferInput)))
+                temp_input_is_active = true;
+
+        // Store initial value (not used by main lib but available as a convenience but some mods e.g. to revert)
+        if (make_active)
+            memcpy(&g.ActiveIdValueOnActivation, p_data, DataTypeGetInfo(data_type)->Size);
+
+        if (make_active && !temp_input_is_active)
+        {
+            SetActiveID(id, window);
+            SetFocusID(id, window);
+            FocusWindow(window);
+            g.ActiveIdUsingNavDirMask |= (1 << ImGuiDir_Left) | (1 << ImGuiDir_Right);
+        }
+    }
+
+    if (temp_input_is_active)
+    {
+        // Only clamp Ctrl+Click input when ImGuiSliderFlags_ClampOnInput is set (generally via ImGuiSliderFlags_AlwaysClamp)
+        const bool clamp_enabled = (flags & ImGuiSliderFlags_ClampOnInput) != 0;
+        return TempInputScalar(frame_bb, id, label, data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
+    }
+
+    // Draw frame
+    const ImU32 frame_col = GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+    RenderNavCursor(frame_bb, id);
+    RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, false, style.FrameRounding);
+    if (color_marker != 0 && style.ColorMarkerSize > 0.0f)
+        RenderColorComponentMarker(frame_bb, GetColorU32(color_marker), style.FrameRounding);
+    RenderFrameBorder(frame_bb.Min, frame_bb.Max, g.Style.FrameRounding);
+
+    // Slider behavior
+    ImRect grab_bb;
+    const bool value_changed = SliderBehavior(frame_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
+    if (value_changed)
+        MarkItemEdited(id);
+
+    // Render grab
+    if (grab_bb.Max.x > grab_bb.Min.x)
+        window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab), style.GrabRounding);
+
+    // Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
+    char value_buf[64];
+    const char* value_buf_end = value_buf + DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
+    if (g.LogEnabled)
+        LogSetNextTextDecoration("{", "}");
+    RenderTextClipped(frame_bb.Min, frame_bb.Max, value_buf, value_buf_end, NULL, ImVec2(0.5f, 0.5f));
+
+    // [수정] 라벨(텍스트)을 가장 왼쪽 위치(pos.x)에 렌더링
+    if (label_size.x > 0.0f)
+        RenderText(ImVec2(pos.x, frame_bb.Min.y + style.FramePadding.y), label);
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | (temp_input_allowed ? ImGuiItemStatusFlags_Inputable : 0));
+    return value_changed;
+}
+
+bool ImGui::SliderFloatX(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return SliderScalarX(label, ImGuiDataType_Float, v, &v_min, &v_max, format, flags);
+}
+
 bool ImGui::Slider(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
 {
     return SliderScalar(label, ImGuiDataType_Float, v, &v_min, &v_max, format, flags);
@@ -545,13 +1213,16 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
-    const float w = CalcItemWidth();
+
+    // [수정된 부분] 시작 좌표를 먼저 가져옵니다.
+    const ImVec2 pos = window->DC.CursorPos;
+
+    // [수정된 부분] CalcItemWidth() 대신 사용 가능한 오른쪽 끝(WorkRect.Max.x)까지의 너비를 계산합니다.
+    const float w = ImMax(10.0f, window->WorkRect.Max.x - pos.x);
 
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
     const float text_height = g.FontSize;
     const float spacing = style.ItemInnerSpacing.y;
-
-    const ImVec2 pos = window->DC.CursorPos;
 
     const ImRect text_bb(pos, pos + ImVec2(w, text_height));
     const float frame_height = label_size.y + style.FramePadding.y * 2.0f;
@@ -624,8 +1295,6 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     if (temp_input_is_active)
     {
         const bool clamp_enabled = (flags & ImGuiSliderFlags_ClampOnInput) != 0;
-
-        // [수정핵심] "" 대신 원본 `label`을 반드시 넘겨야 내부 텍스트 위젯 ID가 슬라이더 ID와 일치하여 Assert 방지됨.
         return TempInputScalar(frame_bb, id, label, ImGuiDataType_Float, v, format, clamp_enabled ? &v_min : NULL, clamp_enabled ? &v_max : NULL);
     }
 
@@ -635,7 +1304,6 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     bool backup_clicked = g.IO.MouseClicked[0];
     bool backup_down = g.IO.MouseDown[0];
 
-    // 그랩 밖을 클릭한 경우 마우스 이벤트를 일시적으로 지워서 슬라이더가 드래그되지 않게 함
     if (is_clicking_outside_grab)
     {
         g.IO.MouseClicked[0] = false;
@@ -695,7 +1363,7 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     int value_len = DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), ImGuiDataType_Float, v, format);
     const char* value_buf_end = value_buf + value_len;
 
-    // --- 수정된 상단 텍스트 렌더링 로직 ---
+    // --- 텍스트 렌더링 로직 (우측 여백 없이 렌더링됨) ---
     if (label_size.x > 0.0f)
     {
         const char* label_display_end = FindRenderedTextEnd(label);
@@ -704,6 +1372,8 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     }
 
     const ImVec2 value_size = CalcTextSize(value_buf, value_buf_end);
+
+    // 계산된 최대 넓이 끝(w)을 기준으로 우측 정렬되어 출력됩니다.
     RenderText(ImVec2(text_bb.Max.x - value_size.x, text_bb.Min.y), value_buf, value_buf_end);
 
     IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | (temp_input_allowed ? ImGuiItemStatusFlags_Inputable : 0));
@@ -1054,7 +1724,6 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
 
     return value_changed;
 }
-
 
 bool ImGui::ToggleButton(const char* str_id, bool* v)
 {
@@ -1523,7 +2192,6 @@ bool ImGui::Joystic(ImVec2* out)
     // 최종적으로 값 변경 여부를 리턴
     return value_changed;
 }
-
 
 bool ImGui::TransformControl(Eigen::Matrix4d* matrix)
 {

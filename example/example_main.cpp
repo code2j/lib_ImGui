@@ -203,10 +203,41 @@ int main() {
 
         if (ImGui::BeginCollapsingHeader(ICON_MD_DROPDOWN " Combo Example")) {
             ImGui::BeginChild("Combo Child", ImVec2(0, 0), true);
-            static int current_theme = 1;
-            ImGui::Combo("Combo", &current_theme, "Theme 1\0Theme 2\0Theme 3\0", 3);
+
             ImGui::EndChild();
             ImGui::EndCollapsingHeader(ICON_MD_DROPDOWN " Combo Example");
+        }
+
+
+        if (ImGui::BeginCollapsingHeader(ICON_MD_DROPDOWN " 기타 등등 ")) {
+            ImGui::BeginChild("Combo Child", ImVec2(0, 0), true);
+
+
+            static bool is_c = false;
+            ImGui::CheckboxX("체크박스", &is_c);
+
+
+            static int idx = 0;
+            ImGui::RadioButtonX("라디오버튼1", &idx, 0);
+            ImGui::RadioButtonX("라디오버튼2", &idx, 1);
+
+
+            static float drag_value = 0.0f;
+            ImGui::Drag("드래그 ", &drag_value, 1.0f, 0.0f, 100.0f, "%.1f");
+
+
+            static float slider_value = 0.0f;
+            ImGui::SliderFloatX("슬라이더", &slider_value, 0.0f, 100.0f, "%.1f");
+
+            ImGui::SliderX("슬라이더X", &slider_value, 0.0f, 100.0f, "%.1f");
+
+
+            static int current_theme = 1;
+            ImGui::ComboX("Combo", &current_theme, "Theme 1\0Theme 2\0Theme 3\0", 3);
+
+
+            ImGui::EndChild();
+            ImGui::EndCollapsingHeader(ICON_MD_DROPDOWN " 기타 등등 ");
         }
 
 
