@@ -2315,16 +2315,21 @@ bool ImGui::Combo(const char* label, int* current_item, const char* (*getter)(vo
             const bool item_selected = (i == *current_item);
 
             // 선택된 아이템 하이라이트 색상 제거 및 마우스 오버 처리
+            // 다크/화이트 테마에 따른 호버 및 액티브 색상 설정 (알파값 조절로 자연스러운 음영 효과)
+            ImVec4 hover_color  = is_dark ? ImVec4(1.0f, 1.0f, 1.0f, 0.08f) : ImVec4(0.0f, 0.0f, 0.0f, 0.06f);
+            ImVec4 active_color = is_dark ? ImVec4(1.0f, 1.0f, 1.0f, 0.12f) : ImVec4(0.0f, 0.0f, 0.0f, 0.10f);
+
+            // 선택된 아이템 하이라이트 색상 제거 및 마우스 오버 처리
             if (item_selected)
             {
-                PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-                PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
-                PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
+                PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.0f)); // 기본 선택 배경 투명화 (체크마크로만 구분)
+                PushStyleColor(ImGuiCol_HeaderHovered, hover_color);
+                PushStyleColor(ImGuiCol_HeaderActive, active_color);
             }
             else
             {
-                PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
-                PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
+                PushStyleColor(ImGuiCol_HeaderHovered, hover_color);
+                PushStyleColor(ImGuiCol_HeaderActive, active_color);
             }
 
             ImVec2 pos = ImGui::GetCursorScreenPos();
