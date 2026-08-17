@@ -35,6 +35,126 @@ int main() {
     while (ImGui::context([&]() {
         ImGui::Begin(" " ICON_MD_TUNE " 제어 패널 ");
 
+        if (ImGui::BeginCollapsingHeader(ICON_MD_WIDGETS " Widgets Example ")) {
+            // Child 창 시작
+            ImGui::BeginChild("Widgets_Child", ImVec2(0, 1300), true);
+
+            // ==========================================
+            // 1. 기본 컨트롤 (Basic Controls)
+            // ==========================================
+            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_CHECK_BOX " Basic Controls");
+            ImGui::Separator();
+
+            static bool is_c = false;
+            ImGui::Check("체크박스 (커스텀)", &is_c);
+            ImGui::Dummy(ImVec2(0, 15.0f));
+
+
+            static int radio_idx = 0;
+            ImGui::Radio("라디오 1 (커스텀)", &radio_idx, 0);
+            ImGui::Radio("라디오 2 (커스텀)", &radio_idx, 1);
+            ImGui::Dummy(ImVec2(0, 15.0f));
+
+            if (ImGui::Button("일반 버튼", ImVec2(100, 0))) {
+                // 버튼 클릭 이벤트
+            }
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+            if (ImGui::Button("위험 버튼", ImVec2(100, 0))) {
+                // 경고/삭제 버튼 이벤트
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::Dummy(ImVec2(0, 15.0f));
+
+
+            // ==========================================
+            // 2. 텍스트 입력 (Text Inputs)
+            // ==========================================
+            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_EDIT " Text Inputs");
+            ImGui::Separator();
+
+            static char text_buf[128] = "Hello, Custom ImGui!";
+            ImGui::InputText("텍스트 입력", text_buf, IM_COUNTOF(text_buf));
+
+            static char pw_buf[64] = "";
+            ImGui::InputText("비밀번호", pw_buf, IM_COUNTOF(pw_buf), ImGuiInputTextFlags_Password);
+
+            static char multiline_buf[256] = "여기에\n여러 줄의\n텍스트를 입력하세요.";
+            ImGui::InputTextMultiline("메모", multiline_buf, IM_COUNTOF(multiline_buf), ImVec2(0, 60));
+            ImGui::Dummy(ImVec2(0, 15.0f));
+
+
+            // ==========================================
+            // 3. 슬라이더 및 드래그 (Sliders & Drags)
+            // ==========================================
+            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_TUNE " Sliders & Drags");
+            ImGui::Separator();
+
+            static double drag_value = 50.0f;
+            ImGui::Drag("드래그 (커스텀)", &drag_value, 1.0f, 0.0f, 100.0f, "%.1f");
+
+            static float slider_value = 30.0f;
+            ImGui::SliderFloatX("슬라이더 FloatX", &slider_value, 0.0f, 100.0f, "%.1f");
+            ImGui::SliderX("슬라이더 X", &slider_value, 0.0f, 100.0f, "%.1f");
+            ImGui::Slider("슬라이더 (값 표시 숨김)", &slider_value, 0.0f, 100.0f);
+
+            static float range_min = 20.0f, range_max = 80.0f;
+            ImGui::SliderRangeX("범위 슬라이더 X", &range_min, &range_max, 0.0f, 100.0f);
+            ImGui::SliderRange("범위 슬라이더 (기본)", &range_min, &range_max, 0.0f, 100.0f);
+            ImGui::Dummy(ImVec2(0, 15.0f));
+
+            // ==========================================
+            // 4. 리스트 및 드롭다운 (Lists & Dropdowns)
+            // ==========================================
+            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_LIST " Lists & Combos");
+            ImGui::Separator();
+
+            static int current_theme = 1;
+            ImGui::DropDown("테마 선택 (DropDown)", &current_theme, "Light Theme\0Dark Theme\0Classic Theme\0", 3);
+
+            static int listbox_item_current = 1;
+            const char* listbox_items[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange" };
+            ImGui::ListBox("과일 목록", &listbox_item_current, listbox_items, IM_COUNTOF(listbox_items), 4);
+            ImGui::Dummy(ImVec2(0, 15.0f));
+
+            // ==========================================
+            // 5. 색상 선택기 (Color Pickers)
+            // ==========================================
+            ImGui::Dummy(ImVec2(0, 15.0f));
+            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_COLOR_LENS " Color Pickers");
+            ImGui::Separator();
+
+            static float color_rgb[3] = { 0.36f, 0.41f, 0.94f };
+            ImGui::ColorEdit3("테마 색상", color_rgb);
+
+            static float color_rgba[4] = { 0.8f, 0.2f, 0.3f, 0.5f };
+            ImGui::ColorEdit4("알파 포함 색상", color_rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
+            ImGui::Dummy(ImVec2(0, 15.0f));
+
+            // ==========================================
+            // 6. 상태 및 진행률 (Misc / Progress)
+            // ==========================================
+            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_INFO " Status & Misc");
+            ImGui::Separator();
+
+            static float progress = 0.0f;
+            progress += 0.005f; // 애니메이션 효과를 위해 임의 증가
+            if (progress > 1.0f) progress = 0.0f;
+
+            ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f), "로딩 중...");
+
+            ImGui::TextWrapped("위젯 위로 마우스를 올리면 툴팁을 확인할 수 있습니다.");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("이것은 ImGui 표준 툴팁입니다.");
+            }
+
+            ImGui::EndChild();
+            ImGui::EndCollapsingHeader(ICON_MD_WIDGETS " 기타 등등 ");
+        }
+
+
         if (ImGui::BeginCollapsingHeader(ICON_MD_CHAT_INFO " Notification Example ")) {
             // [알림 버튼 샘플]
             if (ImGui::Button(" 알림 정보 ")) {
@@ -147,7 +267,7 @@ int main() {
         if (ImGui::BeginCollapsingHeader(ICON_MD_IMAGE " Image Example ")) {
             // 토클 이미지 보이기
             static bool show_image = false;
-            if (ImGui::ToggleButton("이미지 보이기", &show_image)) {
+            if (ImGui::Toggle("이미지 보이기", &show_image)) {
                 ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "이미지가 표시됩니다."));
             }
             ImGui::SameLine();
@@ -201,44 +321,9 @@ int main() {
             ImGui::EndCollapsingHeader(ICON_MD_COLORS " Theme Example ");
         }
 
-        if (ImGui::BeginCollapsingHeader(ICON_MD_DROPDOWN " Combo Example")) {
-            ImGui::BeginChild("Combo Child", ImVec2(0, 0), true);
-
-            ImGui::EndChild();
-            ImGui::EndCollapsingHeader(ICON_MD_DROPDOWN " Combo Example");
-        }
 
 
-        if (ImGui::BeginCollapsingHeader(ICON_MD_DROPDOWN " 기타 등등 ")) {
-            ImGui::BeginChild("Combo Child", ImVec2(0, 0), true);
 
-
-            static bool is_c = false;
-            ImGui::CheckboxX("체크박스", &is_c);
-
-
-            static int idx = 0;
-            ImGui::RadioButtonX("라디오버튼1", &idx, 0);
-            ImGui::RadioButtonX("라디오버튼2", &idx, 1);
-
-
-            static float drag_value = 0.0f;
-            ImGui::Drag("드래그 ", &drag_value, 1.0f, 0.0f, 100.0f, "%.1f");
-
-
-            static float slider_value = 0.0f;
-            ImGui::SliderFloatX("슬라이더", &slider_value, 0.0f, 100.0f, "%.1f");
-
-            ImGui::SliderX("슬라이더X", &slider_value, 0.0f, 100.0f, "%.1f");
-
-
-            static int current_theme = 1;
-            ImGui::ComboX("Combo", &current_theme, "Theme 1\0Theme 2\0Theme 3\0", 3);
-
-
-            ImGui::EndChild();
-            ImGui::EndCollapsingHeader(ICON_MD_DROPDOWN " 기타 등등 ");
-        }
 
 
         ImGui::End();

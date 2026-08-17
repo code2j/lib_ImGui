@@ -209,7 +209,7 @@ bool ImGui::ButtonX(const char* label, const ImVec2& size_arg, ImGuiButtonFlags 
     return pressed;
 }
 
-bool ImGui::CheckboxX(const char* label, bool* v)
+bool ImGui::Check(const char* label, bool* v)
 {
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -311,7 +311,7 @@ bool ImGui::CheckboxX(const char* label, bool* v)
     return pressed;
 }
 
-bool ImGui::RadioButtonX(const char* label, int* v, int v_button)
+bool ImGui::Radio(const char* label, int* v, int v_button)
 {
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -397,7 +397,7 @@ bool ImGui::RadioButtonX(const char* label, int* v, int v_button)
     return pressed;
 }
 
-bool ImGui::DragScalarX(const char* label, ImGuiDataType data_type, void* p_data, float v_speed, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
+bool ImGui::_drag_(const char* label, ImGuiDataType data_type, void* p_data, float v_speed, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
 {
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -531,10 +531,20 @@ bool ImGui::DragScalarX(const char* label, ImGuiDataType data_type, void* p_data
 
 bool ImGui::Drag(const char *label, float *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
 {
-    return DragScalarX(label, ImGuiDataType_Float, v, v_speed, &v_min, &v_max, format, flags);
+    return _drag_(label, ImGuiDataType_Float, v, v_speed, &v_min, &v_max, format, flags);
 }
 
-bool ImGui::_combo_(const char *label, int *current_item, const char *(*getter)(void *user_data, int idx), void *user_data, int items_count, int popup_max_height_in_items)
+bool ImGui::Drag(const char *label, double *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return _drag_(label, ImGuiDataType_Double, v, v_speed, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::Drag(const char *label, int *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return _drag_(label, ImGuiDataType_S32, v, v_speed, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::_dropdown_(const char *label, int *current_item, const char *(*getter)(void *user_data, int idx), void *user_data, int items_count, int popup_max_height_in_items)
 {
     bool is_dark = true;
     ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
@@ -733,7 +743,7 @@ bool ImGui::_combo_(const char *label, int *current_item, const char *(*getter)(
     return value_changed;
 }
 
-bool ImGui::ComboX(const char* label, int* current_item, const char* items_separated_by_zeros, int height_in_items)
+bool ImGui::DropDown(const char* label, int* current_item, const char* items_separated_by_zeros, int height_in_items)
 {
     int items_count = 0;
     const char* p = items_separated_by_zeros;       // FIXME-OPT: Avoid computing this, or at least only when combo is open
@@ -742,11 +752,26 @@ bool ImGui::ComboX(const char* label, int* current_item, const char* items_separ
         p += ImStrlen(p) + 1;
         items_count++;
     }
-    bool value_changed = _combo_(label, current_item, Items_SingleStringGetter, (void*)items_separated_by_zeros, items_count, height_in_items);
+    bool value_changed = _dropdown_(label, current_item, Items_SingleStringGetter, (void*)items_separated_by_zeros, items_count, height_in_items);
     return value_changed;
 }
 
 bool ImGui::SliderRange(const char* label, float* v_min, float* v_max, float v_bound_min, float v_bound_max, const char* format)
+{
+    return _slider4_(label, ImGuiDataType_Float, v_min, v_max, &v_bound_min, &v_bound_max, format);
+}
+
+bool ImGui::SliderRange(const char *label, int *v_min, int *v_max, float v_bound_min, float v_bound_max, const char *format)
+{
+    return _slider4_(label, ImGuiDataType_S32, v_min, v_max, &v_bound_min, &v_bound_max, format);
+}
+
+bool ImGui::SliderRange(const char *label, double *v_min, double *v_max, float v_bound_min, float v_bound_max, const char *format)
+{
+    return _slider4_(label, ImGuiDataType_Double, v_min, v_max, &v_bound_min, &v_bound_max, format);
+}
+
+bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, void *p_max, const void *p_bound_min, const void *p_bound_max, const char *format)
 {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
@@ -757,111 +782,160 @@ bool ImGui::SliderRange(const char* label, float* v_min, float* v_max, float v_b
     const ImGuiID id = window->GetID(label);
     ImGuiStorage* storage = window->DC.StateStorage;
 
-    // 텍스트 모드 전환 상태를 저장하기 위한 커스텀 ID
+    if (format == NULL)
+        format = DataTypeGetInfo(data_type)->PrintFmt;
+
+    // =========================================================================
+    // 스칼라 타입 변환 유틸리티 (void* <-> double)
+    // =========================================================================
+    auto GetAsDouble = [](ImGuiDataType type, const void* ptr) -> double {
+        if (!ptr) return 0.0;
+        switch (type) {
+            case ImGuiDataType_S8:     return (double)*(const ImS8*)ptr;
+            case ImGuiDataType_U8:     return (double)*(const ImU8*)ptr;
+            case ImGuiDataType_S16:    return (double)*(const ImS16*)ptr;
+            case ImGuiDataType_U16:    return (double)*(const ImU16*)ptr;
+            case ImGuiDataType_S32:    return (double)*(const ImS32*)ptr;
+            case ImGuiDataType_U32:    return (double)*(const ImU32*)ptr;
+            case ImGuiDataType_S64:    return (double)*(const ImS64*)ptr;
+            case ImGuiDataType_U64:    return (double)*(const ImU64*)ptr;
+            case ImGuiDataType_Float:  return (double)*(const float*)ptr;
+            case ImGuiDataType_Double: return *(const double*)ptr;
+        }
+        return 0.0;
+    };
+
+    auto SetFromDouble = [](ImGuiDataType type, void* ptr, double val) {
+        if (!ptr) return;
+        if (type >= ImGuiDataType_S8 && type <= ImGuiDataType_U64)
+            val = std::round(val);
+
+        switch (type) {
+            case ImGuiDataType_S8:     *(ImS8*)ptr     = (ImS8)ImClamp(val, (double)-128.0, (double)127.0); break;
+            case ImGuiDataType_U8:     *(ImU8*)ptr     = (ImU8)ImClamp(val, (double)0.0, (double)255.0); break;
+            case ImGuiDataType_S16:    *(ImS16*)ptr    = (ImS16)ImClamp(val, (double)-32768.0, (double)32767.0); break;
+            case ImGuiDataType_U16:    *(ImU16*)ptr    = (ImU16)ImClamp(val, (double)0.0, (double)65535.0); break;
+            case ImGuiDataType_S32:    *(ImS32*)ptr    = (ImS32)ImClamp(val, (double)-2147483648.0, (double)2147483647.0); break;
+            case ImGuiDataType_U32:    *(ImU32*)ptr    = (ImU32)ImClamp(val, (double)0.0, (double)4294967295.0); break;
+            case ImGuiDataType_S64:    *(ImS64*)ptr    = (ImS64)val; break;
+            case ImGuiDataType_U64:    *(ImU64*)ptr    = (ImU64)val; break;
+            case ImGuiDataType_Float:  *(float*)ptr    = (float)val; break;
+            case ImGuiDataType_Double: *(double*)ptr   = val; break;
+        }
+    };
+
     const ImGuiID text_mode_id = id + 2;
     const ImGuiID just_entered_id = id + 3;
     const ImGuiID focus_target_id = id + 4;
 
     bool text_input_mode = storage->GetBool(text_mode_id, false);
 
-    const float w = ImGui::CalcItemWidth();
+    const ImVec2 pos = window->DC.CursorPos;
     const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
 
     // ==========================================
-    // 텍스트 입력 모드 렌더링 (컨트롤 클릭 시 표시됨)
+    // [레이아웃 계산] 라벨은 왼쪽, 위젯은 우측 끝
+    // ==========================================
+    const float w = ImGui::CalcItemWidth();
+    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+
+    const float frame_x = pos.x + total_width - w;
+    const float frame_height = label_size.y + style.FramePadding.y * 2.0f;
+
+    const ImRect frame_bb(ImVec2(frame_x, pos.y), ImVec2(frame_x + w, pos.y + frame_height));
+    const ImRect total_bb(pos, ImVec2(pos.x + total_width, frame_bb.Max.y));
+
+    // ==========================================
+    // 1. 텍스트 입력 모드 (Ctrl + Click)
     // ==========================================
     if (text_input_mode)
     {
-        ImGui::BeginGroup();
-        ImGui::PushID(label);
+        ImGui::ItemSize(total_bb, style.FramePadding.y);
+        if (!ImGui::ItemAdd(total_bb, id, &frame_bb, 0))
+            return false;
 
-        // 너비를 2등분하여 두 개의 인풋 박스를 배치
+        if (label_size.x > 0.0f)
+        {
+            const char* label_display_end = FindRenderedTextEnd(label);
+            if (label != label_display_end)
+                ImGui::RenderText(ImVec2(pos.x, pos.y + style.FramePadding.y), label, label_display_end);
+        }
+
+        ImGui::PushID(label);
+        ImGui::SetCursorScreenPos(ImVec2(frame_x, pos.y));
         ImGui::PushMultiItemsWidths(2, w);
 
         bool just_entered = storage->GetBool(just_entered_id, false);
         if (just_entered)
         {
-            // 클릭했던 그랩(Min 또는 Max)에 맞춰 포커스를 자동 지정
             int focus_idx = storage->GetInt(focus_target_id, 0);
             ImGui::SetKeyboardFocusHere(focus_idx);
             storage->SetBool(just_entered_id, false);
         }
 
         bool value_changed = false;
-
-        // 1. Min 입력 박스
-        value_changed |= ImGui::InputFloat("##min", v_min, 0.0f, 0.0f, format);
+        value_changed |= ImGui::InputScalar("##min", data_type, p_min, NULL, NULL, format);
         ImGuiID min_id = window->GetID("##min");
         ImGui::PopItemWidth();
         ImGui::SameLine(0, style.ItemInnerSpacing.x);
-
-        // 2. Max 입력 박스
-        value_changed |= ImGui::InputFloat("##max", v_max, 0.0f, 0.0f, format);
+        value_changed |= ImGui::InputScalar("##max", data_type, p_max, NULL, NULL, format);
         ImGuiID max_id = window->GetID("##max");
         ImGui::PopItemWidth();
-
-        // 라벨 렌더링
-        if (label_size.x > 0.0f)
-        {
-            ImGui::SameLine(0, style.ItemInnerSpacing.x);
-            ImGui::TextEx(label, FindRenderedTextEnd(label));
-        }
-
         ImGui::PopID();
-        ImGui::EndGroup();
 
-        // 입력 시 역전 방지 및 클램핑 처리
         if (value_changed)
         {
-            *v_min = ImClamp(*v_min, v_bound_min, v_bound_max);
-            *v_max = ImClamp(*v_max, v_bound_min, v_bound_max);
-            if (*v_min > *v_max)
+            double v_min_d = GetAsDouble(data_type, p_min);
+            double v_max_d = GetAsDouble(data_type, p_max);
+            double b_min_d = GetAsDouble(data_type, p_bound_min);
+            double b_max_d = GetAsDouble(data_type, p_bound_max);
+
+            v_min_d = ImClamp(v_min_d, b_min_d, b_max_d);
+            v_max_d = ImClamp(v_max_d, b_min_d, b_max_d);
+
+            if (v_min_d > v_max_d)
             {
-                if (g.ActiveId == min_id) *v_min = *v_max;
-                else if (g.ActiveId == max_id) *v_max = *v_min;
-                else { float t = *v_min; *v_min = *v_max; *v_max = t; }
+                if (g.ActiveId == min_id) v_min_d = v_max_d;
+                else if (g.ActiveId == max_id) v_max_d = v_min_d;
+                else { double t = v_min_d; v_min_d = v_max_d; v_max_d = t; }
             }
+            SetFromDouble(data_type, p_min, v_min_d);
+            SetFromDouble(data_type, p_max, v_max_d);
         }
 
-        // 입력 박스에서 Enter를 누르거나 다른 곳을 클릭해 둘 다 포커스를 잃으면 모드 해제
         if (!just_entered && g.ActiveId != min_id && g.ActiveId != max_id)
-        {
             storage->SetBool(text_mode_id, false);
-        }
 
         return value_changed;
     }
 
     // ==========================================
-    // 이하 슬라이더 바(기본) 모드 로직
+    // 2. 기본 슬라이더 모드 (드래그)
     // ==========================================
-    const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w, label_size.y + style.FramePadding.y * 2.0f));
-    const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
-
     ImGui::ItemSize(total_bb, style.FramePadding.y);
     if (!ImGui::ItemAdd(total_bb, id, &frame_bb, ImGuiItemFlags_Inputable))
         return false;
 
     float grab_width = 12.0f;
     float track_height = 4.0f;
-
     float track_x0 = frame_bb.Min.x + grab_width * 0.5f;
     float track_x1 = frame_bb.Max.x - grab_width * 0.5f;
     float track_w = track_x1 - track_x0;
 
-    auto ValToPos = [&](float v) -> float {
-        float t = (v - v_bound_min) / (v_bound_max - v_bound_min);
-        t = ImClamp(t, 0.0f, 1.0f);
-        return track_x0 + t * track_w;
+    double b_min_d = GetAsDouble(data_type, p_bound_min);
+    double b_max_d = GetAsDouble(data_type, p_bound_max);
+
+    auto ValToPosD = [&](double v) -> float {
+        float t = (b_max_d == b_min_d) ? 0.0f : (float)((v - b_min_d) / (b_max_d - b_min_d));
+        return track_x0 + ImClamp(t, 0.0f, 1.0f) * track_w;
     };
 
-    auto PosToVal = [&](float x) -> float {
-        float t = ImClamp((x - track_x0) / track_w, 0.0f, 1.0f);
-        return v_bound_min + t * (v_bound_max - v_bound_min);
-    };
+    double v_min_d = GetAsDouble(data_type, p_min);
+    double v_max_d = GetAsDouble(data_type, p_max);
 
-    float left_x = ValToPos(*v_min);
-    float right_x = ValToPos(*v_max);
+    float left_x = ValToPosD(v_min_d);
+    float right_x = ValToPosD(v_max_d);
 
     bool hovered = ImGui::ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
     bool value_changed = false;
@@ -873,27 +947,21 @@ bool ImGui::SliderRange(const char* label, float* v_min, float* v_max, float v_b
     ImRect left_grab_bb(ImVec2(left_x - hitbox_radius, frame_bb.Min.y - 4.0f), ImVec2(left_x + hitbox_radius, frame_bb.Max.y + 4.0f));
     ImRect right_grab_bb(ImVec2(right_x - hitbox_radius, frame_bb.Min.y - 4.0f), ImVec2(right_x + hitbox_radius, frame_bb.Max.y + 4.0f));
 
-    // 클릭 이벤트 처리 로직
     if (hovered && g.IO.MouseClicked[0])
     {
         bool left_hovered = left_grab_bb.Contains(g.IO.MousePos);
         bool right_hovered = right_grab_bb.Contains(g.IO.MousePos);
 
-        // [추가됨] 컨트롤(Ctrl) 클릭 감지 시 텍스트 모드로 진입
         if (g.IO.KeyCtrl)
         {
             storage->SetBool(text_mode_id, true);
             storage->SetBool(just_entered_id, true);
-
-            // 어느 쪽을 클릭했는지 판단하여 해당 텍스트 박스에 자동 포커스
             int focus_idx = 0;
             if (right_hovered && !left_hovered) focus_idx = 1;
             else if (!left_hovered && !right_hovered) {
-                // 트랙 위를 클릭한 경우 마우스와 더 가까운 쪽을 선택
                 focus_idx = (std::abs(g.IO.MousePos.x - right_x) < std::abs(g.IO.MousePos.x - left_x)) ? 1 : 0;
             }
             storage->SetInt(focus_target_id, focus_idx);
-
             ImGui::ClearActiveID();
             return false;
         }
@@ -911,10 +979,8 @@ bool ImGui::SliderRange(const char* label, float* v_min, float* v_max, float v_b
             }
 
             storage->SetInt(id, active_grab);
-
             float grab_center_x = (active_grab == 1) ? left_x : right_x;
-            float click_offset = g.IO.MousePos.x - grab_center_x;
-            storage->SetFloat(offset_id, click_offset);
+            storage->SetFloat(offset_id, g.IO.MousePos.x - grab_center_x);
 
             ImGui::SetActiveID(id, window);
             ImGui::SetFocusID(id, window);
@@ -922,28 +988,28 @@ bool ImGui::SliderRange(const char* label, float* v_min, float* v_max, float v_b
         }
     }
 
-    // 드래그 중 상태 처리
     if (g.ActiveId == id)
     {
         if (g.IO.MouseDown[0])
         {
             float click_offset = storage->GetFloat(offset_id, 0.0f);
             float adjusted_mouse_x = g.IO.MousePos.x - click_offset;
+            float t = ImClamp((adjusted_mouse_x - track_x0) / track_w, 0.0f, 1.0f);
+            double v_new_d = b_min_d + t * (b_max_d - b_min_d);
 
-            float v_new = PosToVal(adjusted_mouse_x);
-            if (active_grab == 1)
-            {
-                *v_min = ImMin(v_new, *v_max);
+            if (active_grab == 1) {
+                SetFromDouble(data_type, p_min, ImMin(v_new_d, v_max_d));
                 value_changed = true;
             }
-            else if (active_grab == 2)
-            {
-                *v_max = ImMax(v_new, *v_min);
+            else if (active_grab == 2) {
+                SetFromDouble(data_type, p_max, ImMax(v_new_d, v_min_d));
                 value_changed = true;
             }
 
-            left_x = ValToPos(*v_min);
-            right_x = ValToPos(*v_max);
+            v_min_d = GetAsDouble(data_type, p_min);
+            v_max_d = GetAsDouble(data_type, p_max);
+            left_x = ValToPosD(v_min_d);
+            right_x = ValToPosD(v_max_d);
         }
         else
         {
@@ -954,12 +1020,12 @@ bool ImGui::SliderRange(const char* label, float* v_min, float* v_max, float v_b
     }
 
     if (value_changed)
-    ImGui::MarkItemEdited(id);
+        ImGui::MarkItemEdited(id);
 
     // ==========================================
-    // 커스텀 렌더링 로직 (기존과 동일)
+    // 3. 커스텀 렌더링 (슬라이더 바 및 삼각형 그랩)
     // ==========================================
-    // ImGui::RenderNavCursor(frame_bb, id);
+    ImGui::RenderNavCursor(frame_bb, id);
 
     float track_y = std::floor(frame_bb.GetCenter().y + 0.5f);
     float lx = std::floor(left_x + 0.5f);
@@ -968,132 +1034,122 @@ bool ImGui::SliderRange(const char* label, float* v_min, float* v_max, float v_b
     ImVec2 track_min = ImVec2(frame_bb.Min.x, track_y - track_height * 0.5f);
     ImVec2 track_max = ImVec2(frame_bb.Max.x, track_y + track_height * 0.5f);
 
-    ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab);
+    ImU32 bg_track_col = ImGui::GetColorU32(ImGuiCol_ScrollbarGrab);
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
 
     ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
-    window->DrawList->AddRectFilled(
-        ImVec2(lx, track_min.y),
-        ImVec2(rx, track_max.y),
-        fill_track_col, track_height * 0.5f);
+    window->DrawList->AddRectFilled(ImVec2(lx, track_min.y), ImVec2(rx, track_max.y), fill_track_col, track_height * 0.5f);
 
     ImU32 grab_col = IM_COL32(255, 255, 255, 255);
-    ImU32 grab_border_col = GetColorU32(ImGuiCol_Border);
+    ImU32 grab_border_col = ImGui::GetColorU32(ImGuiCol_Border);
     float grab_border_thickness = 1.0f;
+    float tri_w = 7.0f, tri_h = 9.0f, corner_radius = 2.0f;
 
-    float tri_w = 7.0f;
-    float tri_h = 9.0f;
-
-    auto AddRoundedTriangle = [](ImDrawList* draw_list, ImVec2 p1, ImVec2 p2, ImVec2 p3, float radius, ImU32 fill_col, ImU32 border_col, float border_thickness)
-    {
+    auto AddRoundedTriangle = [&](ImVec2 p1, ImVec2 p2, ImVec2 p3, float radius, ImU32 fill_col, ImU32 border_col, float border_thickness) {
         auto build_path = [&]() {
             ImVec2 pts[3] = { p1, p2, p3 };
-            for (int i = 0; i < 3; i++)
-            {
-                ImVec2 prev = pts[(i + 2) % 3];
-                ImVec2 curr = pts[i];
-                ImVec2 next = pts[(i + 1) % 3];
-
-                ImVec2 v1 = ImVec2(prev.x - curr.x, prev.y - curr.y);
-                ImVec2 v2 = ImVec2(next.x - curr.x, next.y - curr.y);
-
-                float len1 = std::sqrt(v1.x * v1.x + v1.y * v1.y);
-                float len2 = std::sqrt(v2.x * v2.x + v2.y * v2.y);
+            for (int i = 0; i < 3; i++) {
+                ImVec2 prev = pts[(i + 2) % 3], curr = pts[i], next = pts[(i + 1) % 3];
+                ImVec2 v1(prev.x - curr.x, prev.y - curr.y), v2(next.x - curr.x, next.y - curr.y);
+                float len1 = std::sqrt(v1.x * v1.x + v1.y * v1.y), len2 = std::sqrt(v2.x * v2.x + v2.y * v2.y);
                 if (len1 > 0.0f) { v1.x /= len1; v1.y /= len1; }
                 if (len2 > 0.0f) { v2.x /= len2; v2.y /= len2; }
-
-                float angle1 = std::atan2(v1.y, v1.x);
-                float angle2 = std::atan2(v2.y, v2.x);
-
+                float angle1 = std::atan2(v1.y, v1.x), angle2 = std::atan2(v2.y, v2.x);
                 float diff = angle2 - angle1;
                 while (diff < -IM_PI) diff += IM_PI * 2.0f;
                 while (diff > IM_PI) diff -= IM_PI * 2.0f;
-
-                angle2 = angle1 + diff;
-
-                draw_list->PathArcTo(curr, radius, angle1, angle2, 6);
+                window->DrawList->PathArcTo(curr, radius, angle1, angle1 + diff, 6);
             }
         };
-
-        build_path();
-        draw_list->PathFillConvex(fill_col);
-
-        if (border_thickness > 0.0f)
-        {
-            build_path();
-            draw_list->PathStroke(border_col, ImDrawFlags_Closed, border_thickness);
+        build_path(); window->DrawList->PathFillConvex(fill_col);
+        if (border_thickness > 0.0f) {
+            build_path(); window->DrawList->PathStroke(border_col, ImDrawFlags_Closed, border_thickness);
         }
     };
 
-    float corner_radius = 2.0f;
+    AddRoundedTriangle(ImVec2(lx - tri_w, track_y - tri_h), ImVec2(lx + tri_w, track_y), ImVec2(lx - tri_w, track_y + tri_h), corner_radius, grab_col, grab_border_col, grab_border_thickness);
+    AddRoundedTriangle(ImVec2(rx + tri_w, track_y - tri_h), ImVec2(rx + tri_w, track_y + tri_h), ImVec2(rx - tri_w, track_y), corner_radius, grab_col, grab_border_col, grab_border_thickness);
 
-    AddRoundedTriangle(
-        window->DrawList,
-        ImVec2(lx - tri_w, track_y - tri_h),
-        ImVec2(lx + tri_w, track_y),
-        ImVec2(lx - tri_w, track_y + tri_h),
-        corner_radius,
-        grab_col, grab_border_col, grab_border_thickness
-    );
+    // ==========================================
+    // 4. 라벨 표시 (가장 좌측) 및 커스텀 말풍선 툴팁
+    // ==========================================
 
-    AddRoundedTriangle(
-        window->DrawList,
-        ImVec2(rx + tri_w, track_y - tri_h),
-        ImVec2(rx + tri_w, track_y + tri_h),
-        ImVec2(rx - tri_w, track_y),
-        corner_radius,
-        grab_col, grab_border_col, grab_border_thickness
-    );
+    // 라벨 렌더링
+    if (label_size.x > 0.0f) {
+        const char* label_display_end = FindRenderedTextEnd(label);
+        if (label != label_display_end)
+            ImGui::RenderText(ImVec2(pos.x, frame_bb.Min.y + style.FramePadding.y), label, label_display_end);
+    }
 
-    // 툴팁 표시
-    if (g.ActiveId == id && active_grab != 0)
+    // 드래그(Active) 중일 때 디자인된 말풍선 출력
+    if (g.ActiveId == id)
     {
-        char value_buf[64];
-        float active_val = (active_grab == 1) ? *v_min : *v_max;
-        snprintf(value_buf, sizeof(value_buf), format, active_val);
+        char val_min_buf[64], val_max_buf[64];
+        DataTypeFormatString(val_min_buf, sizeof(val_min_buf), data_type, p_min, format);
+        DataTypeFormatString(val_max_buf, sizeof(val_max_buf), data_type, p_max, format);
+
+        #ifndef ICON_MD_ARROW_RANGE
+        #define ICON_MD_ARROW_RANGE "-"
+        #endif
+
+        char value_buf[128];
+        snprintf(value_buf, sizeof(value_buf), "%s " ICON_MD_ARROW_RANGE " %s", val_min_buf, val_max_buf);
+
+        // 현재 조작 중인 그랩을 기준으로 위치 설정 (중앙 혹은 조작중인 위치)
+        float active_x = (left_x + right_x) * 0.5f;
+        if (active_grab == 1) active_x = left_x;
+        else if (active_grab == 2) active_x = right_x;
+
+        // 툴팁 렌더링을 윈도우 영역 밖에서도 잘리지 않도록 최상단 Foreground DrawList 사용
+        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
 
         ImVec2 text_size = ImGui::CalcTextSize(value_buf);
         ImVec2 padding(10.0f, 6.0f);
         float tooltip_y_offset = 12.0f;
-        float grab_top_offset = tri_h;
 
-        float active_x = (active_grab == 1) ? left_x : right_x;
-        ImVec2 tooltip_min = ImVec2(active_x - text_size.x * 0.5f - padding.x, track_y - grab_top_offset - tooltip_y_offset - text_size.y - padding.y * 2.0f);
-        ImVec2 tooltip_max = ImVec2(active_x + text_size.x * 0.5f + padding.x, track_y - grab_top_offset - tooltip_y_offset);
+        // 삼각형 그랩의 윗변(track_y - tri_h)을 기준으로 말풍선 위치 계산
+        float grab_top_y = track_y - tri_h;
 
-        ImU32 tooltip_bg_col     = GetColorU32(ImGuiCol_FrameBg);
-        ImU32 tooltip_border_col = GetColorU32(ImGuiCol_Border);
+        ImVec2 tooltip_min = ImVec2(active_x - text_size.x * 0.5f - padding.x, grab_top_y - tooltip_y_offset - text_size.y - padding.y * 2.0f);
+        ImVec2 tooltip_max = ImVec2(active_x + text_size.x * 0.5f + padding.x, grab_top_y - tooltip_y_offset);
 
-        window->DrawList->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
-        window->DrawList->AddRect(tooltip_min, tooltip_max, tooltip_border_col, 6.0f);
+        ImU32 tooltip_bg_col     = ImGui::GetColorU32(ImGuiCol_FrameBg);
+        ImU32 tooltip_border_col = ImGui::GetColorU32(ImGuiCol_Border);
 
+        // 1. 말풍선 둥근 사각형 배경 & 테두리
+        draw_list->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
+        draw_list->AddRect(tooltip_min, tooltip_max, tooltip_border_col, 6.0f);
+
+        // 꼬리 꼭짓점 기본 좌표 (사각형 하단 선 기준)
         ImVec2 p1 = ImVec2(active_x - 6.0f, tooltip_max.y);
         ImVec2 p2 = ImVec2(active_x + 6.0f, tooltip_max.y);
-        ImVec2 p3 = ImVec2(active_x, tooltip_max.y + 6.0f);
+        ImVec2 p3 = ImVec2(active_x, tooltip_max.y + 6.0f); // 꼬리 끝(아래)
 
-        window->DrawList->AddRectFilled(
+        // 2. 몸통과 꼬리가 만나는 부분의 테두리를 확실하게 지우기
+        draw_list->AddRectFilled(
             ImVec2(p1.x + 0.5f, tooltip_max.y - 1.0f),
             ImVec2(p2.x - 0.5f, tooltip_max.y + 1.0f),
             tooltip_bg_col
         );
 
+        // 3. 꼬리 배경 삼각형 그리기
         ImVec2 fill_p1 = ImVec2(p1.x, tooltip_max.y - 1.0f);
         ImVec2 fill_p2 = ImVec2(p2.x, tooltip_max.y - 1.0f);
-        window->DrawList->AddTriangleFilled(fill_p1, fill_p2, p3, tooltip_bg_col);
+        draw_list->AddTriangleFilled(fill_p1, fill_p2, p3, tooltip_bg_col);
 
+        // 4. 꼬리 테두리 (V자 선)
         ImVec2 tail_pts[3] = { p1, p3, p2 };
-        window->DrawList->AddPolyline(tail_pts, 3, tooltip_border_col, 0, 1.0f);
+        draw_list->AddPolyline(tail_pts, 3, tooltip_border_col, 0, 1.0f);
 
-        window->DrawList->AddText(tooltip_min + padding, GetColorU32(ImGuiCol_Text), value_buf);
+        // 5. 텍스트 렌더링
+        draw_list->AddText(tooltip_min + padding, ImGui::GetColorU32(ImGuiCol_Text), value_buf);
     }
-
-    if (label_size.x > 0.0f)
-        ImGui::RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, frame_bb.Min.y + style.FramePadding.y), label);
 
     return value_changed;
 }
 
-bool ImGui::SliderScalarX(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
+
+bool ImGui::_slider1_(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
 {
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -1196,15 +1252,30 @@ bool ImGui::SliderScalarX(const char* label, ImGuiDataType data_type, void* p_da
 
 bool ImGui::SliderFloatX(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
 {
-    return SliderScalarX(label, ImGuiDataType_Float, v, &v_min, &v_max, format, flags);
+    return _slider1_(label, ImGuiDataType_Float, v, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::SliderFloatX(const char *label, int *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return _slider1_(label, ImGuiDataType_S32, v, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::SliderFloatX(const char *label, double *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return _slider1_(label, ImGuiDataType_Double, v, &v_min, &v_max, format, flags);
 }
 
 bool ImGui::Slider(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
 {
-    return SliderScalar(label, ImGuiDataType_Float, v, &v_min, &v_max, format, flags);
+    return _slider2_(label, ImGuiDataType_Float, v, &v_min, &v_max, format, flags);
 }
 
-bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const char* format, ImGuiSliderFlags flags)
+bool ImGui::Slider(const char *label, int *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return _slider2_(label, ImGuiDataType_S32, v, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
 {
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -1214,21 +1285,23 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
 
-    // [수정된 부분] 시작 좌표를 먼저 가져옵니다.
     const ImVec2 pos = window->DC.CursorPos;
-
-    // [수정된 부분] CalcItemWidth() 대신 사용 가능한 오른쪽 끝(WorkRect.Max.x)까지의 너비를 계산합니다.
-    const float w = ImMax(10.0f, window->WorkRect.Max.x - pos.x);
-
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
-    const float text_height = g.FontSize;
-    const float spacing = style.ItemInnerSpacing.y;
 
-    const ImRect text_bb(pos, pos + ImVec2(w, text_height));
+    // [수정] 슬라이더 위젯의 너비 계산 (기본 아이템 너비 사용)
+    const float w = CalcItemWidth();
+
+    // [수정] 전체 가용 영역 및 위젯이 배치될 오른쪽 좌표 계산
+    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+
+    // 슬라이더 프레임을 오른쪽 끝에 배치
+    const float frame_x = pos.x + total_width - w;
     const float frame_height = label_size.y + style.FramePadding.y * 2.0f;
-    const ImRect frame_bb(ImVec2(pos.x, pos.y + text_height + spacing),
-                          ImVec2(pos.x + w, pos.y + text_height + spacing + frame_height));
-    const ImRect total_bb(pos, frame_bb.Max);
+    const ImRect frame_bb(ImVec2(frame_x, pos.y), ImVec2(frame_x + w, pos.y + frame_height));
+
+    // 전체 차지 영역 (라벨부터 위젯 끝까지)
+    const ImRect total_bb(pos, ImVec2(pos.x + total_width, frame_bb.Max.y));
 
     const bool temp_input_allowed = (flags & ImGuiSliderFlags_NoInput) == 0;
     ItemSize(total_bb, style.FramePadding.y);
@@ -1236,19 +1309,40 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
         return false;
 
     if (format == NULL)
-        format = DataTypeGetInfo(ImGuiDataType_Float)->PrintFmt;
+        format = DataTypeGetInfo(data_type)->PrintFmt;
 
     ImRect slider_bb = frame_bb;
     slider_bb.Min.x += 5.0f;
     slider_bb.Max.x -= 5.0f;
 
     // =========================================================================
-    // 1. 그랩 밖 클릭 무시를 위한 히트박스 수학적 계산 (SliderBehavior 부작용 원천 차단)
+    // 1. 그랩 밖 클릭 무시를 위한 히트박스 계산 (비율 계산용 double 변환)
     // =========================================================================
-    float v_clamped = (v_min < v_max) ? ImClamp(*v, v_min, v_max) : ImClamp(*v, v_max, v_min);
+    auto GetAsDouble = [](ImGuiDataType type, const void* ptr) -> double {
+        if (!ptr) return 0.0;
+        switch (type) {
+            case ImGuiDataType_S8:     return (double)*(const ImS8*)ptr;
+            case ImGuiDataType_U8:     return (double)*(const ImU8*)ptr;
+            case ImGuiDataType_S16:    return (double)*(const ImS16*)ptr;
+            case ImGuiDataType_U16:    return (double)*(const ImU16*)ptr;
+            case ImGuiDataType_S32:    return (double)*(const ImS32*)ptr;
+            case ImGuiDataType_U32:    return (double)*(const ImU32*)ptr;
+            case ImGuiDataType_S64:    return (double)*(const ImS64*)ptr;
+            case ImGuiDataType_U64:    return (double)*(const ImU64*)ptr;
+            case ImGuiDataType_Float:  return (double)*(const float*)ptr;
+            case ImGuiDataType_Double: return *(const double*)ptr;
+        }
+        return 0.0;
+    };
+
+    double v_val = GetAsDouble(data_type, p_data);
+    double v_min_val = GetAsDouble(data_type, p_min);
+    double v_max_val = GetAsDouble(data_type, p_max);
+
+    double v_clamped = (v_min_val < v_max_val) ? ImClamp(v_val, v_min_val, v_max_val) : ImClamp(v_val, v_max_val, v_min_val);
     float t = 0.0f;
-    if (v_min != v_max)
-        t = ImClamp((v_clamped - v_min) / (v_max - v_min), 0.0f, 1.0f);
+    if (v_min_val != v_max_val)
+        t = (float)ImClamp((v_clamped - v_min_val) / (v_max_val - v_min_val), 0.0, 1.0);
 
     float grab_padding = 2.0f;
     float grab_radius = 9.0f;
@@ -1295,7 +1389,265 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     if (temp_input_is_active)
     {
         const bool clamp_enabled = (flags & ImGuiSliderFlags_ClampOnInput) != 0;
-        return TempInputScalar(frame_bb, id, label, ImGuiDataType_Float, v, format, clamp_enabled ? &v_min : NULL, clamp_enabled ? &v_max : NULL);
+        return TempInputScalar(frame_bb, id, label, data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
+    }
+
+    // =========================================================================
+    // 3. 실제 슬라이더 동작 및 클릭 제한 적용
+    // =========================================================================
+    bool backup_clicked = g.IO.MouseClicked[0];
+    bool backup_down = g.IO.MouseDown[0];
+
+    if (is_clicking_outside_grab)
+    {
+        g.IO.MouseClicked[0] = false;
+        g.IO.MouseDown[0] = false;
+    }
+
+    ImRect grab_bb;
+    const bool value_changed = SliderBehavior(slider_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
+
+    if (is_clicking_outside_grab)
+    {
+        g.IO.MouseClicked[0] = backup_clicked;
+        g.IO.MouseDown[0] = backup_down;
+    }
+
+    if (value_changed)
+        MarkItemEdited(id);
+
+    // ==========================================
+    // 4. 이미지 스타일 커스텀 렌더링
+    // ==========================================
+    RenderNavCursor(frame_bb, id);
+
+    auto GetMappedGrabCenter = [&](const ImRect& g_bb) -> ImVec2 {
+        float g_w = g_bb.GetWidth();
+        float internal_min_c = slider_bb.Min.x + grab_padding + g_w * 0.5f;
+        float internal_max_c = slider_bb.Max.x - grab_padding - g_w * 0.5f;
+        float t_render = 0.0f;
+        if (internal_max_c > internal_min_c)
+            t_render = ImClamp((g_bb.GetCenter().x - internal_min_c) / (internal_max_c - internal_min_c), 0.0f, 1.0f);
+        float mapped_x = ImLerp(slider_bb.Min.x, slider_bb.Max.x, t_render);
+        return ImVec2(mapped_x, frame_bb.GetCenter().y);
+    };
+
+    float track_height = 4.0f;
+    ImVec2 track_min = ImVec2(frame_bb.Min.x, frame_bb.GetCenter().y - track_height * 0.5f);
+    ImVec2 track_max = ImVec2(frame_bb.Max.x, frame_bb.GetCenter().y + track_height * 0.5f);
+
+    ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab);
+    window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
+
+    ImVec2 grab_center = GetMappedGrabCenter(grab_bb);
+
+    ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
+    if (grab_center.x > frame_bb.Min.x)
+    {
+        ImVec2 fill_max = ImVec2(grab_center.x, track_max.y);
+        window->DrawList->AddRectFilled(track_min, fill_max, fill_track_col, track_height * 0.5f);
+    }
+
+    window->DrawList->AddCircleFilled(grab_center, grab_radius, IM_COL32(255, 255, 255, 255));
+    ImU32 grab_border_col = GetColorU32(ImGuiCol_Border);
+    float grab_border_thickness = 1.0f;
+    window->DrawList->AddCircle(grab_center, grab_radius, grab_border_col, 0, grab_border_thickness);
+
+    // ==========================================
+    // 5. 드래그 중 값 툴팁 표시 및 라벨 렌더링
+    // ==========================================
+
+    // 포맷팅된 값을 담을 버퍼
+    char value_buf[64];
+    DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
+
+    // [수정] 위젯과 상호작용 중일 때(마우스 누르기/드래그) 툴팁으로만 값 출력
+    if (g.ActiveId == id)
+    {
+        ImVec2 text_size = CalcTextSize(value_buf);
+        ImVec2 padding(10.0f, 6.0f);
+        float tooltip_y_offset = 12.0f;
+
+        ImVec2 tooltip_min = ImVec2(grab_center.x - text_size.x * 0.5f - padding.x, grab_center.y - grab_radius - tooltip_y_offset - text_size.y - padding.y * 2.0f);
+        ImVec2 tooltip_max = ImVec2(grab_center.x + text_size.x * 0.5f + padding.x, grab_center.y - grab_radius - tooltip_y_offset);
+
+        ImU32 tooltip_bg_col     = GetColorU32(ImGuiCol_FrameBg);
+        ImU32 tooltip_border_col = GetColorU32(ImGuiCol_Border);
+
+        // 1. 말풍선 둥근 사각형 배경 & 테두리
+        window->DrawList->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
+        window->DrawList->AddRect(tooltip_min, tooltip_max, tooltip_border_col, 6.0f);
+
+        // 꼬리 꼭짓점 기본 좌표 (사각형 하단 선 기준)
+        ImVec2 p1 = ImVec2(grab_center.x - 6.0f, tooltip_max.y);
+        ImVec2 p2 = ImVec2(grab_center.x + 6.0f, tooltip_max.y);
+        ImVec2 p3 = ImVec2(grab_center.x, tooltip_max.y + 6.0f); // 꼬리 끝(아래)
+
+        // 2. 몸통과 꼬리가 만나는 부분의 테두리를 확실하게 지우기
+        // 높이 2px짜리 배경색 사각형을 테두리 위에 덮어씌워 잔상을 없앱니다.
+        // 양끝 모서리가 잘리지 않도록 0.5f씩 좁혀서 덮어줍니다.
+        window->DrawList->AddRectFilled(
+            ImVec2(p1.x + 0.5f, tooltip_max.y - 1.0f),
+            ImVec2(p2.x - 0.5f, tooltip_max.y + 1.0f),
+            tooltip_bg_col
+        );
+
+        // 3. 꼬리 배경 삼각형 그리기
+        // 틈새가 안 생기도록 삼각형 윗변을 사각형 안쪽(위)으로 1픽셀 밀어 올려서 그립니다.
+        ImVec2 fill_p1 = ImVec2(p1.x, tooltip_max.y - 1.0f);
+        ImVec2 fill_p2 = ImVec2(p2.x, tooltip_max.y - 1.0f);
+        window->DrawList->AddTriangleFilled(fill_p1, fill_p2, p3, tooltip_bg_col);
+
+        // 4. 꼬리 테두리 (V자 선)
+        // 테두리 선이 사각형 바닥선(tooltip_max.y)에서 딱 떨어지게 연결됩니다.
+        ImVec2 tail_pts[3] = { p1, p3, p2 };
+        window->DrawList->AddPolyline(tail_pts, 3, tooltip_border_col, 0, 1.0f);
+
+        // 5. 텍스트 렌더링
+        window->DrawList->AddText(tooltip_min + padding, GetColorU32(ImGuiCol_Text), value_buf);
+    }
+
+    // [수정] 라벨(텍스트)을 가장 왼쪽 위치(pos.x)에 렌더링
+    if (label_size.x > 0.0f)
+    {
+        RenderText(ImVec2(pos.x, frame_bb.Min.y + style.FramePadding.y), label);
+    }
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | (temp_input_allowed ? ImGuiItemStatusFlags_Inputable : 0));
+    return value_changed;
+}
+
+bool ImGui::Slider(const char *label, double *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return _slider2_(label, ImGuiDataType_Double, v, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const char* format, ImGuiSliderFlags flags)
+{
+    return _slider3(label, ImGuiDataType_Float, v, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::SliderX(const char *label, int *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return _slider3(label, ImGuiDataType_S32, v, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::SliderX(const char *label, double *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
+{
+    return _slider3(label, ImGuiDataType_Double, v, &v_min, &v_max, format, flags);
+}
+
+bool ImGui::_slider3(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+
+    const ImVec2 pos = window->DC.CursorPos;
+    const float w = ImMax(10.0f, window->WorkRect.Max.x - pos.x);
+
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+    const float text_height = g.FontSize;
+    const float spacing = style.ItemInnerSpacing.y;
+
+    const ImRect text_bb(pos, pos + ImVec2(w, text_height));
+    const float frame_height = label_size.y + style.FramePadding.y * 2.0f;
+    const ImRect frame_bb(ImVec2(pos.x, pos.y + text_height + spacing),
+                          ImVec2(pos.x + w, pos.y + text_height + spacing + frame_height));
+    const ImRect total_bb(pos, frame_bb.Max);
+
+    const bool temp_input_allowed = (flags & ImGuiSliderFlags_NoInput) == 0;
+    ItemSize(total_bb, style.FramePadding.y);
+    if (!ItemAdd(total_bb, id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
+        return false;
+
+    if (format == NULL)
+        format = DataTypeGetInfo(data_type)->PrintFmt;
+
+    ImRect slider_bb = frame_bb;
+    slider_bb.Min.x += 5.0f;
+    slider_bb.Max.x -= 5.0f;
+
+    // =========================================================================
+    // 1. 그랩 밖 클릭 무시를 위한 히트박스 수학적 계산
+    // DataType 제네릭 처리를 위해 double로 캐스팅하여 비율(t) 계산
+    // =========================================================================
+    auto GetAsDouble = [](ImGuiDataType type, const void* ptr) -> double {
+        if (!ptr) return 0.0;
+        switch (type) {
+            case ImGuiDataType_S8:     return (double)*(const ImS8*)ptr;
+            case ImGuiDataType_U8:     return (double)*(const ImU8*)ptr;
+            case ImGuiDataType_S16:    return (double)*(const ImS16*)ptr;
+            case ImGuiDataType_U16:    return (double)*(const ImU16*)ptr;
+            case ImGuiDataType_S32:    return (double)*(const ImS32*)ptr;
+            case ImGuiDataType_U32:    return (double)*(const ImU32*)ptr;
+            case ImGuiDataType_S64:    return (double)*(const ImS64*)ptr;
+            case ImGuiDataType_U64:    return (double)*(const ImU64*)ptr;
+            case ImGuiDataType_Float:  return (double)*(const float*)ptr;
+            case ImGuiDataType_Double: return *(const double*)ptr;
+        }
+        return 0.0;
+    };
+
+    double v_val = GetAsDouble(data_type, p_data);
+    double v_min_val = GetAsDouble(data_type, p_min);
+    double v_max_val = GetAsDouble(data_type, p_max);
+
+    double v_clamped = (v_min_val < v_max_val) ? ImClamp(v_val, v_min_val, v_max_val) : ImClamp(v_val, v_max_val, v_min_val);
+    float t = 0.0f;
+    if (v_min_val != v_max_val)
+        t = (float)ImClamp((v_clamped - v_min_val) / (v_max_val - v_min_val), 0.0, 1.0);
+
+    float grab_padding = 2.0f;
+    float grab_radius = 9.0f;
+    float grab_w = grab_radius * 2.0f;
+    float internal_min_x = slider_bb.Min.x + grab_padding + grab_w * 0.5f;
+    float internal_max_x = slider_bb.Max.x - grab_padding - grab_w * 0.5f;
+
+    float grab_center_x = ImLerp(internal_min_x, internal_max_x, t);
+    ImVec2 current_grab_center = ImVec2(grab_center_x, frame_bb.GetCenter().y);
+
+    float grab_hitbox_radius = grab_radius + 4.0f;
+    ImRect interact_grab_bb(
+        current_grab_center.x - grab_hitbox_radius, frame_bb.Min.y - 4.0f,
+        current_grab_center.x + grab_hitbox_radius, frame_bb.Max.y + 4.0f
+    );
+
+    const bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
+    bool is_clicking_outside_grab = hovered && IsMouseClicked(0, ImGuiInputFlags_None, id) && !interact_grab_bb.Contains(g.IO.MousePos);
+
+    // =========================================================================
+    // 2. 텍스트 인풋 모드 (Ctrl + Click) 처리 로직
+    // =========================================================================
+    bool temp_input_is_active = temp_input_allowed && TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        const bool clicked = hovered && IsMouseClicked(0, ImGuiInputFlags_None, id);
+        const bool make_active = (clicked || g.NavActivateId == id);
+        if (make_active && clicked)
+            SetKeyOwner(ImGuiKey_MouseLeft, id);
+
+        if (make_active && temp_input_allowed)
+            if ((clicked && g.IO.KeyCtrl) || (g.NavActivateId == id && (g.NavActivateFlags & ImGuiActivateFlags_PreferInput)))
+                temp_input_is_active = true;
+
+        if (make_active && !temp_input_is_active)
+        {
+            SetActiveID(id, window);
+            SetFocusID(id, window);
+            FocusWindow(window);
+            g.ActiveIdUsingNavDirMask |= (1 << ImGuiDir_Left) | (1 << ImGuiDir_Right);
+        }
+    }
+
+    if (temp_input_is_active)
+    {
+        const bool clamp_enabled = (flags & ImGuiSliderFlags_ClampOnInput) != 0;
+        return TempInputScalar(frame_bb, id, label, data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
     }
 
     // =========================================================================
@@ -1311,7 +1663,7 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     }
 
     ImRect grab_bb;
-    const bool value_changed = SliderBehavior(slider_bb, id, ImGuiDataType_Float, v, &v_min, &v_max, format, flags, &grab_bb);
+    const bool value_changed = SliderBehavior(slider_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
 
     if (is_clicking_outside_grab)
     {
@@ -1359,11 +1711,12 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     float grab_border_thickness = 1.0f;
     window->DrawList->AddCircle(grab_center, grab_radius, grab_border_col, 0, grab_border_thickness);
 
+    // 데이터 타입에 맞는 텍스트 포맷 처리
     char value_buf[64];
-    int value_len = DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), ImGuiDataType_Float, v, format);
+    int value_len = DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
     const char* value_buf_end = value_buf + value_len;
 
-    // --- 텍스트 렌더링 로직 (우측 여백 없이 렌더링됨) ---
+    // --- 텍스트 렌더링 로직 ---
     if (label_size.x > 0.0f)
     {
         const char* label_display_end = FindRenderedTextEnd(label);
@@ -1372,15 +1725,13 @@ bool ImGui::SliderX(const char* label, float* v, float v_min, float v_max, const
     }
 
     const ImVec2 value_size = CalcTextSize(value_buf, value_buf_end);
-
-    // 계산된 최대 넓이 끝(w)을 기준으로 우측 정렬되어 출력됩니다.
     RenderText(ImVec2(text_bb.Max.x - value_size.x, text_bb.Min.y), value_buf, value_buf_end);
 
     IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | (temp_input_allowed ? ImGuiItemStatusFlags_Inputable : 0));
     return value_changed;
 }
 
-bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_bound_min, float v_bound_max, const char *format)
+bool ImGui::_slider5_(const char *label, ImGuiDataType data_type, void *p_min, void *p_max, const void *p_bound_min, const void *p_bound_max, const char *format)
 {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
@@ -1391,6 +1742,49 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
     const ImGuiID id = window->GetID(label);
     ImGuiStorage* storage = window->DC.StateStorage;
 
+    if (format == NULL)
+        format = DataTypeGetInfo(data_type)->PrintFmt;
+
+    // =========================================================================
+    // 스칼라 타입 변환 유틸리티 (void* <-> double)
+    // =========================================================================
+    auto GetAsDouble = [](ImGuiDataType type, const void* ptr) -> double {
+        if (!ptr) return 0.0;
+        switch (type) {
+            case ImGuiDataType_S8:     return (double)*(const ImS8*)ptr;
+            case ImGuiDataType_U8:     return (double)*(const ImU8*)ptr;
+            case ImGuiDataType_S16:    return (double)*(const ImS16*)ptr;
+            case ImGuiDataType_U16:    return (double)*(const ImU16*)ptr;
+            case ImGuiDataType_S32:    return (double)*(const ImS32*)ptr;
+            case ImGuiDataType_U32:    return (double)*(const ImU32*)ptr;
+            case ImGuiDataType_S64:    return (double)*(const ImS64*)ptr;
+            case ImGuiDataType_U64:    return (double)*(const ImU64*)ptr;
+            case ImGuiDataType_Float:  return (double)*(const float*)ptr;
+            case ImGuiDataType_Double: return *(const double*)ptr;
+        }
+        return 0.0;
+    };
+
+    auto SetFromDouble = [](ImGuiDataType type, void* ptr, double val) {
+        if (!ptr) return;
+        // 정수형 타입일 경우 반올림 처리
+        if (type >= ImGuiDataType_S8 && type <= ImGuiDataType_U64)
+            val = std::round(val);
+
+        switch (type) {
+            case ImGuiDataType_S8:     *(ImS8*)ptr     = (ImS8)ImClamp(val, (double)-128.0, (double)127.0); break;
+            case ImGuiDataType_U8:     *(ImU8*)ptr     = (ImU8)ImClamp(val, (double)0.0, (double)255.0); break;
+            case ImGuiDataType_S16:    *(ImS16*)ptr    = (ImS16)ImClamp(val, (double)-32768.0, (double)32767.0); break;
+            case ImGuiDataType_U16:    *(ImU16*)ptr    = (ImU16)ImClamp(val, (double)0.0, (double)65535.0); break;
+            case ImGuiDataType_S32:    *(ImS32*)ptr    = (ImS32)ImClamp(val, (double)-2147483648.0, (double)2147483647.0); break;
+            case ImGuiDataType_U32:    *(ImU32*)ptr    = (ImU32)ImClamp(val, (double)0.0, (double)4294967295.0); break;
+            case ImGuiDataType_S64:    *(ImS64*)ptr    = (ImS64)val; break;
+            case ImGuiDataType_U64:    *(ImU64*)ptr    = (ImU64)val; break;
+            case ImGuiDataType_Float:  *(float*)ptr    = (float)val; break;
+            case ImGuiDataType_Double: *(double*)ptr   = val; break;
+        }
+    };
+
     // 텍스트 모드 전환 상태를 저장하기 위한 커스텀 ID
     const ImGuiID text_mode_id = id + 2;
     const ImGuiID just_entered_id = id + 3;
@@ -1398,7 +1792,9 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
 
     bool text_input_mode = storage->GetBool(text_mode_id, false);
 
-    const float w = ImGui::CalcItemWidth();
+    // [수정] 시작 좌표를 먼저 가져오고, 우측 여백 없이 끝까지 너비(w)를 계산
+    const ImVec2 pos = window->DC.CursorPos;
+    const float w = ImMax(10.0f, window->WorkRect.Max.x - pos.x);
     const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
 
     // ==========================================
@@ -1408,7 +1804,6 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
     {
         ImGui::BeginGroup();
 
-        // 텍스트 모드에서도 일관성을 위해 라벨을 상단 좌측에 렌더링
         if (label_size.x > 0.0f)
         {
             const char* label_display_end = FindRenderedTextEnd(label);
@@ -1418,13 +1813,12 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
 
         ImGui::PushID(label);
 
-        // 너비를 2등분하여 두 개의 인풋 박스를 배치
+        // 변경된 가용 전체 너비(w)를 기반으로 2등분
         ImGui::PushMultiItemsWidths(2, w);
 
         bool just_entered = storage->GetBool(just_entered_id, false);
         if (just_entered)
         {
-            // 클릭했던 그랩(Min 또는 Max)에 맞춰 포커스를 자동 지정
             int focus_idx = storage->GetInt(focus_target_id, 0);
             ImGui::SetKeyboardFocusHere(focus_idx);
             storage->SetBool(just_entered_id, false);
@@ -1432,36 +1826,38 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
 
         bool value_changed = false;
 
-        // 1. Min 입력 박스
-        value_changed |= ImGui::InputFloat("##min", v_min, 0.0f, 0.0f, format);
+        value_changed |= ImGui::InputScalar("##min", data_type, p_min, NULL, NULL, format);
         ImGuiID min_id = window->GetID("##min");
         ImGui::PopItemWidth();
         ImGui::SameLine(0, style.ItemInnerSpacing.x);
 
-        // 2. Max 입력 박스
-        value_changed |= ImGui::InputFloat("##max", v_max, 0.0f, 0.0f, format);
+        value_changed |= ImGui::InputScalar("##max", data_type, p_max, NULL, NULL, format);
         ImGuiID max_id = window->GetID("##max");
         ImGui::PopItemWidth();
-
-        // (기존 라벨 렌더링 부분은 상단으로 옮겼으므로 삭제됨)
 
         ImGui::PopID();
         ImGui::EndGroup();
 
-        // 입력 시 역전 방지 및 클램핑 처리
         if (value_changed)
         {
-            *v_min = ImClamp(*v_min, v_bound_min, v_bound_max);
-            *v_max = ImClamp(*v_max, v_bound_min, v_bound_max);
-            if (*v_min > *v_max)
+            double v_min_d = GetAsDouble(data_type, p_min);
+            double v_max_d = GetAsDouble(data_type, p_max);
+            double b_min_d = GetAsDouble(data_type, p_bound_min);
+            double b_max_d = GetAsDouble(data_type, p_bound_max);
+
+            v_min_d = ImClamp(v_min_d, b_min_d, b_max_d);
+            v_max_d = ImClamp(v_max_d, b_min_d, b_max_d);
+
+            if (v_min_d > v_max_d)
             {
-                if (g.ActiveId == min_id) *v_min = *v_max;
-                else if (g.ActiveId == max_id) *v_max = *v_min;
-                else { float t = *v_min; *v_min = *v_max; *v_max = t; }
+                if (g.ActiveId == min_id) v_min_d = v_max_d;
+                else if (g.ActiveId == max_id) v_max_d = v_min_d;
+                else { double t = v_min_d; v_min_d = v_max_d; v_max_d = t; }
             }
+            SetFromDouble(data_type, p_min, v_min_d);
+            SetFromDouble(data_type, p_max, v_max_d);
         }
 
-        // 입력 박스에서 Enter를 누르거나 다른 곳을 클릭해 둘 다 포커스를 잃으면 모드 해제
         if (!just_entered && g.ActiveId != min_id && g.ActiveId != max_id)
         {
             storage->SetBool(text_mode_id, false);
@@ -1473,23 +1869,14 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
     // ==========================================
     // 이하 슬라이더 바(기본) 모드 로직
     // ==========================================
+    const float text_height = g.FontSize;
+    const float spacing = style.ItemInnerSpacing.y;
 
-    // --- 레이아웃 수정 부분: 상단 텍스트 영역과 하단 프레임 영역 분리 ---
-    const float text_height = g.FontSize; // 라벨 및 우측 값 텍스트 높이
-    const float spacing = style.ItemInnerSpacing.y; // 텍스트와 슬라이더 사이의 간격
-    const ImVec2 pos = window->DC.CursorPos;
-
-    // 1. 텍스트가 렌더링될 상단 영역 (좌측 라벨, 우측 값)
     const ImRect text_bb(pos, pos + ImVec2(w, text_height));
-
-    // 2. 실제 슬라이더 조작 및 렌더링이 이루어질 하단 영역
     const float frame_height = label_size.y + style.FramePadding.y * 2.0f;
     const ImRect frame_bb(ImVec2(pos.x, pos.y + text_height + spacing),
                           ImVec2(pos.x + w, pos.y + text_height + spacing + frame_height));
-
-    // 3. 전체 위젯 영역
     const ImRect total_bb(pos, frame_bb.Max);
-    // ------------------------------------------------------------------
 
     ImGui::ItemSize(total_bb, style.FramePadding.y);
     if (!ImGui::ItemAdd(total_bb, id, &frame_bb, ImGuiItemFlags_Inputable))
@@ -1502,19 +1889,19 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
     float track_x1 = frame_bb.Max.x - grab_width * 0.5f;
     float track_w = track_x1 - track_x0;
 
-    auto ValToPos = [&](float v) -> float {
-        float t = (v - v_bound_min) / (v_bound_max - v_bound_min);
-        t = ImClamp(t, 0.0f, 1.0f);
-        return track_x0 + t * track_w;
+    double b_min_d = GetAsDouble(data_type, p_bound_min);
+    double b_max_d = GetAsDouble(data_type, p_bound_max);
+
+    auto ValToPosD = [&](double v) -> float {
+        float t = (b_max_d == b_min_d) ? 0.0f : (float)((v - b_min_d) / (b_max_d - b_min_d));
+        return track_x0 + ImClamp(t, 0.0f, 1.0f) * track_w;
     };
 
-    auto PosToVal = [&](float x) -> float {
-        float t = ImClamp((x - track_x0) / track_w, 0.0f, 1.0f);
-        return v_bound_min + t * (v_bound_max - v_bound_min);
-    };
+    double v_min_d = GetAsDouble(data_type, p_min);
+    double v_max_d = GetAsDouble(data_type, p_max);
 
-    float left_x = ValToPos(*v_min);
-    float right_x = ValToPos(*v_max);
+    float left_x = ValToPosD(v_min_d);
+    float right_x = ValToPosD(v_max_d);
 
     bool hovered = ImGui::ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
     bool value_changed = false;
@@ -1526,23 +1913,19 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
     ImRect left_grab_bb(ImVec2(left_x - hitbox_radius, frame_bb.Min.y - 4.0f), ImVec2(left_x + hitbox_radius, frame_bb.Max.y + 4.0f));
     ImRect right_grab_bb(ImVec2(right_x - hitbox_radius, frame_bb.Min.y - 4.0f), ImVec2(right_x + hitbox_radius, frame_bb.Max.y + 4.0f));
 
-    // 클릭 이벤트 처리 로직
     if (hovered && g.IO.MouseClicked[0])
     {
         bool left_hovered = left_grab_bb.Contains(g.IO.MousePos);
         bool right_hovered = right_grab_bb.Contains(g.IO.MousePos);
 
-        // [추가됨] 컨트롤(Ctrl) 클릭 감지 시 텍스트 모드로 진입
         if (g.IO.KeyCtrl)
         {
             storage->SetBool(text_mode_id, true);
             storage->SetBool(just_entered_id, true);
 
-            // 어느 쪽을 클릭했는지 판단하여 해당 텍스트 박스에 자동 포커스
             int focus_idx = 0;
             if (right_hovered && !left_hovered) focus_idx = 1;
             else if (!left_hovered && !right_hovered) {
-                // 트랙 위를 클릭한 경우 마우스와 더 가까운 쪽을 선택
                 focus_idx = (std::abs(g.IO.MousePos.x - right_x) < std::abs(g.IO.MousePos.x - left_x)) ? 1 : 0;
             }
             storage->SetInt(focus_target_id, focus_idx);
@@ -1564,10 +1947,8 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
             }
 
             storage->SetInt(id, active_grab);
-
             float grab_center_x = (active_grab == 1) ? left_x : right_x;
-            float click_offset = g.IO.MousePos.x - grab_center_x;
-            storage->SetFloat(offset_id, click_offset);
+            storage->SetFloat(offset_id, g.IO.MousePos.x - grab_center_x);
 
             ImGui::SetActiveID(id, window);
             ImGui::SetFocusID(id, window);
@@ -1575,28 +1956,30 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
         }
     }
 
-    // 드래그 중 상태 처리
     if (g.ActiveId == id)
     {
         if (g.IO.MouseDown[0])
         {
             float click_offset = storage->GetFloat(offset_id, 0.0f);
             float adjusted_mouse_x = g.IO.MousePos.x - click_offset;
+            float t = ImClamp((adjusted_mouse_x - track_x0) / track_w, 0.0f, 1.0f);
+            double v_new_d = b_min_d + t * (b_max_d - b_min_d);
 
-            float v_new = PosToVal(adjusted_mouse_x);
             if (active_grab == 1)
             {
-                *v_min = ImMin(v_new, *v_max);
+                SetFromDouble(data_type, p_min, ImMin(v_new_d, v_max_d));
                 value_changed = true;
             }
             else if (active_grab == 2)
             {
-                *v_max = ImMax(v_new, *v_min);
+                SetFromDouble(data_type, p_max, ImMax(v_new_d, v_min_d));
                 value_changed = true;
             }
 
-            left_x = ValToPos(*v_min);
-            right_x = ValToPos(*v_max);
+            v_min_d = GetAsDouble(data_type, p_min);
+            v_max_d = GetAsDouble(data_type, p_max);
+            left_x = ValToPosD(v_min_d);
+            right_x = ValToPosD(v_max_d);
         }
         else
         {
@@ -1610,9 +1993,8 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
         ImGui::MarkItemEdited(id);
 
     // ==========================================
-    // 커스텀 렌더링 로직 (기존과 동일)
+    // 커스텀 렌더링 로직 (삼각형 렌더링 등)
     // ==========================================
-
     float track_y = std::floor(frame_bb.GetCenter().y + 0.5f);
     float lx = std::floor(left_x + 0.5f);
     float rx = std::floor(right_x + 0.5f);
@@ -1624,98 +2006,52 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
 
     ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
-    window->DrawList->AddRectFilled(
-        ImVec2(lx, track_min.y),
-        ImVec2(rx, track_max.y),
-        fill_track_col, track_height * 0.5f);
+    window->DrawList->AddRectFilled(ImVec2(lx, track_min.y), ImVec2(rx, track_max.y), fill_track_col, track_height * 0.5f);
 
     ImU32 grab_col = IM_COL32(255, 255, 255, 255);
     ImU32 grab_border_col = GetColorU32(ImGuiCol_Border);
     float grab_border_thickness = 1.0f;
+    float tri_w = 7.0f, tri_h = 9.0f, corner_radius = 2.0f;
 
-    float tri_w = 7.0f;
-    float tri_h = 9.0f;
-
-    auto AddRoundedTriangle = [](ImDrawList* draw_list, ImVec2 p1, ImVec2 p2, ImVec2 p3, float radius, ImU32 fill_col, ImU32 border_col, float border_thickness)
-    {
+    auto AddRoundedTriangle = [](ImDrawList* draw_list, ImVec2 p1, ImVec2 p2, ImVec2 p3, float radius, ImU32 fill_col, ImU32 border_col, float border_thickness) {
         auto build_path = [&]() {
             ImVec2 pts[3] = { p1, p2, p3 };
-            for (int i = 0; i < 3; i++)
-            {
-                ImVec2 prev = pts[(i + 2) % 3];
-                ImVec2 curr = pts[i];
-                ImVec2 next = pts[(i + 1) % 3];
-
-                ImVec2 v1 = ImVec2(prev.x - curr.x, prev.y - curr.y);
-                ImVec2 v2 = ImVec2(next.x - curr.x, next.y - curr.y);
-
-                float len1 = std::sqrt(v1.x * v1.x + v1.y * v1.y);
-                float len2 = std::sqrt(v2.x * v2.x + v2.y * v2.y);
+            for (int i = 0; i < 3; i++) {
+                ImVec2 prev = pts[(i + 2) % 3], curr = pts[i], next = pts[(i + 1) % 3];
+                ImVec2 v1(prev.x - curr.x, prev.y - curr.y), v2(next.x - curr.x, next.y - curr.y);
+                float len1 = std::sqrt(v1.x * v1.x + v1.y * v1.y), len2 = std::sqrt(v2.x * v2.x + v2.y * v2.y);
                 if (len1 > 0.0f) { v1.x /= len1; v1.y /= len1; }
                 if (len2 > 0.0f) { v2.x /= len2; v2.y /= len2; }
-
-                float angle1 = std::atan2(v1.y, v1.x);
-                float angle2 = std::atan2(v2.y, v2.x);
-
+                float angle1 = std::atan2(v1.y, v1.x), angle2 = std::atan2(v2.y, v2.x);
                 float diff = angle2 - angle1;
                 while (diff < -IM_PI) diff += IM_PI * 2.0f;
                 while (diff > IM_PI) diff -= IM_PI * 2.0f;
-
-                angle2 = angle1 + diff;
-
-                draw_list->PathArcTo(curr, radius, angle1, angle2, 6);
+                draw_list->PathArcTo(curr, radius, angle1, angle1 + diff, 6);
             }
         };
-
-        build_path();
-        draw_list->PathFillConvex(fill_col);
-
-        if (border_thickness > 0.0f)
-        {
-            build_path();
-            draw_list->PathStroke(border_col, ImDrawFlags_Closed, border_thickness);
+        build_path(); draw_list->PathFillConvex(fill_col);
+        if (border_thickness > 0.0f) {
+            build_path(); draw_list->PathStroke(border_col, ImDrawFlags_Closed, border_thickness);
         }
     };
 
-    float corner_radius = 2.0f;
-
-    AddRoundedTriangle(
-        window->DrawList,
-        ImVec2(lx - tri_w, track_y - tri_h),
-        ImVec2(lx + tri_w, track_y),
-        ImVec2(lx - tri_w, track_y + tri_h),
-        corner_radius,
-        grab_col, grab_border_col, grab_border_thickness
-    );
-
-    AddRoundedTriangle(
-        window->DrawList,
-        ImVec2(rx + tri_w, track_y - tri_h),
-        ImVec2(rx + tri_w, track_y + tri_h),
-        ImVec2(rx - tri_w, track_y),
-        corner_radius,
-        grab_col, grab_border_col, grab_border_thickness
-    );
-
+    AddRoundedTriangle(window->DrawList, ImVec2(lx - tri_w, track_y - tri_h), ImVec2(lx + tri_w, track_y), ImVec2(lx - tri_w, track_y + tri_h), corner_radius, grab_col, grab_border_col, grab_border_thickness);
+    AddRoundedTriangle(window->DrawList, ImVec2(rx + tri_w, track_y - tri_h), ImVec2(rx + tri_w, track_y + tri_h), ImVec2(rx - tri_w, track_y), corner_radius, grab_col, grab_border_col, grab_border_thickness);
 
     // ==========================================
     // --- 상단 텍스트 렌더링 로직 (라벨 및 값) ---
     // ==========================================
-
-    // 1. 왼쪽 위 라벨 렌더링 (보이지 않는 '##' 태그 뒷부분은 자동으로 잘라냄)
-    if (label_size.x > 0.0f)
-    {
+    if (label_size.x > 0.0f) {
         const char* label_display_end = FindRenderedTextEnd(label);
         if (label != label_display_end)
             ImGui::RenderText(text_bb.Min, label, label_display_end);
     }
 
-    // 2. 오른쪽 위 값(Min - Max) 렌더링
-    char val_min_buf[64];
-    char val_max_buf[64];
-    snprintf(val_min_buf, sizeof(val_min_buf), format, *v_min);
-    snprintf(val_max_buf, sizeof(val_max_buf), format, *v_max);
+    char val_min_buf[64], val_max_buf[64];
+    DataTypeFormatString(val_min_buf, sizeof(val_min_buf), data_type, p_min, format);
+    DataTypeFormatString(val_max_buf, sizeof(val_max_buf), data_type, p_max, format);
 
+    // [수정] 텍스트가 가용 폭(w)의 우측 끝에 정확히 정렬됨
     char value_buf[128];
     snprintf(value_buf, sizeof(value_buf), "%s " ICON_MD_ARROW_RANGE " %s", val_min_buf, val_max_buf);
 
@@ -1725,7 +2061,22 @@ bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_
     return value_changed;
 }
 
-bool ImGui::ToggleButton(const char* str_id, bool* v)
+bool ImGui::SliderRangeX(const char *label, float *v_min, float *v_max, float v_bound_min, float v_bound_max, const char *format)
+{
+    return _slider5_(label, ImGuiDataType_Float, v_min, v_max, &v_bound_min, &v_bound_max, format);
+}
+
+bool ImGui::SliderRangeX(const char *label, int *v_min, int *v_max, float v_bound_min, float v_bound_max, const char *format)
+{
+    return _slider5_(label, ImGuiDataType_S32, v_min, v_max, &v_bound_min, &v_bound_max, format);
+}
+
+bool ImGui::SliderRangeX(const char *label, double *v_min, double *v_max, float v_bound_min, float v_bound_max, const char *format)
+{
+    return _slider5_(label, ImGuiDataType_Double, v_min, v_max, &v_bound_min, &v_bound_max, format);
+}
+
+bool ImGui::Toggle(const char* str_id, bool* v)
 {
     ImVec2 p = ImGui::GetCursorScreenPos();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
