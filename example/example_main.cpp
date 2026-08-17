@@ -1,7 +1,7 @@
 #include "ui.hpp"
 #include <iostream>
 
-#define FILE_PCD IMGUI_ROOT "/aaa.ply"
+#define FILE_PCD "aaa.ply"
 
 Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
@@ -30,6 +30,7 @@ int main() {
         // ImGui::Combo()
         // ImGui::BeginCombo("Combo", "Hello");
         // ImGui::EndCombo();
+        // ImGui::SliderFloat2()
 
 
     while (ImGui::context([&]() {

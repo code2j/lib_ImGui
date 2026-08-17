@@ -193,9 +193,86 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
     ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
-    const float w = ImGui::CalcItemWidth();
+    ImGuiStorage* storage = window->DC.StateStorage;
 
+    // 텍스트 모드 전환 상태를 저장하기 위한 커스텀 ID
+    const ImGuiID text_mode_id = id + 2;
+    const ImGuiID just_entered_id = id + 3;
+    const ImGuiID focus_target_id = id + 4;
+
+    bool text_input_mode = storage->GetBool(text_mode_id, false);
+
+    const float w = ImGui::CalcItemWidth();
     const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
+
+    // ==========================================
+    // 텍스트 입력 모드 렌더링 (컨트롤 클릭 시 표시됨)
+    // ==========================================
+    if (text_input_mode)
+    {
+        ImGui::BeginGroup();
+        ImGui::PushID(label);
+
+        // 너비를 2등분하여 두 개의 인풋 박스를 배치
+        ImGui::PushMultiItemsWidths(2, w);
+
+        bool just_entered = storage->GetBool(just_entered_id, false);
+        if (just_entered)
+        {
+            // 클릭했던 그랩(Min 또는 Max)에 맞춰 포커스를 자동 지정
+            int focus_idx = storage->GetInt(focus_target_id, 0);
+            ImGui::SetKeyboardFocusHere(focus_idx);
+            storage->SetBool(just_entered_id, false);
+        }
+
+        bool value_changed = false;
+
+        // 1. Min 입력 박스
+        value_changed |= ImGui::InputFloat("##min", v_min, 0.0f, 0.0f, format);
+        ImGuiID min_id = window->GetID("##min");
+        ImGui::PopItemWidth();
+        ImGui::SameLine(0, style.ItemInnerSpacing.x);
+
+        // 2. Max 입력 박스
+        value_changed |= ImGui::InputFloat("##max", v_max, 0.0f, 0.0f, format);
+        ImGuiID max_id = window->GetID("##max");
+        ImGui::PopItemWidth();
+
+        // 라벨 렌더링
+        if (label_size.x > 0.0f)
+        {
+            ImGui::SameLine(0, style.ItemInnerSpacing.x);
+            ImGui::TextEx(label, FindRenderedTextEnd(label));
+        }
+
+        ImGui::PopID();
+        ImGui::EndGroup();
+
+        // 입력 시 역전 방지 및 클램핑 처리
+        if (value_changed)
+        {
+            *v_min = ImClamp(*v_min, v_bound_min, v_bound_max);
+            *v_max = ImClamp(*v_max, v_bound_min, v_bound_max);
+            if (*v_min > *v_max)
+            {
+                if (g.ActiveId == min_id) *v_min = *v_max;
+                else if (g.ActiveId == max_id) *v_max = *v_min;
+                else { float t = *v_min; *v_min = *v_max; *v_max = t; }
+            }
+        }
+
+        // 입력 박스에서 Enter를 누르거나 다른 곳을 클릭해 둘 다 포커스를 잃으면 모드 해제
+        if (!just_entered && g.ActiveId != min_id && g.ActiveId != max_id)
+        {
+            storage->SetBool(text_mode_id, false);
+        }
+
+        return value_changed;
+    }
+
+    // ==========================================
+    // 이하 슬라이더 바(기본) 모드 로직
+    // ==========================================
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w, label_size.y + style.FramePadding.y * 2.0f));
     const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
 
@@ -227,23 +304,37 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
     bool hovered = ImGui::ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
     bool value_changed = false;
 
-    ImGuiStorage* storage = window->DC.StateStorage;
     int active_grab = storage->GetInt(id, 0);
-
-    // 클릭한 위치와 그랩 중심 사이의 거리(Offset)를 저장할 ID
     ImGuiID offset_id = id + 1;
 
     float hitbox_radius = grab_width * 0.5f + 4.0f;
     ImRect left_grab_bb(ImVec2(left_x - hitbox_radius, frame_bb.Min.y - 4.0f), ImVec2(left_x + hitbox_radius, frame_bb.Max.y + 4.0f));
     ImRect right_grab_bb(ImVec2(right_x - hitbox_radius, frame_bb.Min.y - 4.0f), ImVec2(right_x + hitbox_radius, frame_bb.Max.y + 4.0f));
 
-    // ==========================================
     // 클릭 이벤트 처리 로직
-    // ==========================================
     if (hovered && g.IO.MouseClicked[0])
     {
         bool left_hovered = left_grab_bb.Contains(g.IO.MousePos);
         bool right_hovered = right_grab_bb.Contains(g.IO.MousePos);
+
+        // [추가됨] 컨트롤(Ctrl) 클릭 감지 시 텍스트 모드로 진입
+        if (g.IO.KeyCtrl)
+        {
+            storage->SetBool(text_mode_id, true);
+            storage->SetBool(just_entered_id, true);
+
+            // 어느 쪽을 클릭했는지 판단하여 해당 텍스트 박스에 자동 포커스
+            int focus_idx = 0;
+            if (right_hovered && !left_hovered) focus_idx = 1;
+            else if (!left_hovered && !right_hovered) {
+                // 트랙 위를 클릭한 경우 마우스와 더 가까운 쪽을 선택
+                focus_idx = (std::abs(g.IO.MousePos.x - right_x) < std::abs(g.IO.MousePos.x - left_x)) ? 1 : 0;
+            }
+            storage->SetInt(focus_target_id, focus_idx);
+
+            ImGui::ClearActiveID();
+            return false;
+        }
 
         if (left_hovered || right_hovered)
         {
@@ -259,7 +350,6 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
 
             storage->SetInt(id, active_grab);
 
-            // [추가됨] 마우스를 클릭한 시점에, 그랩의 중심점과 마우스의 X 좌표 차이를 계산해서 저장
             float grab_center_x = (active_grab == 1) ? left_x : right_x;
             float click_offset = g.IO.MousePos.x - grab_center_x;
             storage->SetFloat(offset_id, click_offset);
@@ -270,14 +360,11 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
         }
     }
 
-    // ==========================================
-    // 드래그 중인 상태 처리
-    // ==========================================
+    // 드래그 중 상태 처리
     if (g.ActiveId == id)
     {
         if (g.IO.MouseDown[0])
         {
-            // [추가/수정됨] 마우스 좌표에서 아까 저장해둔 Offset을 빼서 부드럽게 조작되도록 보정
             float click_offset = storage->GetFloat(offset_id, 0.0f);
             float adjusted_mouse_x = g.IO.MousePos.x - click_offset;
 
@@ -305,12 +392,12 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
     }
 
     if (value_changed)
-        ImGui::MarkItemEdited(id);
+    ImGui::MarkItemEdited(id);
 
     // ==========================================
-    // --- 커스텀 렌더링 시작 ---
+    // 커스텀 렌더링 로직 (기존과 동일)
     // ==========================================
-    ImGui::RenderNavCursor(frame_bb, id);
+    // ImGui::RenderNavCursor(frame_bb, id);
 
     float track_y = std::floor(frame_bb.GetCenter().y + 0.5f);
     float lx = std::floor(left_x + 0.5f);
@@ -319,7 +406,7 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
     ImVec2 track_min = ImVec2(frame_bb.Min.x, track_y - track_height * 0.5f);
     ImVec2 track_max = ImVec2(frame_bb.Max.x, track_y + track_height * 0.5f);
 
-    ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab); //IM_COL32(65, 65, 70, 255);
+    ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab);
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
 
     ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
@@ -337,7 +424,6 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
 
     auto AddRoundedTriangle = [](ImDrawList* draw_list, ImVec2 p1, ImVec2 p2, ImVec2 p3, float radius, ImU32 fill_col, ImU32 border_col, float border_thickness)
     {
-        // 경로를 생성하는 부분을 람다로 묶음 (채우기와 테두리에 각각 사용하기 위함)
         auto build_path = [&]() {
             ImVec2 pts[3] = { p1, p2, p3 };
             for (int i = 0; i < 3; i++)
@@ -367,11 +453,9 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
             }
         };
 
-        // 1. 내부 칠하기
         build_path();
         draw_list->PathFillConvex(fill_col);
 
-        // 2. 테두리(보더) 그리기
         if (border_thickness > 0.0f)
         {
             build_path();
@@ -379,9 +463,8 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
         }
     };
 
-    float corner_radius = 2.0f; // 둥근 모서리 반지름 (1.5f ~ 2.5f 추천)
+    float corner_radius = 2.0f;
 
-    // 왼쪽 그랩 (▶ 둥근 모양 + 보더)
     AddRoundedTriangle(
         window->DrawList,
         ImVec2(lx - tri_w, track_y - tri_h),
@@ -391,7 +474,6 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
         grab_col, grab_border_col, grab_border_thickness
     );
 
-    // 오른쪽 그랩 (◀ 둥근 모양 + 보더)
     AddRoundedTriangle(
         window->DrawList,
         ImVec2(rx + tri_w, track_y - tri_h),
@@ -420,40 +502,28 @@ bool ImGui::SliderFloatRange(const char* label, float* v_min, float* v_max, floa
         ImU32 tooltip_bg_col     = GetColorU32(ImGuiCol_FrameBg);
         ImU32 tooltip_border_col = GetColorU32(ImGuiCol_Border);
 
-        // 1. 말풍선 둥근 사각형 배경 & 테두리
         window->DrawList->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
         window->DrawList->AddRect(tooltip_min, tooltip_max, tooltip_border_col, 6.0f);
 
-        // 꼬리 꼭짓점 기본 좌표 (사각형 하단 선 기준)
         ImVec2 p1 = ImVec2(active_x - 6.0f, tooltip_max.y);
         ImVec2 p2 = ImVec2(active_x + 6.0f, tooltip_max.y);
-        ImVec2 p3 = ImVec2(active_x, tooltip_max.y + 6.0f); // 꼬리 끝(아래)
+        ImVec2 p3 = ImVec2(active_x, tooltip_max.y + 6.0f);
 
-        // 2. 몸통과 꼬리가 만나는 부분의 테두리를 확실하게 지우기
-        // 높이 2px짜리 배경색 사각형을 테두리 위에 덮어씌워 잔상을 없앱니다.
         window->DrawList->AddRectFilled(
             ImVec2(p1.x + 0.5f, tooltip_max.y - 1.0f),
             ImVec2(p2.x - 0.5f, tooltip_max.y + 1.0f),
             tooltip_bg_col
         );
 
-        // 3. 꼬리 배경 삼각형 그리기
-        // 틈새가 안 생기도록 삼각형 윗변을 사각형 안쪽(위)으로 1픽셀 밀어 올려서 그립니다.
         ImVec2 fill_p1 = ImVec2(p1.x, tooltip_max.y - 1.0f);
         ImVec2 fill_p2 = ImVec2(p2.x, tooltip_max.y - 1.0f);
         window->DrawList->AddTriangleFilled(fill_p1, fill_p2, p3, tooltip_bg_col);
 
-        // 4. 꼬리 테두리 (V자 선)
-        // 테두리 선이 사각형 바닥선에서 딱 떨어지게 연결됩니다.
         ImVec2 tail_pts[3] = { p1, p3, p2 };
         window->DrawList->AddPolyline(tail_pts, 3, tooltip_border_col, 0, 1.0f);
 
-        // 5. 텍스트 렌더링
         window->DrawList->AddText(tooltip_min + padding, GetColorU32(ImGuiCol_Text), value_buf);
     }
-    // ==========================================
-    // --- 커스텀 렌더링 끝 ---
-    // ==========================================
 
     if (label_size.x > 0.0f)
         ImGui::RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, frame_bb.Min.y + style.FramePadding.y), label);
