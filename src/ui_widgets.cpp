@@ -42,7 +42,13 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
     ImGuiID id = window->GetID(label);
 
     // 상태 및 애니메이션 변수 가져오기
-    bool is_open = window->StateStorage.GetInt(id, default_open ? 1 : 0);
+    int stored_is_open = window->StateStorage.GetInt(id, -1); // -1은 초기화되지 않음을 의미
+    if (stored_is_open == -1) {
+        stored_is_open = default_open ? 1 : 0;
+        window->StateStorage.SetInt(id, stored_is_open); // 처음 한 번 Storage에 기록!
+    }
+
+    bool is_open = (stored_is_open != 0);
     float anim_t = window->StateStorage.GetFloat(id + 1, is_open ? 1.0f : 0.0f);
     float max_height = window->StateStorage.GetFloat(id + 2, 0.0f);
 
@@ -158,9 +164,6 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
     return false;
 }
 
-// =========================================================================
-// [수정] 인자(label) 제거
-// =========================================================================
 void ImGui::EndCollapsingHeader()
 {
     // Begin 없이 End가 호출되는 것을 방지하는 안전장치
@@ -2133,18 +2136,31 @@ bool ImGui::Toggle(const char* label, bool* v)
 
     // 4. 상호작용 버튼 배치 및 클릭 처리
     bool turned_on = false;
-    ImGui::InvisibleButton(label, total_size);
 
-    if (ImGui::IsItemClicked())
+    // 전체 영역 계산
+    ImRect total_bb(cursor_pos, ImVec2(cursor_pos.x + total_size.x, cursor_pos.y + total_size.y));
+
+    // 4-1. 레이아웃 엔진에 전체 크기 등록 (다음 위젯이 겹치지 않도록 공간 확보)
+    ImGui::ItemSize(total_bb, style.FramePadding.y);
+    if (!ImGui::ItemAdd(total_bb, id)) // 전체 영역 기준으로 화면에 보일 때만 렌더링 진행
+        return false;
+
+    // 4-2. 실제 클릭/호버가 일어날 '토글 스위치 영역'만 정의
+    ImVec2 toggle_min = ImVec2(toggle_x_pos, cursor_pos.y + (total_size.y - height) * 0.5f);
+    ImVec2 toggle_max = ImVec2(toggle_min.x + width, toggle_min.y + height);
+    ImRect toggle_bb(toggle_min, toggle_max);
+
+    // 4-3. 토글 스위치 영역에 대해서만 마우스 상호작용(호버, 클릭) 판정
+    bool hovered, held;
+    bool pressed = ImGui::ButtonBehavior(toggle_bb, id, &hovered, &held);
+
+    if (pressed)
     {
         *v = !*v;
-        if (*v)
-        {
-            turned_on = true;
-        }
+        if (*v) turned_on = true;
     }
 
-    bool is_hovered = ImGui::IsItemHovered();
+    bool is_hovered = hovered;
 
     // =========================================================================
     // 5. StateStorage 기반 매끄러운 부드러운 애니메이션 (Lerp)
@@ -2178,7 +2194,7 @@ bool ImGui::Toggle(const char* label, bool* v)
 
     if (is_hovered)
     {
-        if (ImGuiExt::theme_id == 1) { // Dark 테마
+        if (ImGuiExt::theme_id == 1) { // Dark 테마 (hovered)
             col_bg = ImGui::GetColorU32(ImLerp(
                 ImVec4(31.0f / 255.0f, 31.0f / 255.0f, 32.0f / 255.0f, 1.0f),
                 ImVec4(113.0f / 255.0f, 125.0f / 255.0f, 255.0f / 255.0f, 1.0f),
@@ -2193,9 +2209,9 @@ bool ImGui::Toggle(const char* label, bool* v)
     }
     else
     {
-        if (ImGuiExt::theme_id == 1) { // Dark 테마
+        if (ImGuiExt::theme_id == 1) { // Dark 테마 (disabled)
             col_bg = ImGui::GetColorU32(ImLerp(
-                ImVec4(11.0f / 255.0f, 11.0f / 255.0f, 12.0f / 255.0f, 1.0f),
+                ImVec4(42.0f / 255.0f, 42.0f / 255.0f, 47.0f / 255.0f, 1.0f),
                 ImVec4(93.0f / 255.0f, 105.0f / 255.0f, 240.0f / 255.0f, 1.0f),
                 anim_t));
         }
