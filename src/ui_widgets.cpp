@@ -359,8 +359,10 @@ bool ImGui::Radio(const char* label, int* v, int v_button)
     const float check_x = pos.x + total_width - square_sz;
     const ImRect check_bb(ImVec2(check_x, pos.y), ImVec2(check_x + square_sz, pos.y + square_sz));
 
-    // 전체 클릭/차지 영역
+    // 전체 레이아웃 차지 영역 (UI 배치용)
     const ImRect total_bb(pos, pos + ImVec2(total_width, label_size.y + style.FramePadding.y * 2.0f));
+
+    // 레이아웃 엔진에 전체 공간 예약
     ItemSize(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, id))
         return false;
@@ -370,10 +372,15 @@ bool ImGui::Radio(const char* label, int* v, int v_button)
     center.y = IM_ROUND(center.y);
     const float radius = (square_sz - 1.0f) * 0.5f;
 
+    // =========================================================================
+    // [수정된 부분]
+    // ButtonBehavior에 total_bb가 아닌 check_bb(라디오 버튼 영역)만 전달하여
+    // 빈 공간이나 라벨에서는 반응하지 않고 오직 우측 버튼 위에서만 상호작용하도록 변경
+    // =========================================================================
     bool hovered, held;
-    bool pressed = ButtonBehavior(total_bb, id, &hovered, &held);
+    bool pressed = ButtonBehavior(check_bb, id, &hovered, &held);
 
-    // [통합된 로직] 눌렸을 때 값을 변경
+    // 눌렸을 때 값을 변경
     if (pressed)
     {
         *v = v_button;
@@ -388,7 +395,7 @@ bool ImGui::Radio(const char* label, int* v, int v_button)
 
     // --- 디자인 렌더링 부분 ---
     // 1. 바깥쪽 원 (배경)
-    ImU32 bg_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+    ImU32 bg_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_TableBorderStrong : ImGuiCol_TabSelected);
 
     // 활성화되었을 때 배경 강조
     if (active)
