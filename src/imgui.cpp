@@ -8352,9 +8352,27 @@ bool ImGui::Begin(const char* name, bool* p_open, ImGuiWindowFlags flags)
                 window->ScrollbarY = (needed_size_from_last_frame.y > size_y_for_scrollbars - style.ScrollbarSize) && !(flags & ImGuiWindowFlags_NoScrollbar);
             window->ScrollbarSizes = ImVec2(window->ScrollbarY ? style.ScrollbarSize : 0.0f, window->ScrollbarX ? style.ScrollbarSize : 0.0f);
 
+            // =====================================================================
+            // 주석 처리한 원본 코드
+            // =====================================================================
             // Amend the partially filled window->DecorationXXX values.
-            window->DecoOuterSizeX2 += window->ScrollbarSizes.x;
+            // window->DecoOuterSizeX2 += window->ScrollbarSizes.x;
+            // window->DecoOuterSizeY2 += window->ScrollbarSizes.y;
+
+            // =====================================================================
+            // [수정된 코드] 항상 우측 스크롤바 여백 확보 (UI 덜컥거림 방지)
+            // =====================================================================
+            window->ScrollbarSizes = ImVec2(window->ScrollbarY ? style.ScrollbarSize : 0.0f, window->ScrollbarX ? style.ScrollbarSize : 0.0f);
+
+            // NoScrollbar 플래그가 명시적으로 켜져 있지 않은 이상,
+            // 스크롤바가 실제로 그려지지 않더라도 가용 영역(WorkRect)에서 스크롤바 크기만큼 강제로 빼버립니다.
+            if (!(flags & ImGuiWindowFlags_NoScrollbar))
+                window->DecoOuterSizeX2 += style.ScrollbarSize;
+            else
+                window->DecoOuterSizeX2 += window->ScrollbarSizes.x;
+
             window->DecoOuterSizeY2 += window->ScrollbarSizes.y;
+            // =====================================================================
         }
 
         // UPDATE RECTANGLES (1- THOSE NOT AFFECTED BY SCROLLING)

@@ -21,11 +21,11 @@ int main() {
 
 
     // 포인트 클라우드 데이터 불러오기
-    ImGui::Points points;
-    if (!ImGui::load_points(FILE_PCD, &points)) {
-        std::cout << "[Warn ] [Main] 데이터 불러오기 실패: " << FILE_PCD << std::endl;
-        return 1;
-    }
+    // ImGui::Points points;
+    // if (!ImGui::load_points(FILE_PCD, &points)) {
+    //     std::cout << "[Warn ] [Main] 데이터 불러오기 실패: " << FILE_PCD << std::endl;
+    //     return 1;
+    // }
 
         // ImGui::Combo()
         // ImGui::BeginCombo("Combo", "Hello");
@@ -338,8 +338,8 @@ int main() {
         ImGui::TransformControl(&tf_control);
         ImGui::End();
 
-        points.move(tf_control);
-        ImGui::draw_points(points);
+        // points.move(tf_control);
+        // ImGui::draw_points(points);
     }));
 
     }
