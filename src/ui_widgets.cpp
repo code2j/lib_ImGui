@@ -2131,15 +2131,29 @@ bool ImGui::Toggle(const char* label, bool* v)
     float outer_radius = height * 0.50f;
     float inner_radius = outer_radius * 0.7f;
 
-    // 3. 레이아웃 위치 계산 (전체 가용 너비 활용)
-    float avail_width = ImGui::GetContentRegionAvail().x;
+    // 3. 레이아웃 위치 및 영역 계산 (수정된 부분)
     ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
 
-    // 토글 스위치가 배치될 오른쪽 시작 X 좌표
-    float toggle_x_pos = cursor_pos.x + avail_width - width;
+    float toggle_x_pos;
+    ImVec2 total_size;
 
-    // 전체 상호작용 영역 (왼쪽 라벨 끝부터 오른쪽 토글 스위치 끝까지)
-    ImVec2 total_size = ImVec2(avail_width, ImMax(label_size.y, height));
+    if (has_label)
+    {
+        // 라벨이 있는 경우: 전체 너비를 사용하여 오른쪽 끝에 스위치 배치
+        float avail_width = ImGui::GetContentRegionAvail().x;
+        // 스위치가 라벨을 침범하지 않도록 최소 간격 보장
+        float min_width = label_size.x + style.ItemInnerSpacing.x + width;
+        float actual_width = ImMax(avail_width, min_width);
+
+        toggle_x_pos = cursor_pos.x + actual_width - width;
+        total_size = ImVec2(actual_width, ImMax(label_size.y, height));
+    }
+    else
+    {
+        // 라벨이 없는 경우 (##ID 등): 스위치 크기만큼만 영역 차지
+        toggle_x_pos = cursor_pos.x;
+        total_size = ImVec2(width, height);
+    }
 
     // 4. 상호작용 버튼 배치 및 클릭 처리
     bool turned_on = false;
@@ -2147,9 +2161,9 @@ bool ImGui::Toggle(const char* label, bool* v)
     // 전체 영역 계산
     ImRect total_bb(cursor_pos, ImVec2(cursor_pos.x + total_size.x, cursor_pos.y + total_size.y));
 
-    // 4-1. 레이아웃 엔진에 전체 크기 등록 (다음 위젯이 겹치지 않도록 공간 확보)
+    // 4-1. 레이아웃 엔진에 전체 크기 등록
     ImGui::ItemSize(total_bb, style.FramePadding.y);
-    if (!ImGui::ItemAdd(total_bb, id)) // 전체 영역 기준으로 화면에 보일 때만 렌더링 진행
+    if (!ImGui::ItemAdd(total_bb, id))
         return false;
 
     // 4-2. 실제 클릭/호버가 일어날 '토글 스위치 영역'만 정의

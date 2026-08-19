@@ -5,17 +5,16 @@
 #include <string>
 #include <chrono>
 #include <cstdarg>
+#include <cstdint>
 
 // ==============================================================================
-// 내부 설정 매크로 (이제 cpp 내부에서만 사용됨)
+// 내부 설정 매크로
 // ==============================================================================
-#define NOTIFY_MAX_MSG_LENGTH           4096        // 최대 메시지 길이
-#define NOTIFY_PADDING_X                20.f        // 우하단 X 패딩
-#define NOTIFY_PADDING_Y                20.f        // 우하단 Y 패딩
-#define NOTIFY_PADDING_MESSAGE_Y        10.f        // 메시지 간 Y 패딩
-#define NOTIFY_FADE_IN_OUT_TIME         150         // 페이드 인/아웃 시간 (ms)
-#define NOTIFY_DEFAULT_DISMISS          3000        // 기본 유지 시간 (ms)
-#define NOTIFY_OPACITY                  1.0f        // 기본 투명도
+#define NOTIFY_MAX_MSG_LENGTH           4096
+#define NOTIFY_PADDING_Y                20.f        // 상단 Y 패딩
+#define NOTIFY_FADE_IN_OUT_TIME         150
+#define NOTIFY_DEFAULT_DISMISS          3000
+#define NOTIFY_OPACITY                  1.0f
 #define NOTIFY_TOAST_FLAGS              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_Tooltip
 
 namespace
@@ -45,15 +44,18 @@ namespace
         return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
     }
 
+    static int g_next_toast_id = 0;
+
     struct ImGuiToastInternal
     {
+        int id;
         ImGuiToastType type;
         char content[NOTIFY_MAX_MSG_LENGTH];
         int dismiss_time;
         uint64_t creation_time;
 
         ImGuiToastInternal(ImGuiToastType type, int dismiss_time, const char* format, va_list args)
-            : type(type), dismiss_time(dismiss_time), creation_time(GetTickCount())
+            : id(g_next_toast_id++), type(type), dismiss_time(dismiss_time), creation_time(GetTickCount())
         {
             memset(this->content, 0, sizeof(this->content));
             vsnprintf(this->content, sizeof(this->content), format, args);
@@ -63,11 +65,11 @@ namespace
         {
             switch (this->type)
             {
-                case ImGuiToastType_Success: return { 98, 192, 115, 255 };  // Soft Green
-                case ImGuiToastType_Warning: return { 227, 179, 65, 255 };  // Soft Yellow/Amber
-                case ImGuiToastType_Error:   return { 224, 108, 117, 255 }; // Soft Red/Coral
-                case ImGuiToastType_Info:    return { 100, 141, 222, 255 }; // Blue
-                default:                     return { 220, 224, 230, 255 }; // Soft White/Gray
+                case ImGuiToastType_Success: return { 98, 192, 115, 255 };
+                case ImGuiToastType_Warning: return { 227, 179, 65, 255 };
+                case ImGuiToastType_Error:   return { 224, 108, 117, 255 };
+                case ImGuiToastType_Info:    return { 100, 141, 222, 255 };
+                default:                     return { 220, 224, 230, 255 };
             }
         }
 
@@ -87,11 +89,11 @@ namespace
         {
             switch (this->type)
             {
-                case ImGuiToastType_Success: return { 16, 28, 18, 255 }; // 은은한 다크 그린
-                case ImGuiToastType_Warning: return { 28, 25, 16, 255 }; // 은은한 다크 옐로우
-                case ImGuiToastType_Error:   return { 31, 16, 18, 255 }; // 은은한 다크 레드
-                case ImGuiToastType_Info:    return { 16, 20, 31, 255 }; // 다크 블루
-                default:                     return { 20, 21, 23, 255 }; // 기본 다크 그레이
+                case ImGuiToastType_Success: return { 16, 28, 18, 255 };
+                case ImGuiToastType_Warning: return { 28, 25, 16, 255 };
+                case ImGuiToastType_Error:   return { 31, 16, 18, 255 };
+                case ImGuiToastType_Info:    return { 16, 20, 31, 255 };
+                default:                     return { 20, 21, 23, 255 };
             }
         }
 
@@ -135,12 +137,13 @@ namespace
         }
     };
 
-    // 알림 목록을 관리하는 내부 전역 변수
     static std::vector<ImGuiToastInternal> g_notifications;
 
     // 공통 알림 추가 함수
     void AddNotification(ImGuiToastType type, const char* format, va_list args)
     {
+        // [수정] 스택처럼 쌓이지 않도록, 새 알람이 오면 기존 알람을 덮어씌웁니다.
+        g_notifications.clear();
         g_notifications.emplace_back(type, NOTIFY_DEFAULT_DISMISS, format, args);
     }
 }
@@ -184,74 +187,74 @@ namespace ImGui
     }
 
     // ==============================================================================
-    // 렌더링 로직 (기존 애니메이션 및 UI 코드 유지)
+    // 렌더링 로직
     // ==============================================================================
     void RenderNotifications()
     {
-        const auto viewport = GetMainViewport();
+        const auto viewport = ImGui::GetMainViewport();
         const auto vp_pos = viewport->WorkPos;
         const auto vp_size = viewport->WorkSize;
 
         ImGuiContext& g = *GImGui;
-        float delta_time = ImGui::GetIO().DeltaTime;
-        float anim_speed = 12.0f;
 
-        float target_height = 0.f;
         int remove_index = -1;
 
-        for (auto i = 0; i < g_notifications.size(); i++)
+        // 알림은 최대 1개만 존재하지만 구조를 유지하기 위해 루프 사용
+        for (int i = 0; i < (int)g_notifications.size(); i++)
         {
             auto* current_toast = &g_notifications[i];
 
             if (current_toast->GetPhase() == ImGuiToastPhase_Expired)
             {
-                if (remove_index == -1) remove_index = i;
+                remove_index = i;
                 continue;
             }
 
             const auto icon = current_toast->GetIcon();
             const auto content = current_toast->content;
+            const auto phase = current_toast->GetPhase();
             const auto opacity = current_toast->GetFadePercent();
+
+            // [수정] 상단 중앙 애니메이션: 위에서 아래로 살짝 내려옴
+            float nudge_y = 0.0f;
+            if (phase == ImGuiToastPhase_FadeIn || phase == ImGuiToastPhase_FadeOut)
+            {
+                nudge_y = -15.0f * (1.0f - opacity); // 투명할수록 위쪽(-방향)으로 당겨짐
+            }
+
+            // [수정] 상단 중앙 X, Y 계산
+            float draw_x = vp_pos.x + (vp_size.x * 0.5f); // 중앙
+            float draw_y = vp_pos.y + NOTIFY_PADDING_Y + nudge_y; // 상단 + 패딩 + 애니메이션
 
             auto text_color = current_toast->GetColor();
             if (text_color.x > 1.0f || text_color.y > 1.0f || text_color.z > 1.0f) {
-                text_color.x /= 255.0f;
-                text_color.y /= 255.0f;
-                text_color.z /= 255.0f;
+                text_color.x /= 255.0f; text_color.y /= 255.0f; text_color.z /= 255.0f;
             }
             text_color.w = opacity;
 
-            char window_name[50]{};
-            snprintf(window_name, sizeof(window_name), "##TOAST%d", i);
-
-            // 위치 보간
-            ImGuiID toast_id = ImGui::GetID((const void*)current_toast);
-            ImGuiStorage* storage = ImGui::GetStateStorage();
-            float current_height = storage->GetFloat(toast_id, target_height);
-
-            current_height = ImLerp(current_height, target_height, delta_time * anim_speed);
-            if (ImAbs(current_height - target_height) < 0.1f)
-                current_height = target_height;
-
-            storage->SetFloat(toast_id, current_height);
-
             auto raw_bg_color = current_toast->GetBgColor();
             ImVec4 bg_color = ImVec4(raw_bg_color.x / 255.0f, raw_bg_color.y / 255.0f, raw_bg_color.z / 255.0f, opacity);
-            ImVec4 border_color = text_color;
 
             PushStyleColor(ImGuiCol_WindowBg, bg_color);
-            PushStyleColor(ImGuiCol_Border, border_color);
+            PushStyleColor(ImGuiCol_Border, text_color);
             PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
             PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
             PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
 
             SetNextWindowBgAlpha(opacity);
-            SetNextWindowPos(ImVec2(vp_pos.x + vp_size.x - NOTIFY_PADDING_X, vp_pos.y + vp_size.y - NOTIFY_PADDING_Y - current_height), ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+
+            char window_name[50]{};
+            snprintf(window_name, sizeof(window_name), "##TOAST%d", current_toast->id);
+
+            // [수정] Pivot을 상단 중앙(0.5, 0.0)으로 설정
+            SetNextWindowPos(ImVec2(draw_x, draw_y), ImGuiCond_Always, ImVec2(0.5f, -1.0f));
+
+            ImGui::SetNextWindowViewport(viewport->ID);
 
             Begin(window_name, NULL, NOTIFY_TOAST_FLAGS);
 
             {
-                PushTextWrapPos(vp_size.x / 3.f);
+                PushTextWrapPos(vp_size.x / 2.f); // 중앙 배치를 고려해 텍스트 랩핑 영역 확장
                 bool was_title_rendered = false;
 
                 if (icon && strlen(icon) > 0)
@@ -265,11 +268,9 @@ namespace ImGui
                     if (was_title_rendered) SameLine(0.0f, 10.0f);
                     Text("%s", content);
                 }
-
                 PopTextWrapPos();
             }
 
-            // 프로그레스 바 렌더링
             float progress = current_toast->GetProgressPercent();
             if (progress > 0.0f)
             {
@@ -280,11 +281,8 @@ namespace ImGui
                 ImVec2 p_min = ImVec2(win_pos.x + 1.4f, win_pos.y + win_size.y - bar_height);
                 ImVec2 p_max = ImVec2(win_pos.x + (win_size.x * progress), win_pos.y + win_size.y);
 
-                ImU32 bar_color = ColorConvertFloat4ToU32(text_color);
-                GetWindowDrawList()->AddRectFilled(p_min, p_max, bar_color, 4.0f, ImDrawFlags_RoundCornersBottom);
+                GetWindowDrawList()->AddRectFilled(p_min, p_max, ColorConvertFloat4ToU32(text_color), 4.0f, ImDrawFlags_RoundCornersBottom);
             }
-
-            target_height += GetWindowHeight() + NOTIFY_PADDING_MESSAGE_Y;
 
             End();
 
@@ -292,7 +290,6 @@ namespace ImGui
             PopStyleColor(2);
         }
 
-        // 만료된 토스트 제거
         if (remove_index != -1)
         {
             g_notifications.erase(g_notifications.begin() + remove_index);
