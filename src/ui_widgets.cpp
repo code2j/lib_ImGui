@@ -31,6 +31,8 @@ static const char* Items_SingleStringGetter(void* data, int idx)
 }
 
 
+static ImVector<ImGuiID> s_CollapsingHeaderIdStack;
+
 bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
 {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -40,15 +42,19 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
     ImGuiID id = window->GetID(label);
 
     // 상태 및 애니메이션 변수 가져오기
-    bool is_open = window->StateStorage.GetInt(id, default_open ? 1 : 0);
+    int stored_is_open = window->StateStorage.GetInt(id, -1); // -1은 초기화되지 않음을 의미
+    if (stored_is_open == -1) {
+        stored_is_open = default_open ? 1 : 0;
+        window->StateStorage.SetInt(id, stored_is_open); // 처음 한 번 Storage에 기록!
+    }
+
+    bool is_open = (stored_is_open != 0);
     float anim_t = window->StateStorage.GetFloat(id + 1, is_open ? 1.0f : 0.0f);
     float max_height = window->StateStorage.GetFloat(id + 2, 0.0f);
 
     bool calculating_height = (is_open && max_height == 0.0f);
 
-    // =========================================================================
     // 헤더 UI 영역 계산
-    // =========================================================================
     ImVec2 pos = window->DC.CursorPos;
     float frame_height = ImGui::GetFrameHeight();
 
@@ -62,13 +68,10 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
     bb.Min.x -= outer_extend;
     bb.Max.x += outer_extend;
 
-    // 아이템 크기 등록
     ImGui::ItemSize(ImVec2(window->WorkRect.Max.x - pos.x, frame_height));
-
     bool is_visible = ImGui::ItemAdd(bb, id);
 
     if (is_visible) {
-        // 클릭 상호작용 처리
         bool hovered, held;
         bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
         if (pressed) {
@@ -76,27 +79,21 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
             window->StateStorage.SetInt(id, is_open ? 1 : 0);
         }
 
-        // 배경 렌더링
         ImU32 bg_col = ImGui::GetColorU32((held && hovered) ? ImGuiCol_HeaderActive : hovered ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
         ImGui::RenderFrame(bb.Min, bb.Max, bg_col, false, ImGui::GetStyle().FrameRounding);
 
         ImVec2 padding = ImGui::GetStyle().FramePadding;
         ImU32 text_col = ImGui::GetColorU32(ImGuiCol_Text);
 
-        // =========================================================================
-        // [수정] 우측 끝 V자 화살표(Chevron) 방향 변경 (닫힘: 오른쪽, 열림: 아래)
-        // =========================================================================
         ImVec2 chevron_center = ImVec2(bb.Max.x - padding.x - g.FontSize * 0.5f, bb.Min.y + frame_height * 0.5f);
-        float chevron_size = 5.0f; // 화살표 크기 조절
+        float chevron_size = 5.0f;
         ImVec2 p1, p2, p3;
 
         if (is_open) {
-            // 열림 (아래쪽 향함: v)
             p1 = ImVec2(chevron_center.x - chevron_size, chevron_center.y - chevron_size * 0.4f);
             p2 = ImVec2(chevron_center.x, chevron_center.y + chevron_size * 0.6f);
             p3 = ImVec2(chevron_center.x + chevron_size, chevron_center.y - chevron_size * 0.4f);
         } else {
-            // 닫힘 (오른쪽 향함: >)
             p1 = ImVec2(chevron_center.x - chevron_size * 0.4f, chevron_center.y - chevron_size);
             p2 = ImVec2(chevron_center.x + chevron_size * 0.6f, chevron_center.y);
             p3 = ImVec2(chevron_center.x - chevron_size * 0.4f, chevron_center.y + chevron_size);
@@ -105,15 +102,11 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
         ImVec2 points[3] = { p1, p2, p3 };
         window->DrawList->AddPolyline(points, 3, text_col, 0, 2.0f);
 
-        // 텍스트 좌측 정렬 및 클리핑 렌더링
         ImVec2 text_pos(window->WorkRect.Min.x + padding.x, bb.Min.y + padding.y);
         ImVec2 clip_rect_max = ImVec2(bb.Max.x - padding.x * 2.0f - g.FontSize, bb.Max.y);
         ImGui::RenderTextClipped(text_pos, clip_rect_max, label, NULL, NULL);
     }
 
-    // =========================================================================
-
-    // 애니메이션 프레임 업데이트
     if (!calculating_height) {
         float speed = ImGui::GetIO().DeltaTime * 7.0f;
         anim_t = ImClamp(anim_t + (is_open ? speed : -speed), 0.0f, 1.0f);
@@ -122,8 +115,30 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
 
     // 내용 영역 (Child Window) 열기
     if (anim_t > 0.0f || calculating_height) {
-        float current_height = calculating_height ? 0.0f : (max_height * anim_t);
-        float alpha = calculating_height ? 1.0f : anim_t;
+
+        float current_height;
+
+        if (calculating_height) {
+            // [핵심 수정] 측정 프레임:
+            // 0.0f를 넣으면 남은 화면을 꽉 채워버리므로, 눈에 보이지 않는 0.01f로 고정합니다.
+            current_height = 0.01f;
+        }
+        else if (is_open && anim_t >= 1.0f) {
+            // 완전히 다 열렸을 때:
+            // AutoResizeY가 작동해야 하므로 이때만 0.0f를 허용합니다.
+            current_height = 0.0f;
+        }
+        else {
+            // 애니메이션 진행 중:
+            current_height = max_height * anim_t;
+            // 닫히기 직전이나 연산 오차로 0.0f가 되는 것을 방지
+            if (current_height <= 0.01f) {
+                current_height = 0.01f;
+            }
+        }
+
+        // 측정 프레임에는 렌더링 찌꺼기가 보이지 않게 투명하게 처리
+        float alpha = calculating_height ? 0.0f : anim_t;
 
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, ImGui::GetStyle().ChildRounding);
@@ -132,29 +147,40 @@ bool ImGui::BeginCollapsingHeader(const char* label, bool default_open)
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
         ImGuiChildFlags child_flags = 0;
 
-        if (calculating_height || (is_open && anim_t >= 1.0f)) {
+        // 측정이 끝났고, 완전히 열렸을 때만 AutoResizeY 적용
+        if (!calculating_height && is_open && anim_t >= 1.0f) {
             child_flags |= ImGuiChildFlags_AutoResizeY;
-            current_height = 0.0f;
         }
 
+        // 크기가 0.0f(화면 채우기)로 잘못 들어갈 일이 원천 차단됨
         ImGui::BeginChild(id + 3, ImVec2(0, current_height), child_flags, window_flags);
+
+        // 스택에 현재 ID 저장 (EndCollapsingHeader에서 사용)
+        s_CollapsingHeaderIdStack.push_back(id);
+
         return true;
     }
 
     return false;
 }
 
-void ImGui::EndCollapsingHeader(const char* label)
+void ImGui::EndCollapsingHeader()
 {
-    ImGuiWindow* child_window = ImGui::GetCurrentWindow();
+    // Begin 없이 End가 호출되는 것을 방지하는 안전장치
+    IM_ASSERT(s_CollapsingHeaderIdStack.Size > 0 && "Mismatched BeginCollapsingHeader / EndCollapsingHeader!");
 
+    ImGuiWindow* child_window = ImGui::GetCurrentWindow();
     float height = child_window->DC.CursorMaxPos.y - child_window->Pos.y + ImGui::GetStyle().WindowPadding.y;
 
     ImGui::EndChild();
     ImGui::PopStyleVar(3);
 
+    // =========================================================================
+    // [수정] 부모 창으로 돌아온 후, 스택에서 저장해둔 ID를 꺼내서 사용
+    // =========================================================================
     ImGuiWindow* window = ImGui::GetCurrentWindow();
-    ImGuiID id = window->GetID(label);
+    ImGuiID id = s_CollapsingHeaderIdStack.back();
+    s_CollapsingHeaderIdStack.pop_back();
 
     bool is_open = window->StateStorage.GetInt(id, 0);
     float anim_t = window->StateStorage.GetFloat(id + 1, 0.0f);
@@ -227,25 +253,30 @@ bool ImGui::Check(const char* label, bool* v)
     const float min_width = square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f);
     const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
 
-    // 전체 클릭/차지 영역
+    // 전체 레이아웃 차지 영역
     const ImRect total_bb(pos, pos + ImVec2(total_width, label_size.y + style.FramePadding.y * 2.0f));
     ItemSize(total_bb, style.FramePadding.y);
     const bool is_visible = ItemAdd(total_bb, id);
     const bool is_multi_select = (g.LastItemData.ItemFlags & ImGuiItemFlags_IsMultiSelect) != 0;
     if (!is_visible)
-        if (!is_multi_select || !g.BoxSelectState.UnclipMode || !g.BoxSelectState.UnclipRect.Overlaps(total_bb)) // Extra layer of "no logic clip" for box-select support
+        if (!is_multi_select || !g.BoxSelectState.UnclipMode || !g.BoxSelectState.UnclipRect.Overlaps(total_bb))
         {
             IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Checkable | (*v ? ImGuiItemStatusFlags_Checked : 0));
             return false;
         }
+
+    // 체크박스 사각형(위젯)을 오른쪽 끝 위치로 계산
+    const float check_x = pos.x + total_width - square_sz;
+    const ImRect check_bb(ImVec2(check_x, pos.y), ImVec2(check_x + square_sz - 0.1f, pos.y + square_sz - 0.1f));
 
     // Range-Selection/Multi-selection support (header)
     bool checked = *v;
     if (is_multi_select)
         MultiSelectItemHeader(id, &checked, NULL);
 
+    // [수정] Toggle/Radio와 동일하게 우측 버튼 영역(check_bb)에서만 상호작용 감지
     bool hovered, held;
-    bool pressed = ButtonBehavior(total_bb, id, &hovered, &held);
+    bool pressed = ButtonBehavior(check_bb, id, &hovered, &held);
 
     // Range-Selection/Multi-selection support (footer)
     if (is_multi_select)
@@ -260,35 +291,33 @@ bool ImGui::Check(const char* label, bool* v)
         MarkItemEdited(id);
     }
 
-    // 체크박스 사각형(위젯)을 오른쪽 끝으로 배치
-    const float check_x = pos.x + total_width - square_sz;
-    const ImRect check_bb(ImVec2(check_x, pos.y), ImVec2(check_x + square_sz - 0.1f, pos.y + square_sz - 0.1f));
-
     const bool mixed_value = (g.LastItemData.ItemFlags & ImGuiItemFlags_MixedValue) != 0;
     if (is_visible)
     {
         RenderNavCursor(total_bb, id);
 
-        // 체크 상태에 따른 배경색 결정 및 테두리 여부
+        // 배경색 결정 (ON/Mixed: Button 계열, OFF: FrameBg 계열)
         ImU32 frame_col;
-
         if (*v || mixed_value)
         {
-            frame_col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+            frame_col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive
+                                    : hovered        ? ImGuiCol_ButtonHovered
+                                                     : ImGuiCol_Button);
         }
         else
         {
-            frame_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+            frame_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive
+                                    : hovered        ? ImGuiCol_FrameBgHovered
+                                                     : ImGuiCol_FrameBg);
         }
 
         RenderFrame(check_bb.Min, check_bb.Max, frame_col, true, style.FrameRounding);
 
-        // 체크 마크 색상을 텍스트 색상으로 변경
-        ImU32 check_col = ImColor(255, 255, 255);
+        // 체크 마크 색상 (흰색 통일)
+        ImU32 check_col = IM_COL32(255, 255, 255, 255);
 
         if (mixed_value)
         {
-            // Undocumented tristate/mixed/indeterminate checkbox (#2644)
             ImVec2 pad(ImMax(1.0f, IM_TRUNC(square_sz / 3.6f)), ImMax(1.0f, IM_TRUNC(square_sz / 3.6f)));
             window->DrawList->AddRectFilled(check_bb.Min + pad, check_bb.Max - pad, check_col, style.FrameRounding);
         }
@@ -299,7 +328,7 @@ bool ImGui::Check(const char* label, bool* v)
         }
     }
 
-    //  라벨(텍스트)은 가장 왼쪽 시작점에 배치
+    // 라벨(텍스트)은 가장 왼쪽 시작점에 배치
     const ImVec2 label_pos = ImVec2(pos.x, check_bb.Min.y + style.FramePadding.y);
 
     if (g.LogEnabled)
@@ -325,16 +354,14 @@ bool ImGui::Radio(const char* label, int* v, int v_button)
     const float square_sz = GetFrameHeight();
     const ImVec2 pos = window->DC.CursorPos;
 
-    // 전체 영역 계산 (현재 가용 너비를 꽉 채움)
     const float min_width = square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f);
     const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
 
-    // 라디오 버튼 위젯(원 영역)을 오른쪽 끝으로 계산
     const float check_x = pos.x + total_width - square_sz;
     const ImRect check_bb(ImVec2(check_x, pos.y), ImVec2(check_x + square_sz, pos.y + square_sz));
 
-    // 전체 클릭/차지 영역
     const ImRect total_bb(pos, pos + ImVec2(total_width, label_size.y + style.FramePadding.y * 2.0f));
+
     ItemSize(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, id))
         return false;
@@ -345,28 +372,33 @@ bool ImGui::Radio(const char* label, int* v, int v_button)
     const float radius = (square_sz - 1.0f) * 0.5f;
 
     bool hovered, held;
-    bool pressed = ButtonBehavior(total_bb, id, &hovered, &held);
+    bool pressed = ButtonBehavior(check_bb, id, &hovered, &held);
 
-    // [통합된 로직] 눌렸을 때 값을 변경
     if (pressed)
     {
         *v = v_button;
         MarkItemEdited(id);
     }
 
-    // 현재 활성화 상태 판별 (눌림 직후의 값으로 계산하여 즉시 렌더링 반영)
     const bool active = (*v == v_button);
 
     RenderNavCursor(total_bb, id);
-    const int num_segment = 300; // window->DrawList->_CalcCircleAutoSegmentCount(radius);
+    const int num_segment = 300;
 
     // --- 디자인 렌더링 부분 ---
     // 1. 바깥쪽 원 (배경)
-    ImU32 bg_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+    // OFF 상태: FrameBg 계열
+    ImU32 bg_col = GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive
+                                : hovered        ? ImGuiCol_FrameBgHovered
+                                                 : ImGuiCol_FrameBg);
 
-    // 활성화되었을 때 배경 강조
+    // ON (선택) 상태: Button 계열 사용 (CheckMark 대신 Button 적용)
     if (active)
-        bg_col = GetColorU32(ImGuiCol_CheckMark);
+    {
+        bg_col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive
+                              : hovered        ? ImGuiCol_ButtonHovered
+                                               : ImGuiCol_Button);
+    }
 
     window->DrawList->AddCircleFilled(center, radius, bg_col, num_segment);
 
@@ -376,7 +408,6 @@ bool ImGui::Radio(const char* label, int* v, int v_button)
         const float pad = ImMax(1.0f, IM_TRUNC(square_sz / 3.5f));
         window->DrawList->AddCircleFilled(center, radius - pad, IM_COL32(255, 255, 255, 255), num_segment);
     }
-    // ------------------------
 
     // 테두리 선
     if (style.FrameBorderSize > 0.0f)
@@ -385,7 +416,7 @@ bool ImGui::Radio(const char* label, int* v, int v_button)
         window->DrawList->AddCircle(center, radius, GetColorU32(ImGuiCol_Border), num_segment, style.FrameBorderSize);
     }
 
-    // 라벨(텍스트)은 제일 왼쪽(pos.x)으로 배치
+    // 라벨(텍스트) 배치
     ImVec2 label_pos = ImVec2(pos.x, check_bb.Min.y + style.FramePadding.y);
 
     if (g.LogEnabled)
@@ -2076,103 +2107,126 @@ bool ImGui::SliderRangeX(const char *label, double *v_min, double *v_max, float 
     return _slider5_(label, ImGuiDataType_Double, v_min, v_max, &v_bound_min, &v_bound_max, format);
 }
 
-bool ImGui::Toggle(const char* str_id, bool* v)
+bool ImGui::Toggle(const char* label, bool* v)
 {
-    ImVec2 p = ImGui::GetCursorScreenPos();
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
 
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+
+    // 1. 라벨 텍스트 처리
+    const char* label_end = ImGui::FindRenderedTextEnd(label);
+    const bool has_label = (label != label_end);
+    const ImVec2 label_size = has_label ? ImGui::CalcTextSize(label, label_end, true) : ImVec2(0.0f, 0.0f);
+
+    // 2. 토글 스위치 크기 계산
     float height = ImGui::GetFrameHeight() * 0.8f;
     float width = height * 1.99f;
 
     float outer_radius = height * 0.50f;
     float inner_radius = outer_radius * 0.7f;
 
-    bool turned_on = false;
+    // 3. 레이아웃 위치 및 영역 계산
+    ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
 
-    // InvisibleButton으로 위젯 영역 등록 및 상호작용 처리
-    ImGui::InvisibleButton(str_id, ImVec2(width, height));
-    if (ImGui::IsItemClicked())
+    float toggle_x_pos;
+    ImVec2 total_size;
+
+    if (has_label)
     {
-        *v = !*v;
-        if (*v)
-        {
-            turned_on = true;
-        }
-    }
+        float avail_width = ImGui::GetContentRegionAvail().x;
+        float min_width = label_size.x + style.ItemInnerSpacing.x + width;
+        float actual_width = ImMax(avail_width, min_width);
 
-    // =========================================================================
-    // [핵심 수정] StateStorage 기반의 매끄러운 부드러운 애니메이션 (Lerp)
-    // =========================================================================
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    ImGuiID id = window->GetID(str_id);
-
-    // 저장된 애니메이션 상태(0.0f ~ 1.0f) 가져오기
-    float anim_t = window->StateStorage.GetFloat(id, *v ? 1.0f : 0.0f);
-
-    // 목표 값 설정 (ON이면 1.0f, OFF면 0.0f)
-    float target_t = *v ? 1.0f : 0.0f;
-
-    // 프레임 독립적인 지수 감쇠 보간 (숫자가 클수록 애니메이션 속도가 빨라집니다)
-    // 15.0f ~ 20.0f 정도가 가장 기분 좋은 쫀득한 속도를 제공합니다.
-    float speed = 15.0f;
-    anim_t = ImLerp(anim_t, target_t, ImGui::GetIO().DeltaTime * speed);
-
-    // 미세한 오차 보정 (0 또는 1에 매우 가까워지면 고정)
-    if (ImAbs(anim_t - target_t) < 0.0001f)
-        anim_t = target_t;
-
-    // 업데이트된 애니메이션 상태 저장
-    window->StateStorage.SetFloat(id, anim_t);
-
-    // =========================================================================
-    // 렌더링 (t 대신 부드러운 anim_t 사용)
-    // =========================================================================
-    ImU32 col_bg;
-
-    if (ImGui::IsItemHovered())
-    {
-        if (ImGuiExt::theme_id == 1) { // Dark 테마
-            col_bg = ImGui::GetColorU32(ImLerp(
-                ImVec4(31.0f / 255.0f, 31.0f / 255.0f, 32.0f / 255.0f, 1.0f),    // Hovered OFF (어두운 회색)
-                ImVec4(113.0f / 255.0f, 125.0f / 255.0f, 255.0f / 255.0f, 1.0f), // Hovered ON (밝은 푸른색)
-                anim_t));
-        }
-        else { // White 테마
-            col_bg = ImGui::GetColorU32(ImLerp(
-                ImVec4(185.0f / 255.0f, 195.0f / 255.0f, 235.0f / 255.0f, 1.0f), // Hovered OFF (조금 더 진한 흐린 푸른색)
-                ImVec4(113.0f / 255.0f, 125.0f / 255.0f, 255.0f / 255.0f, 1.0f), // Hovered ON (밝은 푸른색)
-                anim_t));
-        }
+        toggle_x_pos = cursor_pos.x + actual_width - width;
+        total_size = ImVec2(actual_width, ImMax(label_size.y, height));
     }
     else
     {
-        if (ImGuiExt::theme_id == 1) { // Dark 테마
-            col_bg = ImGui::GetColorU32(ImLerp(
-                ImVec4(11.0f / 255.0f, 11.0f / 255.0f, 12.0f / 255.0f, 1.0f),   // Normal OFF (매우 어두운 회색)
-                ImVec4(93.0f / 255.0f, 105.0f / 255.0f, 240.0f / 255.0f, 1.0f), // Normal ON (푸른색)
-                anim_t));
-        }
-        else { // White 테마
-            col_bg = ImGui::GetColorU32(ImLerp(
-                ImVec4(205.0f / 255.0f, 215.0f / 255.0f, 245.0f / 255.0f, 1.0f), // Normal OFF (연하고 흐린 푸른색)
-                ImVec4(93.0f / 255.0f, 105.0f / 255.0f, 240.0f / 255.0f, 1.0f),  // Normal ON (푸른색)
-                anim_t));
-        }
+        toggle_x_pos = cursor_pos.x;
+        total_size = ImVec2(width, height);
     }
 
-    // 배경(채우기) 그리기
+    // 4. 상호작용 버튼 배치 및 클릭 처리
+    bool changed = false;
+
+    ImRect total_bb(cursor_pos, ImVec2(cursor_pos.x + total_size.x, cursor_pos.y + total_size.y));
+
+    ImGui::ItemSize(total_bb, style.FramePadding.y);
+    if (!ImGui::ItemAdd(total_bb, id))
+        return false;
+
+    ImVec2 toggle_min = ImVec2(toggle_x_pos, cursor_pos.y + (total_size.y - height) * 0.5f);
+    ImVec2 toggle_max = ImVec2(toggle_min.x + width, toggle_min.y + height);
+    ImRect toggle_bb(toggle_min, toggle_max);
+
+    bool hovered, held;
+    bool pressed = ImGui::ButtonBehavior(toggle_bb, id, &hovered, &held);
+
+    if (pressed)
+    {
+        *v = !*v;
+        changed = true;
+    }
+
+    // 5. StateStorage 기반 애니메이션 (Lerp)
+    float anim_t = window->StateStorage.GetFloat(id, *v ? 1.0f : 0.0f);
+    float target_t = *v ? 1.0f : 0.0f;
+
+    float speed = 15.0f;
+    anim_t = ImLerp(anim_t, target_t, ImGui::GetIO().DeltaTime * speed);
+
+    if (ImAbs(anim_t - target_t) < 0.0001f)
+        anim_t = target_t;
+
+    window->StateStorage.SetFloat(id, anim_t);
+
+    // 6. 렌더링
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    if (has_label)
+    {
+        float text_y = cursor_pos.y + (total_size.y - label_size.y) * 0.5f;
+        draw_list->AddText(ImVec2(cursor_pos.x, text_y), ImGui::GetColorU32(ImGuiCol_Text), label, label_end);
+    }
+
+    ImVec2 p = ImVec2(toggle_x_pos, cursor_pos.y + (total_size.y - height) * 0.5f);
+
+    // --- 자연스러운 색상 계산 부분 ---
+    // OFF 상태 색상 (FrameBg 계열)
+    const ImVec4 col_off_base   = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+    const ImVec4 col_off_hover  = ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered);
+    const ImVec4 col_off_active = ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive);
+
+    // ON 상태 색상 (Button 계열)
+    const ImVec4 col_on_base    = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+    const ImVec4 col_on_hover   = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+    const ImVec4 col_on_active  = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+
+    // 토글 위치(anim_t)에 따른 단계별 색상 보간
+    ImVec4 col_base   = ImLerp(col_off_base,   col_on_base,   anim_t);
+    ImVec4 col_hover  = ImLerp(col_off_hover,  col_on_hover,  anim_t);
+    ImVec4 col_active = ImLerp(col_off_active, col_on_active, anim_t);
+
+    // 마우스 반응(Normal -> Hover -> Held) 상태 적용
+    ImVec4 final_col = (held && hovered) ? col_active : (hovered ? col_hover : col_base);
+    ImU32 col_bg = ImGui::GetColorU32(final_col);
+
+    // 배경 및 테두리 그리기
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
 
-    // 테두리(선) 그리기
     ImU32 col_border = ImGui::GetColorU32(ImGuiCol_Border);
     float border_thickness = 1.5f;
     draw_list->AddRect(p, ImVec2(p.x + width, p.y + height), col_border, height * 0.5f, 0, border_thickness);
 
-    // 안쪽 원형 토글 그리기 (anim_t를 활용해 원 위치 보간)
+    // 안쪽 원형 토글 그리기
     ImVec2 circle_center = ImVec2(p.x + outer_radius + anim_t * (width - outer_radius * 2.0f), p.y + outer_radius);
     draw_list->AddCircleFilled(circle_center, inner_radius, IM_COL32(255, 255, 255, 255));
 
-    return turned_on;
+    return changed;
 }
 
 bool ImGui::StatusStepBar(const char *str_id, int *current_step, const char **step_labels, int num_steps)
