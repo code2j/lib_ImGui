@@ -21,11 +21,11 @@ int main() {
 
 
     // 포인트 클라우드 데이터 불러오기
-    ImGui::Points points;
-    if (!ImGui::load_points(FILE_PCD, &points)) {
-        std::cout << "[Warn ] [Main] 데이터 불러오기 실패: " << FILE_PCD << std::endl;
-        return 1;
-    }
+    // ImGui::Points points;
+    // if (!ImGui::load_points(FILE_PCD, &points)) {
+    //     std::cout << "[Warn ] [Main] 데이터 불러오기 실패: " << FILE_PCD << std::endl;
+    //     return 1;
+    // }
 
         // ImGui::Combo()
         // ImGui::BeginCombo("Combo", "Hello");
@@ -152,36 +152,36 @@ int main() {
             }
 
             ImGui::EndChild();
-            ImGui::EndCollapsingHeader(ICON_MD_WIDGETS " 기타 등등 ");
+            ImGui::EndCollapsingHeader();
         }
 
 
         if (ImGui::BeginCollapsingHeader(ICON_MD_CHAT_INFO " Notification Example ")) {
             // [알림 버튼 샘플]
             if (ImGui::Button(" 알림 정보 ")) {
-                ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "정보 알림이 표시 됩니다."));
+                ImGui::NotifyInfo("정보 알림이 표시 됩니다.");
                 std::cout << "[Info ] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
             }
             ImGui::SameLine();
 
             if (ImGui::Button(" 알림 성공 ")) {
-                ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Success, "성공 알림이 표시 됩니다."));
+                ImGui::NotifySucc("성공 알림이 표시 됩니다.");
                 std::cout << "[Succ ] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
             }
             ImGui::SameLine();
 
             if (ImGui::Button(" 알림 경고 ")) {
-                ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Warning, "경고 알림이 표시 됩니다."));
+                ImGui::NotifyWarn("경고 알림이 표시 됩니다.");
                 std::cout << "[Warn ] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
             }
             ImGui::SameLine();
 
             if (ImGui::Button(" 알림 에러 ")) {
-                ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Error, "에러 알림이 표시 됩니다."));
+                ImGui::NotifyError("에러 알림이 표시 됩니다.");
                 std::cout << "[Error] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
             }
 
-            ImGui::EndCollapsingHeader(ICON_MD_CHAT_INFO " Notification Example ");
+            ImGui::EndCollapsingHeader();
         }
 
         if (ImGui::BeginCollapsingHeader(ICON_MD_TUNE " Slider Example ")) {
@@ -216,7 +216,7 @@ int main() {
             ImGui::PopItemWidth();
             ImGui::EndChild();
 
-            ImGui::EndCollapsingHeader(ICON_MD_TUNE " Slider Example ");
+            ImGui::EndCollapsingHeader();
         }
 
         if (ImGui::BeginCollapsingHeader(ICON_MD_JOYSTICK " Joystick Example ")) {
@@ -224,7 +224,7 @@ int main() {
             ImVec2 joy;
             ImGui::Joystic(&joy);
             ImGui::Dummy(ImVec2(0, 20));
-            ImGui::EndCollapsingHeader(ICON_MD_JOYSTICK " Joystick Example ");
+            ImGui::EndCollapsingHeader();
         }
 
         if (ImGui::BeginCollapsingHeader(ICON_MD_STEPPERS " Status Step Example ", false)) {
@@ -262,14 +262,14 @@ int main() {
             ImGui::EndChild();
             ImGui::PopStyleVar();
 
-            ImGui::EndCollapsingHeader(ICON_MD_STEPPERS " Status Step Example ");
+            ImGui::EndCollapsingHeader();
         }
 
         if (ImGui::BeginCollapsingHeader(ICON_MD_IMAGE " Image Example ")) {
             // 토클 이미지 보이기
             static bool show_image = false;
             if (ImGui::Toggle("이미지 보이기", &show_image)) {
-                ImGui::InsertNotification(ImGuiToast(ImGuiToastType_Info, "이미지가 표시됩니다."));
+                ImGui::NotifyInfo("이미지가 표시됩니다.");
             }
             ImGui::SameLine();
             ImGui::Text("이미지 보이기");
@@ -297,7 +297,7 @@ int main() {
                 ImGui::Image(texture3->id, size);
             }
             ImGui::EndChild();
-            ImGui::EndCollapsingHeader(ICON_MD_IMAGE " Image Example ");
+            ImGui::EndCollapsingHeader();
 
         }
 
@@ -319,7 +319,7 @@ int main() {
             }
             ImGui::EndChild();
 
-            ImGui::EndCollapsingHeader(ICON_MD_COLORS " Theme Example ");
+            ImGui::EndCollapsingHeader();
         }
 
 
@@ -338,8 +338,8 @@ int main() {
         ImGui::TransformControl(&tf_control);
         ImGui::End();
 
-        points.move(tf_control);
-        ImGui::draw_points(points);
+        // points.move(tf_control);
+        // ImGui::draw_points(points);
     }));
 
     }
