@@ -5,11 +5,11 @@
 
 #include <filesystem>
 #include <fstream>
-
+#include <X11/Xlib.h> // 파일 상단에 추가
 
 namespace fs = std::filesystem;
 
-namespace 
+namespace
 {
 
     // ==================================================
@@ -81,7 +81,6 @@ namespace ImGui
         InitWindow(width, height, title);
         SetTargetFPS(60);
         SetExitKey(0); // esc로 인한 종료 방지
-
         // imgui 컨텍스트 생성
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -94,7 +93,7 @@ namespace ImGui
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // 키보드 네비게이션 활성화
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // 도킹 활성화
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // 멀티 뷰포트
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // 멀티 뷰포트
 
 
 
@@ -293,7 +292,38 @@ namespace ImGui
         // ---------------------------------------------------------------
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
+
+        static ImVec2 global_mouse_pos; // 전역 마우스 좌표 저장용 변수 추가
+        static Display* display = XOpenDisplay(NULL);
+
+        if (display) {
+            Window root = DefaultRootWindow(display);
+            Window root_return, child_return;
+            int root_x, root_y, win_x, win_y;
+            unsigned int mask_return;
+
+            // X11 API를 통해 OS 전역 마우스 좌표를 쿼리합니다.
+            if (XQueryPointer(display, root, &root_return, &child_return,
+                          &root_x, &root_y, &win_x, &win_y, &mask_return)) {
+
+                // 1. 현재 창의 모니터 상 위치를 가져옵니다.[cite: 1]
+                Vector2 window_pos = GetWindowPosition();
+
+                // 2. 전역 마우스 좌표에서 창의 위치를 빼서 지역 좌표로 변환하여 ImGui에 주입합니다.
+                ImGui::GetIO().AddMousePosEvent((float)root_x - window_pos.x, (float)root_y - window_pos.y);
+                global_mouse_pos = ImVec2((float)root_x, (float)root_y);
+                          }
+        }
+
         ImGui::NewFrame();
+
+        if (ImGui::GetIO().WantCaptureMouse) {
+            ClearWindowState(FLAG_WINDOW_MOUSE_PASSTHROUGH);
+            // SetWindowState(FLAG_WINDOW_TOPMOST);
+        } else {
+            SetWindowState(FLAG_WINDOW_MOUSE_PASSTHROUGH);
+            // ClearWindowState(FLAG_WINDOW_TOPMOST);
+        }
 
         static int last_theme = -1;
         if (last_theme != ImGuiExt::theme_id) {
@@ -305,6 +335,9 @@ namespace ImGui
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         int curr_w = GetScreenWidth();
         int curr_h = GetScreenHeight();
+
+
+
 
 
         // ---------------------------------------------------------------
@@ -360,23 +393,19 @@ namespace ImGui
         if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0)) {
             is_dragging_title_bar = true;
 
-            // ImGui의 절대 화면 마우스 좌표를 사용합니다.
-            ImVec2 mouseGlobal = ImGui::GetMousePos();
+            // ImGui의 상대 좌표가 아닌, 방금 캡처한 OS 절대 화면 마우스 좌표를 사용합니다.
             Vector2 winPos = GetWindowPosition();
 
             // 창의 좌상단 기준 클릭한 오프셋을 계산하여 저장합니다.
-            drag_offset.x = mouseGlobal.x - winPos.x;
-            drag_offset.y = mouseGlobal.y - winPos.y;
+            drag_offset.x = global_mouse_pos.x - winPos.x;
+            drag_offset.y = global_mouse_pos.y - winPos.y;
         }
 
         if (is_dragging_title_bar) {
             if (ImGui::IsMouseDown(0)) {
                 // 드래그 중에도 절대 화면 마우스 좌표를 기준으로 창 위치를 업데이트합니다.
-                ImVec2 mouseGlobal = ImGui::GetMousePos();
-
-                // 절대 마우스 위치에서 처음 클릭했던 오프셋을 빼서 창 위치를 세팅합니다.
-                ::SetWindowPosition((int)(mouseGlobal.x - drag_offset.x),
-                                    (int)(mouseGlobal.y - drag_offset.y));
+                ::SetWindowPosition((int)(global_mouse_pos.x - drag_offset.x),
+                                    (int)(global_mouse_pos.y - drag_offset.y));
             } else {
                 is_dragging_title_bar = false;
             }
@@ -493,8 +522,11 @@ namespace ImGui
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         ImGui::Begin("MainRootDockSpaceWindow", nullptr, dockFlags);
+        ImGui::PopStyleColor(1);
         ImGui::PopStyleVar(3);
+
 
         ImGuiID dockspace_id = ImGui::GetID("MainRootDockSpace");
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);

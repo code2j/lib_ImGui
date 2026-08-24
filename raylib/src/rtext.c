@@ -125,7 +125,7 @@
 //----------------------------------------------------------------------------------
 // Default font provided by raylib
 // NOTE: Default font is loaded on InitWindow() and disposed on CloseWindow() [module: core]
-static Font defaultFont = { 0 };
+static RayFont defaultFont = { 0 };
 
 // Text vertical line spacing in pixels (between lines)
 static int textLineSpacing = 2;
@@ -139,7 +139,7 @@ static int textLineSpacing = 2;
 // Module Internal Functions Declaration
 //----------------------------------------------------------------------------------
 #if SUPPORT_FILEFORMAT_FNT
-static Font LoadBMFont(const char *fileName);   // Load a BMFont file (AngelCode font file)
+static RayFont LoadBMFont(const char *fileName);   // Load a BMFont file (AngelCode font file)
 #endif
 #if SUPPORT_FILEFORMAT_BDF
 static GlyphInfo *LoadFontDataBDF(const unsigned char *fileData, int dataSize, const int *codepoints, int codepointCount, int *outFontSize);
@@ -328,13 +328,13 @@ extern void UnloadFontDefault(void)
 }
 
 // Get the default font
-Font GetFontDefault()
+RayFont GetFontDefault()
 {
     return defaultFont;
 }
 
 // Load Font from file into GPU memory (VRAM)
-Font LoadFont(const char *fileName)
+RayFont LoadFont(const char *fileName)
 {
     // Default values for ttf font generation
 #ifndef FONT_TTF_DEFAULT_SIZE
@@ -350,7 +350,7 @@ Font LoadFont(const char *fileName)
     #define FONT_TTF_DEFAULT_CHARS_PADDING   4      // TTF font generation default glyphs padding
 #endif
 
-    Font font = { 0 };
+    RayFont font = { 0 };
 
 #if SUPPORT_FILEFORMAT_TTF
     if (IsFileExtension(fileName, ".ttf") || IsFileExtension(fileName, ".otf")) font = LoadFontEx(fileName, FONT_TTF_DEFAULT_SIZE, NULL, FONT_TTF_DEFAULT_NUMCHARS);
@@ -384,9 +384,9 @@ Font LoadFont(const char *fileName)
 // Load font from file with defined codepoints and generation size
 // NOTE: NULL for codepoints and 0 for codepointCount to load the default character set (32..126),
 // font size is provided in pixels height
-Font LoadFontEx(const char *fileName, int fontSize, const int *codepoints, int codepointCount)
+RayFont LoadFontEx(const char *fileName, int fontSize, const int *codepoints, int codepointCount)
 {
-    Font font = { 0 };
+    RayFont font = { 0 };
 
     // Loading file to memory
     int dataSize = 0;
@@ -404,7 +404,7 @@ Font LoadFontEx(const char *fileName, int fontSize, const int *codepoints, int c
 }
 
 // Load an Image font file (XNA style)
-Font LoadFontFromImage(Image image, Color key, int firstChar)
+RayFont LoadFontFromImage(Image image, Color key, int firstChar)
 {
 #ifndef MAX_GLYPHS_FROM_IMAGE
     #define MAX_GLYPHS_FROM_IMAGE   256     // Maximum number of glyphs supported on image scan
@@ -412,7 +412,7 @@ Font LoadFontFromImage(Image image, Color key, int firstChar)
 
     #define COLOR_EQUAL(col1, col2) ((col1.r == col2.r) && (col1.g == col2.g) && (col1.b == col2.b) && (col1.a == col2.a))
 
-    Font font = GetFontDefault();
+    RayFont font = GetFontDefault();
 
     int charSpacing = 0;
     int lineSpacing = 0;
@@ -531,9 +531,9 @@ Font LoadFontFromImage(Image image, Color key, int firstChar)
 }
 
 // Load font from memory buffer, fileType refers to extension: i.e. ".ttf"
-Font LoadFontFromMemory(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize, const int *codepoints, int codepointCount)
+RayFont LoadFontFromMemory(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize, const int *codepoints, int codepointCount)
 {
-    Font font = { 0 };
+    RayFont font = { 0 };
 
     char fileExtLower[16] = { 0 };
     strncpy(fileExtLower, TextToLower(fileType), 16 - 1);
@@ -595,7 +595,7 @@ Font LoadFontFromMemory(const char *fileType, const unsigned char *fileData, int
 
 // Check if font is valid (font data loaded)
 // WARNING: GPU texture not checked
-bool IsFontValid(Font font)
+bool IsFontValid(RayFont font)
 {
     return ((font.baseSize > 0) &&      // Validate font size
             (font.glyphCount > 0) &&    // Validate font contains some glyph
@@ -1006,7 +1006,7 @@ void UnloadFontData(GlyphInfo *glyphs, int glyphCount)
 }
 
 // Unload Font from GPU memory (VRAM)
-void UnloadFont(Font font)
+void UnloadFont(RayFont font)
 {
     // NOTE: Make sure font is not default font (fallback)
     if (font.texture.id != GetFontDefault().texture.id)
@@ -1020,7 +1020,7 @@ void UnloadFont(Font font)
 }
 
 // Export font as code file, returns true on success
-bool ExportFontAsCode(Font font, const char *fileName)
+bool ExportFontAsCode(RayFont font, const char *fileName)
 {
     bool result = false;
 
@@ -1207,7 +1207,7 @@ void DrawText(const char *text, int posX, int posY, int fontSize, Color color)
 
 // Draw text using Font
 // NOTE: chars spacing is NOT proportional to fontSize
-void DrawTextEx(Font font, const char *text, Vector2 position, float fontSize, float spacing, Color tint)
+void DrawTextEx(RayFont font, const char *text, Vector2 position, float fontSize, float spacing, Color tint)
 {
     if (font.texture.id == 0) font = GetFontDefault();  // Security check in case of not valid font
 
@@ -1247,7 +1247,7 @@ void DrawTextEx(Font font, const char *text, Vector2 position, float fontSize, f
 }
 
 // Draw text using Font and pro parameters (rotation)
-void DrawTextPro(Font font, const char *text, Vector2 position, Vector2 origin, float rotation, float fontSize, float spacing, Color tint)
+void DrawTextPro(RayFont font, const char *text, Vector2 position, Vector2 origin, float rotation, float fontSize, float spacing, Color tint)
 {
     rlPushMatrix();
 
@@ -1261,7 +1261,7 @@ void DrawTextPro(Font font, const char *text, Vector2 position, Vector2 origin, 
 }
 
 // Draw one character (codepoint)
-void DrawTextCodepoint(Font font, int codepoint, Vector2 position, float fontSize, Color tint)
+void DrawTextCodepoint(RayFont font, int codepoint, Vector2 position, float fontSize, Color tint)
 {
     // Character index position in sprite font
     // NOTE: In case a codepoint is not available in the font, index returned points to '?'
@@ -1285,7 +1285,7 @@ void DrawTextCodepoint(Font font, int codepoint, Vector2 position, float fontSiz
 }
 
 // Draw multiple characters (codepoints)
-void DrawTextCodepoints(Font font, const int *codepoints, int codepointCount, Vector2 position, float fontSize, float spacing, Color tint)
+void DrawTextCodepoints(RayFont font, const int *codepoints, int codepointCount, Vector2 position, float fontSize, float spacing, Color tint)
 {
     float textOffsetY = 0;          // Offset between lines (on linebreak '\n')
     float textOffsetX = 0.0f;       // Offset X to next character to draw
@@ -1340,7 +1340,7 @@ int MeasureText(const char *text, int fontSize)
 }
 
 // Measure string size for Font
-Vector2 MeasureTextEx(Font font, const char *text, float fontSize, float spacing)
+Vector2 MeasureTextEx(RayFont font, const char *text, float fontSize, float spacing)
 {
     Vector2 textSize = { 0 };
 
@@ -1396,7 +1396,7 @@ Vector2 MeasureTextEx(Font font, const char *text, float fontSize, float spacing
 }
 
 // Measure string size for an existing array of codepoints for Font
-Vector2 MeasureTextCodepoints(Font font, const int *codepoints, int length, float fontSize, float spacing)
+Vector2 MeasureTextCodepoints(RayFont font, const int *codepoints, int length, float fontSize, float spacing)
 {
     Vector2 textSize = { 0 };
 
@@ -1454,7 +1454,7 @@ Vector2 MeasureTextCodepoints(Font font, const int *codepoints, int length, floa
 
 // Get index position for a unicode character on font
 // NOTE: If codepoint is not found in the font it fallbacks to '?'
-int GetGlyphIndex(Font font, int codepoint)
+int GetGlyphIndex(RayFont font, int codepoint)
 {
     int index = 0;
     if (!IsFontValid(font)) return index;
@@ -1485,7 +1485,7 @@ int GetGlyphIndex(Font font, int codepoint)
 
 // Get glyph font info data for a codepoint (unicode character)
 // NOTE: If codepoint is not found in the font it fallbacks to '?'
-GlyphInfo GetGlyphInfo(Font font, int codepoint)
+GlyphInfo GetGlyphInfo(RayFont font, int codepoint)
 {
     GlyphInfo info = { 0 };
 
@@ -1496,7 +1496,7 @@ GlyphInfo GetGlyphInfo(Font font, int codepoint)
 
 // Get glyph rectangle in font atlas for a codepoint (unicode character)
 // NOTE: If codepoint is not found in the font it fallbacks to '?'
-Rectangle GetGlyphAtlasRec(Font font, int codepoint)
+Rectangle GetGlyphAtlasRec(RayFont font, int codepoint)
 {
     Rectangle rec = { 0 };
 
@@ -2567,12 +2567,12 @@ static int GetLine(const char *origin, char *buffer, int maxLength)
 #if SUPPORT_FILEFORMAT_FNT
 // Load a BMFont file (AngelCode font file)
 // REQUIRES: strstr(), sscanf(), strrchr(), memcpy()
-static Font LoadBMFont(const char *fileName)
+static RayFont LoadBMFont(const char *fileName)
 {
     #define MAX_BUFFER_SIZE       256
     #define MAX_FONT_IMAGE_PAGES    8
 
-    Font font = { 0 };
+    RayFont font = { 0 };
 
     char buffer[MAX_BUFFER_SIZE] = { 0 };
     char *searchPoint = NULL;
