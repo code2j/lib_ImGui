@@ -31,7 +31,7 @@ namespace
     // ==================================================
     // 독 스페이스 & 타이틀바 상태
     // ==================================================
-    const float TITLEBAR_HEIGHT = 34.0;
+    const float TITLEBAR_HEIGHT = 0.0;
     bool is_resizing            = false;
     bool is_dragging_title_bar  = false;
     Vector2 drag_offset         = { 0.0, 0.0 };
@@ -78,9 +78,14 @@ namespace ImGui
         // ImGui & raylib 초기화
         // ---------------------------------------------------------------
         SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT ); // FLAG_WINDOW_TRANSPARENT
-        InitWindow(width, height, title);
+
+        InitWindow(0, 0, title);
+        MaximizeWindow();
+
         SetTargetFPS(60);
         SetExitKey(0); // esc로 인한 종료 방지
+
+
         // imgui 컨텍스트 생성
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -373,164 +378,172 @@ namespace ImGui
         // ---------------------------------------------------------------
         // 3. 타이틀 바
         // ---------------------------------------------------------------
-        ImGui::SetNextWindowPos(viewport->Pos);
-        ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, TITLEBAR_HEIGHT));
-        ImGui::SetNextWindowViewport(viewport->ID);
+        if (false)
+        {
+            ImGui::SetNextWindowPos(viewport->Pos);
+            ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, TITLEBAR_HEIGHT));
+            ImGui::SetNextWindowViewport(viewport->ID);
 
-        ImGuiWindowFlags titleFlags = ImGuiWindowFlags_NoDecoration |
-                ImGuiWindowFlags_NoDocking |
-                ImGuiWindowFlags_NoSavedSettings |
-                ImGuiWindowFlags_NoBringToFrontOnFocus;
+            ImGuiWindowFlags titleFlags = ImGuiWindowFlags_NoDecoration |
+                    ImGuiWindowFlags_NoDocking |
+                    ImGuiWindowFlags_NoSavedSettings |
+                    ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetColorU32(ImGuiCol_ChildBg));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetColorU32(ImGuiCol_ChildBg));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
 
-        ImGui::Begin("CustomTitleBar", nullptr, titleFlags);
+            ImGui::Begin("CustomTitleBar", nullptr, titleFlags);
 
-        if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0)) {
-            is_dragging_title_bar = true;
+            if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0)) {
+                is_dragging_title_bar = true;
 
-            // ImGui의 상대 좌표가 아닌, 방금 캡처한 OS 절대 화면 마우스 좌표를 사용합니다.
-            Vector2 winPos = GetWindowPosition();
+                // ImGui의 상대 좌표가 아닌, 방금 캡처한 OS 절대 화면 마우스 좌표를 사용합니다.
+                Vector2 winPos = GetWindowPosition();
 
-            // 창의 좌상단 기준 클릭한 오프셋을 계산하여 저장합니다.
-            drag_offset.x = global_mouse_pos.x - winPos.x;
-            drag_offset.y = global_mouse_pos.y - winPos.y;
-        }
-
-        if (is_dragging_title_bar) {
-            if (ImGui::IsMouseDown(0)) {
-                // 드래그 중에도 절대 화면 마우스 좌표를 기준으로 창 위치를 업데이트합니다.
-                ::SetWindowPosition((int)(global_mouse_pos.x - drag_offset.x),
-                                    (int)(global_mouse_pos.y - drag_offset.y));
-            } else {
-                is_dragging_title_bar = false;
-            }
-        }
-
-        float textWidth = ImGui::CalcTextSize(WINDOW_TITLE.c_str()).x;
-        ImGui::SetCursorPosX((viewport->Size.x - textWidth) * 0.5f);
-        ImGui::SetCursorPosY((TITLEBAR_HEIGHT - ImGui::GetFontSize()) * 0.5f);
-        ImGui::Text("%s", WINDOW_TITLE.c_str());
-
-        // ---------------------------------------------------------------
-        // 3-1. 타이틀바 버튼
-        // ---------------------------------------------------------------
-        // 버튼 위치 설정
-        float closeBtnWidth = 40.0f;
-        float maxBtnWidth = 40.0f; // 최대화 버튼 너비 추가
-        float settingsBtnWidth = 45.0f;
-
-        // --- 설정 버튼 ---
-        // 최대화 버튼이 추가되었으므로 위치를 그만큼 왼쪽으로 밀어줍니다.
-        ImGui::SameLine(viewport->Size.x - closeBtnWidth - maxBtnWidth - settingsBtnWidth);
-        ImGui::SetCursorPosY(0.0f);
-
-
-        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
-
-        if (ImGui::ButtonX(ICON_MD_SETTINGS, ImVec2(settingsBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
-            ImGui::OpenPopup("SettingsPopup");
-        }
-
-        ImGui::PopStyleColor(3);
-
-        // 설정 팝업 정의 (팝업 위치도 동일하게 조정)
-        ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - (closeBtnWidth + maxBtnWidth + settingsBtnWidth) * 2, viewport->Pos.y + TITLEBAR_HEIGHT));
-        if (ImGui::BeginPopup("SettingsPopup")) {
-
-            ImGui::MenuItem("3D 뷰포트", "", &ImGuiExt::show_3d_viewport);
-            ImGui::MenuItem("로거", "", &ImGuiExt::show_log_window);
-            ImGui::MenuItem("스타일 에디터", "", &ImGuiExt::show_style_edit);
-
-            if (ImGui::BeginMenu("테마"))
-            {
-                ImGui::ThemeSelector(&ImGuiExt::theme_id);
-                ImGui::EndMenu();
+                // 창의 좌상단 기준 클릭한 오프셋을 계산하여 저장합니다.
+                drag_offset.x = global_mouse_pos.x - winPos.x;
+                drag_offset.y = global_mouse_pos.y - winPos.y;
             }
 
-            ImGui::EndPopup();
-        }
-
-        // --- 최대화/이전 크기로 복원 버튼 ---
-        ImGui::SameLine(viewport->Size.x - closeBtnWidth - maxBtnWidth);
-        ImGui::SetCursorPosY(0.0f);
-
-        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
-
-        // 창 상태에 따라 아이콘 텍스트 분기 처리
-        const char* maxIcon = IsWindowMaximized() ? ICON_MD_FULLSCREEN_EXIT : ICON_MD_FULLSCREEN;
-
-        if (ImGui::ButtonX(maxIcon, ImVec2(maxBtnWidth, ::TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
-            if (IsWindowMaximized()) {
-                RestoreWindow();  // 최대화 상태라면 원래 크기로 복원
-            } else {
-                MaximizeWindow(); // 일반 상태라면 최대화
+            if (is_dragging_title_bar) {
+                if (ImGui::IsMouseDown(0)) {
+                    // 드래그 중에도 절대 화면 마우스 좌표를 기준으로 창 위치를 업데이트합니다.
+                    ::SetWindowPosition((int)(global_mouse_pos.x - drag_offset.x),
+                                        (int)(global_mouse_pos.y - drag_offset.y));
+                } else {
+                    is_dragging_title_bar = false;
+                }
             }
+
+            float textWidth = ImGui::CalcTextSize(WINDOW_TITLE.c_str()).x;
+            ImGui::SetCursorPosX((viewport->Size.x - textWidth) * 0.5f);
+            ImGui::SetCursorPosY((TITLEBAR_HEIGHT - ImGui::GetFontSize()) * 0.5f);
+            ImGui::Text("%s", WINDOW_TITLE.c_str());
+
+            // ---------------------------------------------------------------
+            // 3-1. 타이틀바 버튼
+            // ---------------------------------------------------------------
+            // 버튼 위치 설정
+            float closeBtnWidth = 40.0f;
+            float maxBtnWidth = 40.0f; // 최대화 버튼 너비 추가
+            float settingsBtnWidth = 45.0f;
+
+            // --- 설정 버튼 ---
+            // 최대화 버튼이 추가되었으므로 위치를 그만큼 왼쪽으로 밀어줍니다.
+            ImGui::SameLine(viewport->Size.x - closeBtnWidth - maxBtnWidth - settingsBtnWidth);
+            ImGui::SetCursorPosY(0.0f);
+
+
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
+
+            if (ImGui::ButtonX(ICON_MD_SETTINGS, ImVec2(settingsBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
+                ImGui::OpenPopup("SettingsPopup");
+            }
+
+            ImGui::PopStyleColor(3);
+
+            // 설정 팝업 정의 (팝업 위치도 동일하게 조정)
+            ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - (closeBtnWidth + maxBtnWidth + settingsBtnWidth) * 2, viewport->Pos.y + TITLEBAR_HEIGHT));
+            if (ImGui::BeginPopup("SettingsPopup")) {
+
+                ImGui::MenuItem("3D 뷰포트", "", &ImGuiExt::show_3d_viewport);
+                ImGui::MenuItem("로거", "", &ImGuiExt::show_log_window);
+                ImGui::MenuItem("스타일 에디터", "", &ImGuiExt::show_style_edit);
+
+                if (ImGui::BeginMenu("테마"))
+                {
+                    ImGui::ThemeSelector(&ImGuiExt::theme_id);
+                    ImGui::EndMenu();
+                }
+
+                ImGui::EndPopup();
+            }
+
+            // --- 최대화/이전 크기로 복원 버튼 ---
+            ImGui::SameLine(viewport->Size.x - closeBtnWidth - maxBtnWidth);
+            ImGui::SetCursorPosY(0.0f);
+
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
+
+            // 창 상태에 따라 아이콘 텍스트 분기 처리
+            const char* maxIcon = IsWindowMaximized() ? ICON_MD_FULLSCREEN_EXIT : ICON_MD_FULLSCREEN;
+
+            if (ImGui::ButtonX(maxIcon, ImVec2(maxBtnWidth, ::TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
+                if (IsWindowMaximized()) {
+                    RestoreWindow();  // 최대화 상태라면 원래 크기로 복원
+                } else {
+                    MaximizeWindow(); // 일반 상태라면 최대화
+                }
+            }
+            ImGui::PopStyleColor(3);
+
+
+            // --- 닫기(X) 버튼 ---
+            ImGui::SameLine(viewport->Size.x - closeBtnWidth);
+            ImGui::SetCursorPosY(0.0f);
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(181, 65, 66, 255));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
+
+
+            if (ImGui::ButtonX(ICON_MD_CLOSE, ImVec2(closeBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
+                ImGuiExt::should_close_app = true;
+            }
+
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(1);
+            ImGui::End();
+            ImGui::PopStyleColor();
+            ImGui::PopStyleVar(3);
         }
-        ImGui::PopStyleColor(3);
 
-
-        // --- 닫기(X) 버튼 ---
-        ImGui::SameLine(viewport->Size.x - closeBtnWidth);
-        ImGui::SetCursorPosY(0.0f);
-
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(181, 65, 66, 255));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
-
-
-        if (ImGui::ButtonX(ICON_MD_CLOSE, ImVec2(closeBtnWidth, TITLEBAR_HEIGHT), ImGuiButtonFlags_None)) {
-            ImGuiExt::should_close_app = true;
-        }
-
-
-        ImGui::PopStyleColor(3);
-        ImGui::PopStyleVar(1);
-        ImGui::End();
-        ImGui::PopStyleColor();
-        ImGui::PopStyleVar(3);
 
 
         // ---------------------------------------------------------------
         // 4. 독스페이스
         // ---------------------------------------------------------------
-        const float up_offset = 1.1; // 타이틀바 라운딩으로 생긴 여백 지우기 용
+        if (false)
+        {
+            const float up_offset = 1.1; // 타이틀바 라운딩으로 생긴 여백 지우기 용
 
-        ImVec2 dockPos = ImVec2(viewport->Pos.x, viewport->Pos.y + TITLEBAR_HEIGHT-up_offset);
-        ImVec2 dockSize = ImVec2(viewport->Size.x, viewport->Size.y - TITLEBAR_HEIGHT);
+            ImVec2 dockPos = ImVec2(viewport->Pos.x, viewport->Pos.y + TITLEBAR_HEIGHT-up_offset);
+            ImVec2 dockSize = ImVec2(viewport->Size.x, viewport->Size.y - TITLEBAR_HEIGHT);
 
-        ImGui::SetNextWindowPos(dockPos);
-        ImGui::SetNextWindowSize(dockSize);
-        ImGui::SetNextWindowViewport(viewport->ID);
+            ImGui::SetNextWindowPos(dockPos);
+            ImGui::SetNextWindowSize(dockSize);
+            ImGui::SetNextWindowViewport(viewport->ID);
 
-        ImGuiWindowFlags dockFlags = ImGuiWindowFlags_NoDocking |
-                ImGuiWindowFlags_NoTitleBar |
-                ImGuiWindowFlags_NoCollapse |
-                ImGuiWindowFlags_NoResize |
-                ImGuiWindowFlags_NoMove |
-                ImGuiWindowFlags_NoBringToFrontOnFocus |
-                ImGuiWindowFlags_NoNavFocus;
+            ImGuiWindowFlags dockFlags = ImGuiWindowFlags_NoDocking |
+                    ImGuiWindowFlags_NoTitleBar |
+                    ImGuiWindowFlags_NoCollapse |
+                    ImGuiWindowFlags_NoResize |
+                    ImGuiWindowFlags_NoMove |
+                    ImGuiWindowFlags_NoBringToFrontOnFocus |
+                    ImGuiWindowFlags_NoNavFocus;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::Begin("MainRootDockSpaceWindow", nullptr, dockFlags);
-        ImGui::PopStyleColor(1);
-        ImGui::PopStyleVar(3);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImGui::Begin("MainRootDockSpaceWindow", nullptr, dockFlags);
+            ImGui::PopStyleColor(1);
+            ImGui::PopStyleVar(3);
 
 
-        ImGuiID dockspace_id = ImGui::GetID("MainRootDockSpace");
-        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
-        ImGui::End();
+            ImGuiID dockspace_id = ImGui::GetID("MainRootDockSpace");
+            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+            ImGui::End();
+        }
+
 
 
 
