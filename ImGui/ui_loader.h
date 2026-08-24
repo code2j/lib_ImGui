@@ -9,8 +9,10 @@
 
 namespace ImGui
 {
-    using Texture   = std::shared_ptr<Texture2D>;
+    using Texture = std::weak_ptr<Texture2D>;
 
-    std::shared_ptr<Texture2D>  load_texture(const char* path);
-    Model                       load_skybox(const char* path);
+    Texture load_texture(const char* path);
+    Model   load_skybox(const char* path);
+
+    void destroy_textures();
 }

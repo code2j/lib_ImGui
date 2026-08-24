@@ -1,25 +1,31 @@
 #include "ui_loader.h"
 
-
 namespace ImGui
 {
+    static std::vector<std::shared_ptr<Texture2D>> LOADED_TEXTURES;
 
-std::shared_ptr<Texture2D> load_texture(const char* path)
-{
-    Texture2D tex = LoadTexture(path);
-    if (tex.id == 0) return nullptr;
+    Texture load_texture(const char* path)
+    {
+        Texture2D tex = LoadTexture(path);
+        if (tex.id == 0) return Texture();
 
-    // shared_ptr가 소멸될 때 UnloadTexture 자동 호출
-    return std::shared_ptr<Texture2D>(
-        new Texture2D(tex),
-        [](Texture2D* ptr) {
-            if (ptr) {
-                if (ptr->id > 0) UnloadTexture(*ptr);
-                delete ptr;
+        std::shared_ptr<Texture2D> ptr(
+            new Texture2D(tex),
+            [](Texture2D* p) {
+                if (p) {
+                    if (p->id > 0) UnloadTexture(*p);
+                    delete p;
+                }
             }
-        }
-    );
-}
+        );
 
-}
+        LOADED_TEXTURES.push_back(ptr);
 
+        return ptr;
+    }
+
+    void destroy_textures()
+    {
+        LOADED_TEXTURES.clear();
+    }
+}

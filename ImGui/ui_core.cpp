@@ -230,6 +230,8 @@ namespace ImGui
         UnloadModel(skybox);
     #endif
 
+        destroy_textures();
+
         UnloadRenderTexture(::view_texture);
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
