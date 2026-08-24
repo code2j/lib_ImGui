@@ -1,234 +1,25 @@
 #include "ui.hpp"
 #include <iostream>
 
-#define FILE_PCD "aaa.ply"
 
 Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
-#include <fstream>
-#include <string>
-#include <vector>
-#include <chrono>
 
-#if __has_include(<nvml.h>)
-#include <nvml.h>
-#define HAS_NVML 1
-#else
-#define HAS_NVML 0
-#endif
-
-struct SystemMetrics {
-    float cpu_usage = 0.0f;
-    
-    // RAM 정보
-    float ram_usage_pct = 0.0f;
-    float ram_used_gb = 0.0f;
-    float ram_total_gb = 0.0f;
-
-    // GPU 정보
-    bool gpu_available = false;
-    std::string gpu_name = "N/A";
-    float gpu_usage_pct = 0.0f;
-    float vram_used_gb = 0.0f;
-    float vram_total_gb = 0.0f;
-    unsigned int gpu_temp = 0;
-};
-
-// 1. CPU 사용량 계산 (/proc/stat)
-float get_cpu_usage() {
-    static uint64_t prev_idle = 0, prev_total = 0;
-    std::ifstream file("/proc/stat");
-    if (!file.is_open()) return 0.0f;
-
-    std::string cpu;
-    uint64_t user, nice, system, idle, iowait, irq, softirq, steal;
-    file >> cpu >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
-
-    uint64_t idle_ticks = idle + iowait;
-    uint64_t total_ticks = user + nice + system + idle + iowait + irq + softirq + steal;
-
-    uint64_t diff_idle = idle_ticks - prev_idle;
-    uint64_t diff_total = total_ticks - prev_total;
-
-    prev_idle = idle_ticks;
-    prev_total = total_ticks;
-
-    if (diff_total == 0) return 0.0f;
-    return 1.0f - (static_cast<float>(diff_idle) / static_cast<float>(diff_total));
-}
-
-// 2. RAM 사용량 파싱 (/proc/meminfo)
-void get_ram_usage(SystemMetrics& metrics)
-{
-    std::ifstream file("/proc/meminfo");
-    if (!file.is_open()) return;
-
-    std::string line;
-    uint64_t total_kb = 0, avail_kb = 0;
-
-    while (std::getline(file, line)) {
-        if (line.rfind("MemTotal:", 0) == 0) {
-            std::sscanf(line.c_str(), "MemTotal: %lu kB", &total_kb);
-        } else if (line.rfind("MemAvailable:", 0) == 0) {
-            std::sscanf(line.c_str(), "MemAvailable: %lu kB", &avail_kb);
-        }
-    }
-
-    if (total_kb > 0) {
-        uint64_t used_kb = total_kb - avail_kb;
-        metrics.ram_usage_pct = static_cast<float>(used_kb) / static_cast<float>(total_kb);
-        metrics.ram_used_gb = static_cast<float>(used_kb) / (1024.0f * 1024.0f);
-        metrics.ram_total_gb = static_cast<float>(total_kb) / (1024.0f * 1024.0f);
-    }
-}
-
-// 3. GPU 사용량 정보 수집 (NVIDIA NVML / AMD sysfs 하이브리드)
-void get_gpu_usage(SystemMetrics& metrics) {
-#if HAS_NVML
-    static bool nvml_inited = false;
-    static nvmlDevice_t device;
-
-    if (!nvml_inited) {
-        if (nvmlInit() == NVML_SUCCESS) {
-            if (nvmlDeviceGetHandleByIndex(0, &device) == NVML_SUCCESS) {
-                nvml_inited = true;
-                char name[64];
-                if (nvmlDeviceGetName(device, name, sizeof(name)) == NVML_SUCCESS) {
-                    metrics.gpu_name = name;
-                }
-            }
-        }
-    }
-
-    if (nvml_inited) {
-        metrics.gpu_available = true;
-
-        // 사용률
-        nvmlUtilization_t util;
-        if (nvmlDeviceGetUtilizationRates(device, &util) == NVML_SUCCESS) {
-            metrics.gpu_usage_pct = static_cast<float>(util.gpu) / 100.0f;
-        }
-
-        // VRAM
-        nvmlMemory_t mem;
-        if (nvmlDeviceGetMemoryInfo(device, &mem) == NVML_SUCCESS) {
-            metrics.vram_used_gb = static_cast<float>(mem.used) / (1024.0f * 1024.0f * 1024.0f);
-            metrics.vram_total_gb = static_cast<float>(mem.total) / (1024.0f * 1024.0f * 1024.0f);
-        }
-
-        // 온도
-        unsigned int temp = 0;
-        if (nvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &temp) == NVML_SUCCESS) {
-            metrics.gpu_temp = temp;
-        }
-        return;
-    }
-#endif
-
-    // AMD GPU Sysfs Fallback (/sys/class/drm/card0/device/gpu_busy_percent)
-    std::ifstream amd_gpu("/sys/class/drm/card0/device/gpu_busy_percent");
-    if (amd_gpu.is_open()) {
-        int usage = 0;
-        amd_gpu >> usage;
-        metrics.gpu_available = true;
-        metrics.gpu_name = "AMD GPU";
-        metrics.gpu_usage_pct = static_cast<float>(usage) / 100.0f;
-    }
-}
-
-// 오버레이 HUD 렌더링
-void DrawSystemHud() {
-    static SystemMetrics metrics;
-    static std::vector<float> cpu_history(40, 0.0f);
-    static std::vector<float> gpu_history(40, 0.0f);
-    static auto last_update = std::chrono::steady_clock::now();
-
-    // 0.5초 주기 측정
-    auto now = std::chrono::steady_clock::now();
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update).count() > 500) {
-        metrics.cpu_usage = get_cpu_usage();
-        get_ram_usage(metrics);
-        get_gpu_usage(metrics);
-
-        // 히스토리 그래프 갱신
-        for (size_t i = 0; i < cpu_history.size() - 1; ++i) {
-            cpu_history[i] = cpu_history[i + 1];
-            gpu_history[i] = gpu_history[i + 1];
-        }
-        cpu_history.back() = metrics.cpu_usage * 100.0f;
-        gpu_history.back() = metrics.gpu_usage_pct * 100.0f;
-
-        last_update = now;
-    }
-
-    // 투명 오버레이 패널 플래그
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | 
-                             ImGuiWindowFlags_AlwaysAutoResize | 
-                             ImGuiWindowFlags_NoSavedSettings | 
-                             ImGuiWindowFlags_NoFocusOnAppearing | 
-                             ImGuiWindowFlags_NoNav;
-
-    // 우측 상단 고정 위치 계산
-    const float margin = 12.0f;
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImVec2 window_pos = ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - margin, viewport->WorkPos.y + margin);
-
-    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, ImVec2(1.0f, 0.0f));
-    ImGui::SetNextWindowBgAlpha(0.65f); // 65% 반투명
-
-    if (ImGui::Begin("System Performance HUD", nullptr, flags)) {
-        char buf[64];
-
-        // 1. CPU Section
-        ImGui::Text(ICON_MD_MEMORY " CPU Usage");
-        snprintf(buf, sizeof(buf), "%.1f %%", metrics.cpu_usage * 100.0f);
-        ImGui::ProgressBar(metrics.cpu_usage, ImVec2(220.0f, 0.0f), buf);
-        ImGui::PlotLines("##CPU_Plot", cpu_history.data(), static_cast<int>(cpu_history.size()), 0, nullptr, 0.0f, 100.0f, ImVec2(220.0f, 30.0f));
-
-        ImGui::Dummy(ImVec2(0, 4.0f));
-        ImGui::Separator();
-
-        // 2. RAM Section
-        ImGui::Text(ICON_MD_STORAGE " RAM Usage");
-        snprintf(buf, sizeof(buf), "%.1f / %.1f GB (%.0f%%)", metrics.ram_used_gb, metrics.ram_total_gb, metrics.ram_usage_pct * 100.0f);
-        ImGui::ProgressBar(metrics.ram_usage_pct, ImVec2(220.0f, 0.0f), buf);
-
-        // 3. GPU Section (감지된 경우)
-        if (metrics.gpu_available) {
-            ImGui::Dummy(ImVec2(0, 4.0f));
-            ImGui::Separator();
-
-            ImGui::Text(ICON_MD_SPEED " GPU (%s)", metrics.gpu_name.c_str());
-            if (metrics.gpu_temp > 0) {
-                ImGui::SameLine();
-                ImGui::TextDisabled("(%u°C)", metrics.gpu_temp);
-            }
-
-            snprintf(buf, sizeof(buf), "%.1f %%", metrics.gpu_usage_pct * 100.0f);
-            ImGui::ProgressBar(metrics.gpu_usage_pct, ImVec2(220.0f, 0.0f), buf);
-            ImGui::PlotLines("##GPU_Plot", gpu_history.data(), static_cast<int>(gpu_history.size()), 0, nullptr, 0.0f, 100.0f, ImVec2(220.0f, 30.0f));
-
-            if (metrics.vram_total_gb > 0.0f) {
-                ImGui::TextDisabled("VRAM: %.1f / %.1f GB", metrics.vram_used_gb, metrics.vram_total_gb);
-            }
-        }
-    }
-    ImGui::End();
-}
 
 
 
 int main() {
     ImGui::init("테스트 프로그램", 1280, 720);
-    ImGui::load_config("../example/imgui.ini");
+    ImGui::load_config("../imgui.ini");
 
     {
         // 스코프 안에서 생성하면 자동으로 해제됨
-        ImGui::Texture texture1 = ImGui::load_texture(IMGUI_ROOT "/data/RAKOKO1.png");
+        ImGui::Texture texture1 = ImGui::load_texture("/home/jusik/workspace/lib_ImGui/data/RAKOKO1.png");
 
-        while (ImGui::context([&]() {
-            DrawSystemHud();
-
+        while (!ImGui::should_close())
+        {
+        ImGui::context([&]()
+        {
             ImGui::Begin(" " ICON_MD_TUNE " 제어 패널 ");
 
             if (ImGui::BeginCollapsingHeader(ICON_MD_WIDGETS " Widgets Example ")) {
@@ -516,22 +307,14 @@ int main() {
                 ImGui::EndCollapsingHeader();
             }
 
-
-
-
-
-
             ImGui::End();
-
-
-
             ImGui::ShowDemoWindow();
-
 
             ImGui::Begin(" " ICON_MD_GAMEPAD " TF 컨트롤 ");
             ImGui::TransformControl(&tf_control);
             ImGui::End();
-        }));
+        });
+        }
     }
 
 
