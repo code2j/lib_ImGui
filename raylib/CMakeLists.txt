@@ -36,6 +36,7 @@ endif()
 
 # Main sources directory (the second parameter sets the output directory name to raylib)
 add_subdirectory(src raylib)
+target_include_directories(raylib PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
 
 # Uninstall target, only create when building raylib by itself
 # Avoid conflicting target names when using raylib with other libraries
