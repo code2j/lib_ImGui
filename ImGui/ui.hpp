@@ -18,7 +18,7 @@
 
 #include "ui_ini.h"
 #include "ui_icon.h"
-#include "ui_axis.h"
+#include "ui_draw3d.h"
 #include "ui_logger.h"
 #include "ui_notify.h"
 #include "ui_loader.h"
