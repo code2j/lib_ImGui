@@ -8364,12 +8364,17 @@ bool ImGui::Begin(const char* name, bool* p_open, ImGuiWindowFlags flags)
             // =====================================================================
             window->ScrollbarSizes = ImVec2(window->ScrollbarY ? style.ScrollbarSize : 0.0f, window->ScrollbarX ? style.ScrollbarSize : 0.0f);
 
-            // NoScrollbar 플래그가 명시적으로 켜져 있지 않은 이상,
-            // 스크롤바가 실제로 그려지지 않더라도 가용 영역(WorkRect)에서 스크롤바 크기만큼 강제로 빼버립니다.
-            if (!(flags & ImGuiWindowFlags_NoScrollbar))
-                window->DecoOuterSizeX2 += style.ScrollbarSize;
-            else
+            // 아예 스크롤바를 껐거나(NoScrollbar), 풀사이즈 플래그(NoReserveScrollbar)를 명시한 경우
+            if ((flags & ImGuiWindowFlags_NoScrollbar) || (flags & ImGuiWindowFlags_NoReserveScrollbar))
+            {
+                // 스크롤바가 화면에 나타날 때만 여백을 차지합니다. (풀사이즈 동작)
                 window->DecoOuterSizeX2 += window->ScrollbarSizes.x;
+            }
+            else
+            {
+                // 디폴트 동작: 스크롤바가 보이지 않아도 항상 우측 여백을 비워둡니다. (덜컥거림 방지)
+                window->DecoOuterSizeX2 += style.ScrollbarSize;
+            }
 
             window->DecoOuterSizeY2 += window->ScrollbarSizes.y;
             // =====================================================================

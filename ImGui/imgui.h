@@ -1241,6 +1241,8 @@ enum ImGuiWindowFlags_
     ImGuiWindowFlags_Modal                  = 1 << 27,  // Don't use! For internal use by BeginPopupModal()
     ImGuiWindowFlags_ChildMenu              = 1 << 28,  // Don't use! For internal use by BeginMenu()
 
+    // [내가 추가 한거]
+    ImGuiWindowFlags_NoReserveScrollbar     = 1 << 31
     // Obsolete names
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
     //ImGuiWindowFlags_NavFlattened           = 1 << 29,  // Obsoleted in 1.90.9: moved to ImGuiChildFlags. BeginChild(name, size, 0, ImGuiWindowFlags_NavFlattened)           --> BeginChild(name, size, ImGuiChildFlags_NavFlattened, 0)

@@ -68,12 +68,14 @@ namespace ImGuiExt
 
 namespace ImGui
 {
+    inline ImVec2 GLOBAL_MOUSE_POS; // 전역 마우스 좌표
+
+
     void init(const char* title, int width = 1280, int height = 720);
     void destroy();
-    bool should_close();
+    bool should_close(bool force_close = false);
     bool context(std::function<void()> func);   // Gui 실행 컨텍스트
     void load_config(const char* path);         // config 파일 불러오기
-    void help(const char* desc);
 
 
     // =====================================================

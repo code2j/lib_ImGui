@@ -240,8 +240,9 @@ namespace ImGui
     }
 
 
-    bool should_close()
+    bool should_close(bool force_close)
     {
+        ImGuiExt::should_close_app |= force_close;
         return WindowShouldClose() || ImGuiExt::should_close_app;
     }
 
@@ -298,7 +299,6 @@ namespace ImGui
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
 
-        static ImVec2 global_mouse_pos; // 전역 마우스 좌표 저장용 변수 추가
         static Display* display = XOpenDisplay(NULL);
 
         if (display) {
@@ -316,7 +316,7 @@ namespace ImGui
 
                 // 2. 전역 마우스 좌표에서 창의 위치를 빼서 지역 좌표로 변환하여 ImGui에 주입합니다.
                 ImGui::GetIO().AddMousePosEvent((float)root_x - window_pos.x, (float)root_y - window_pos.y);
-                global_mouse_pos = ImVec2((float)root_x, (float)root_y);
+                ImGui::GLOBAL_MOUSE_POS = ImVec2((float)root_x, (float)root_y);
                           }
         }
 
@@ -404,15 +404,15 @@ namespace ImGui
                 Vector2 winPos = GetWindowPosition();
 
                 // 창의 좌상단 기준 클릭한 오프셋을 계산하여 저장합니다.
-                drag_offset.x = global_mouse_pos.x - winPos.x;
-                drag_offset.y = global_mouse_pos.y - winPos.y;
+                drag_offset.x = GLOBAL_MOUSE_POS.x - winPos.x;
+                drag_offset.y = GLOBAL_MOUSE_POS.y - winPos.y;
             }
 
             if (is_dragging_title_bar) {
                 if (ImGui::IsMouseDown(0)) {
                     // 드래그 중에도 절대 화면 마우스 좌표를 기준으로 창 위치를 업데이트합니다.
-                    ::SetWindowPosition((int)(global_mouse_pos.x - drag_offset.x),
-                                        (int)(global_mouse_pos.y - drag_offset.y));
+                    ::SetWindowPosition((int)(GLOBAL_MOUSE_POS.x - drag_offset.x),
+                                        (int)(GLOBAL_MOUSE_POS.y - drag_offset.y));
                 } else {
                     is_dragging_title_bar = false;
                 }
@@ -934,17 +934,7 @@ namespace ImGui
         colors[ImGuiCol_DockingEmptyBg]        = color_primary_hover;
     }
 
-    void help(const char *desc)
-    {
-        ImGui::TextDisabled("(?)");
-        if (ImGui::BeginItemTooltip())
-        {
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-            ImGui::TextUnformatted(desc);
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
-        }
-    }
+
 }
 
 

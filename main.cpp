@@ -20,6 +20,88 @@ int main() {
         {
         ImGui::context([&]()
         {
+
+            ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
+                         ImGuiWindowFlags_NoReserveScrollbar |
+                         ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
+            ImGui::Begin("window", nullptr, flags);
+            ImGui::PopStyleVar();
+
+
+            // 커스텀 타이틀 바 설정
+            const float titleBarHeight = 34.0f;
+            const float botton_width = 45.0f;
+            ImVec2 windowPos = ImGui::GetWindowPos();
+            ImVec2 windowSize = ImGui::GetWindowSize();
+
+
+            // 1) 타이틀 바 배경 그리기
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            float windowRounding = ImGui::GetStyle().WindowRounding;
+
+            drawList->AddRectFilled(
+                windowPos,
+                ImVec2(windowPos.x + windowSize.x, windowPos.y + titleBarHeight),
+                ImGui::GetColorU32(ImGuiCol_WindowBg),
+                windowRounding,
+                ImDrawFlags_RoundCornersTop
+            );
+
+
+            // 2) 타이틀 바 드래그 이동 처리
+            ImGui::SetCursorPos(ImVec2(0, 0));
+            ImGui::InvisibleButton("##title_drag", ImVec2(windowSize.x - botton_width, titleBarHeight));
+            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            {
+                ImVec2 delta = ImGui::GetIO().MouseDelta;
+                ImGui::SetWindowPos(ImVec2(windowPos.x + delta.x, windowPos.y + delta.y));
+            }
+
+
+            // 3) 타이틀 텍스트 출력
+            const char* titleText = "My Custom Title";
+            ImVec2 textSize = ImGui::CalcTextSize(titleText);
+
+            // 가로 중앙, 세로 중앙 계산
+            float textPosX = (windowSize.x - textSize.x) * 0.5f;
+            float textPosY = (titleBarHeight - textSize.y) * 0.3f;
+
+            ImGui::SetCursorPos(ImVec2(textPosX, textPosY));
+            ImGui::Text("%s", titleText);
+
+
+            // 4) 커스텀 닫기 버튼
+            ImGui::SetCursorPos(ImVec2(windowSize.x - botton_width, 0));
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(181, 65, 66, 255));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            if (ImGui::Button(ICON_MD_CLOSE, ImVec2(botton_width, titleBarHeight)))
+            {
+                ImGui::should_close(true);
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(1);
+            // --- 커스텀 타이틀 바 끝 ---
+
+
+            // 5) 영역을 DockSpace로 설정
+            ImGui::SetCursorPosY(titleBarHeight);
+            ImGuiID dockspace_id = ImGui::GetID("MyInternalDockSpace");
+            ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, IM_COL32(10, 10, 10, 0));
+            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+            ImGui::PopStyleColor(1);
+
+            ImGui::End();
+
+
+
+            // ----------------------
+            // 제어 패널
+            // ----------------------
             ImGui::Begin(" " ICON_MD_TUNE " 제어 패널 ");
 
             if (ImGui::BeginCollapsingHeader(ICON_MD_WIDGETS " Widgets Example ")) {
@@ -141,7 +223,6 @@ int main() {
                 ImGui::EndChild();
                 ImGui::EndCollapsingHeader();
             }
-
 
             if (ImGui::BeginCollapsingHeader(ICON_MD_CHAT_INFO " Notification Example ")) {
                 // [알림 버튼 샘플]
