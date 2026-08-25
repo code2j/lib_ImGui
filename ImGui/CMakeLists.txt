@@ -25,5 +25,5 @@ target_include_directories(ImGui
 # ==================================================================
 target_compile_definitions(ImGui
         PUBLIC
-        IMGUI_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
+        IMGUI_ROOT="${CMAKE_CURRENT_LIST_DIR}"
 )

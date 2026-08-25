@@ -27,7 +27,7 @@
 #include "ui_system_hud.h"
 
 
-#define SKYBOX_ON 1  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
+#define SKYBOX_ON 0  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
 
 namespace ImGui
 {

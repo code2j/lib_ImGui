@@ -11,14 +11,12 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 int main() {
     ImGui::init("테스트 프로그램", 1280, 720);
     ImGui::load_config("../imgui.ini");
-    ImGui::show_menu(false);
+    ImGui::show_menu(true);
 
+    bool is_loading = true;
+    ImGui::Texture texture1 = ImGui::load_texture("/home/jusik/workspace/lib_ImGui/image.png");
 
-    // 스코프 안에서 생성하면 자동으로 해제됨
-    ImGui::Texture texture1 = ImGui::load_texture("/home/jusik/workspace/lib_ImGui/data/RAKOKO1.png");
-
-    while (!ImGui::should_close())
-    {
+    while (!ImGui::should_close()) {
     ImGui::context([&]()
     {
 
@@ -316,14 +314,19 @@ int main() {
             ImGui::EndCollapsingHeader();
         }
 
+
+        if (ImGui::Button("최대화")) {
+            MaximizeWindow();
+        }
         ImGui::End();
+
         ImGui::ShowDemoWindow();
 
-        ImGui::Begin(" " ICON_MD_GAMEPAD " TF 컨트롤 ");
-        ImGui::TransformControl(&tf_control);
-        ImGui::End();
-    });
-    }
+
+
+
+
+    });  }
 
 
 

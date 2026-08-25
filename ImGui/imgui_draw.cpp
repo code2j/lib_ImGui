@@ -85,6 +85,8 @@ Index of this file:
 #pragma GCC diagnostic ignored "-Wsign-conversion"                  // warning: conversion to 'xxxx' from 'xxxx' may change the sign of the result
 #endif
 
+#include "ui_font_level2.cpp"
+
 //-------------------------------------------------------------------------
 // [SECTION] STB libraries implementation (for stb_truetype and stb_rect_pack)
 //-------------------------------------------------------------------------
@@ -3159,7 +3161,7 @@ ImFont* ImFontAtlas::AddFontDefaultBitmap(const ImFontConfig* font_cfg_template)
 
     int ttf_compressed_size = 0;
     const char* ttf_compressed = GetDefaultCompressedFontDataProggyClean(&ttf_compressed_size);
-    return AddFontFromMemoryCompressedTTF(ttf_compressed, ttf_compressed_size, font_cfg.SizePixels, &font_cfg);
+    return AddFontFromMemoryCompressedTTF(ttf_compressed, ttf_compressed_size, 20.0, NULL, GetGlyphRangesKorean());
 #else
     IM_ASSERT(0 && "Function is disabled in this build.");
     IM_UNUSED(font_cfg_template);
@@ -3184,7 +3186,7 @@ ImFont* ImFontAtlas::AddFontDefaultVector(const ImFontConfig* font_cfg_template)
 
     int ttf_compressed_size = 0;
     const char* ttf_compressed = GetDefaultCompressedFontDataProggyForever(&ttf_compressed_size);
-    return AddFontFromMemoryCompressedTTF(ttf_compressed, ttf_compressed_size, font_cfg.SizePixels, &font_cfg);
+    return AddFontFromMemoryCompressedTTF(ttf_compressed, ttf_compressed_size, 40.0, NULL, GetGlyphRangesKorean());
 #else
     IM_ASSERT(0 && "Function is disabled in this build.");
     IM_UNUSED(font_cfg_template);
@@ -6483,8 +6485,8 @@ static const unsigned char proggy_clean_ttf_compressed_data[9583] =
 
 static const char* GetDefaultCompressedFontDataProggyClean(int* out_size)
 {
-    *out_size = proggy_clean_ttf_compressed_size;
-    return (const char*)proggy_clean_ttf_compressed_data;
+    *out_size = compressed_size;
+    return (const char*)compressed_data;
 }
 
 //-----------------------------------------------------------------------------
