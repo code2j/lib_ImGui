@@ -97,12 +97,10 @@ namespace ImGui
         ImPlot3D::CreateContext();
 
 
-
         // 플래그 설정
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // 키보드 네비게이션 활성화
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // 도킹 활성화
-        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // 멀티 뷰포트
 
 
         // ---------------------------------------------------------------
@@ -111,17 +109,6 @@ namespace ImGui
         ImGui::style();
         if (ImGui::theme_id == 0) ImGui::theme_white();
         else                      ImGui::theme_dark();
-
-
-
-        // ---------------------------------------------------------------
-        // 폰트 설정
-        // ---------------------------------------------------------------
-        ImFontConfig config;
-        config.MergeMode        = true;
-        config.GlyphOffset      = ICON_OFFSET;
-        config.GlyphMinAdvanceX = FONT_SIZE;
-        static const ImWchar icon_ranges[] = { ICON_MIN_MD, ICON_MAX_16_MD, 0 };
 
 
         // ---------------------------------------------------------------
@@ -189,16 +176,15 @@ namespace ImGui
         }
 
 
-        static int last_theme = -1;
-        if (last_theme != ImGui::theme_id) {
-            if (ImGui::theme_id == 0)    ImGui::theme_white();
-            else                         ImGui::theme_dark();
-            last_theme = ImGui::theme_id;
-        }
+        // ---------------------------------------------------------------
+        // 테마 변경
+        // ---------------------------------------------------------------
+        if (ImGui::flag_change_thema) {
+            ImGui::flag_change_thema = false;
 
-        ImGuiViewport* viewport = ImGui::GetMainViewport();
-        int curr_w = GetScreenWidth();
-        int curr_h = GetScreenHeight();
+            if (ImGui::theme_id == 0) ImGui::theme_white();
+            else                      ImGui::theme_dark();
+        }
 
 
         // ---------------------------------------------------------------
@@ -365,7 +351,7 @@ namespace ImGui
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-                if (ImGui::Button(ICON_MD_SETTINGS, ImVec2(button_width, titlebar_height))) {
+                if (ImGui::ButtonX(ICON_MD_SETTINGS, ImVec2(button_width, titlebar_height), false)) {
                     ImGui::OpenPopup("SettingsPopup");
                 }
 
@@ -381,7 +367,9 @@ namespace ImGui
 
                     if (ImGui::BeginMenu("Theme"))
                     {
-                        ImGui::ThemeSelector(&ImGui::theme_id);
+                        if (ImGui::ThemeSelector(&ImGui::theme_id)) {
+                            ImGui::flag_change_thema = true;
+                        }
                         ImGui::EndMenu();
                     }
 
@@ -397,7 +385,7 @@ namespace ImGui
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-                if (ImGui::Button(ICON_MD_CLOSE, ImVec2(button_width, titlebar_height)))
+                if (ImGui::ButtonX(ICON_MD_CLOSE, ImVec2(button_width, titlebar_height), false))
                 {
                     ImGui::should_close(true);
                 }

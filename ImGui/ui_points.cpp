@@ -106,7 +106,7 @@ namespace ImGui
         // -------------------------------------------------------------
         // 쉐이더 및 트렌스폼 설정
         // -------------------------------------------------------------
-        out->material.shader = ImGui::shader_instancing;
+        // out->material.shader = ImGui::shader_instancing;
         out->material.maps[MATERIAL_MAP_DIFFUSE].color = out->color;
 
         out->transforms.clear();
