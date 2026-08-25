@@ -302,10 +302,10 @@ int main() {
             {
                 // 테마가 변경되었을 때 실행할 로직
                 if (ImGui::theme_id == 0) {
-                    ImGui::style_white();
+                    ImGui::theme_white();
                 }
                 else {
-                    ImGui::style_dark();
+                    ImGui::theme_dark();
                 }
 
             }

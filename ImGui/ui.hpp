@@ -25,6 +25,7 @@
 #include "ui_points.h"
 #include "ui_widgets.h"
 #include "ui_system_hud.h"
+#include "ui_style.h"
 
 
 #define SKYBOX_ON 0  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
@@ -48,17 +49,11 @@ namespace ImGui
 
 
 
-
     // ==================================================
     // 폰트 객체
     // ==================================================
     inline ImFont* D2Cording = nullptr;
 
-
-    // =====================================================
-    // 쉐이더
-    // =====================================================
-    inline Shader shader_instancing;
 
 
     // ==================================================
@@ -83,13 +78,6 @@ namespace ImGui
     bool context(std::function<void()> func);
     void load_config(const char* path);
     void show_menu(bool b);
-
-
-    // =====================================================
-    // 테마 스타일
-    // =====================================================
-    void style_white();
-    void style_dark();
 
 
     // =====================================================
