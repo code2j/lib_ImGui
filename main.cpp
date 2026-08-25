@@ -8,9 +8,6 @@
 Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
-
-
-
 int main() {
     ImGui::init("테스트 프로그램", 1280, 720);
     ImGui::load_config("../imgui.ini");

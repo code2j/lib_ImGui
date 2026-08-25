@@ -299,6 +299,7 @@ namespace ImGui
         // ---------------------------------------------------------------
         // 2. 메인 메뉴
         // ---------------------------------------------------------------
+        if (ImGui::show_main_menu)
         {
             ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
                                      ImGuiWindowFlags_NoReserveScrollbar |
