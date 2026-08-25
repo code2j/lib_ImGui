@@ -122,7 +122,7 @@ namespace ImGui
         colors[ImGuiCol_SeparatorHovered]      = color_primary_hover;
         colors[ImGuiCol_SeparatorActive]       = color_primary_active;
         // [Resize Grip]
-        colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 1.00);
+        colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 0.00);
         colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00);
         colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00);
         // [Tab]
@@ -237,7 +237,7 @@ namespace ImGui
         colors[ImGuiCol_SeparatorHovered]      = color_primary_hover;
         colors[ImGuiCol_SeparatorActive]       = color_primary_active;
         // [Resize Grip]
-        colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 1.00);
+        colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 0.00);
         colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00);
         colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00);
         // [Tab]

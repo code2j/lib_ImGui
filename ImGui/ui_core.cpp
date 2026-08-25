@@ -177,20 +177,8 @@ namespace ImGui
 
 
         // ---------------------------------------------------------------
-        // 테마 변경
-        // ---------------------------------------------------------------
-        if (ImGui::flag_change_thema) {
-            ImGui::flag_change_thema = false;
-
-            if (ImGui::theme_id == 0) ImGui::theme_white();
-            else                      ImGui::theme_dark();
-        }
-
-
-        // ---------------------------------------------------------------
         // Loading Screen
         // ---------------------------------------------------------------
-        static bool             loading_complete = false;
         static int              lazy_cnt       = 0;
         static ImGui::Texture   loading_img;
 
@@ -198,7 +186,7 @@ namespace ImGui
         if (lazy_cnt++ < 100) {
             // [레이지 스타트 카운트 증가중]
 
-            // 이미지 중심이 화면 중심으로 오 게계산
+            // 이미지 중심이 화면 중심으로 계산
             ImVec2 display_size = ImGui::GetIO().DisplaySize;
             ImGui::SetNextWindowPos(
                 ImVec2(display_size.x * 0.5f, display_size.y * 0.5f),
@@ -278,16 +266,11 @@ namespace ImGui
         }
         else {
             // [레이지 스타트 카운팅 넘음]
-            static bool first = true;
-            if (first) {
-                MaximizeWindow();
-                first = false;
-                loading_complete = true;
-            }
+            ImGui::flag_load_complete = true;
         }
 
 
-        if (loading_complete)
+        if (ImGui::flag_load_complete)
         {
             // ---------------------------------------------------------------
             // 2. 메인 메뉴
@@ -402,6 +385,23 @@ namespace ImGui
                 ImGui::PopStyleColor(1);
 
                 ImGui::End();
+
+
+
+                // ---------------------------------------------------------------
+                // ImGui log 렌더링
+                // ---------------------------------------------------------------
+                if (ImGui::show_log_window)
+                    loggr.draw(" " ICON_MD_SUBJECT " Log ", &ImGui::show_log_window);
+
+                // ---------------------------------------------------------------
+                // Style Editer
+                // ---------------------------------------------------------------
+                if (ImGui::show_style_edit) {
+                    ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
+                    ImGui::ShowStyleEditor(&ImGui::GetStyle());
+                    ImGui::End();
+                }
             }
 
 
@@ -497,32 +497,9 @@ namespace ImGui
 
 
             // ---------------------------------------------------------------
-            // ImGui log 렌더링
-            // ---------------------------------------------------------------
-            if (ImGui::show_main_menu)
-            if (ImGui::show_log_window)
-                loggr.draw(" " ICON_MD_SUBJECT " Log ", &ImGui::show_log_window);
-
-
-            // ---------------------------------------------------------------
-            // Style Editer
-            // ---------------------------------------------------------------
-            if (ImGui::show_main_menu)
-            if (ImGui::show_style_edit) {
-                ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
-                ImGui::ShowStyleEditor(&ImGui::GetStyle());
-                ImGui::End();
-            }
-
-
-            // ---------------------------------------------------------------
             // ImGui notiy 렌더링
             // ---------------------------------------------------------------
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.f);
-            ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(43.f / 255.f, 43.f / 255.f, 43.f / 255.f, 100.f / 255.f)); // Background color
             ImGui::RenderNotifications();
-            ImGui::PopStyleVar(1);
-            ImGui::PopStyleColor(1);
 
 
             // ---------------------------------------------------------------
@@ -532,6 +509,34 @@ namespace ImGui
                 ImGui::draw_system_hud();
         }
 
+
+
+
+
+
+        // ---------------------------------------------------------------
+        // 테마 변경
+        // ---------------------------------------------------------------
+        if (ImGui::flag_change_thema) {
+            ImGui::flag_change_thema = false;
+
+            if (ImGui::theme_id == 0) ImGui::theme_white();
+            else                      ImGui::theme_dark();
+        }
+        // ---------------------------------------------------------------
+        // 최초 로딩 완료
+        // ---------------------------------------------------------------
+        if (ImGui::flag_load_complete) {
+            ImGui::flag_load_complete = false;
+
+            MaximizeWindow();
+        }
+        // ---------------------------------------------------------------
+        // 메뉴 on/off 키 입력
+        // ---------------------------------------------------------------
+        if ( (IsKeyDown(KEY_LEFT_ALT) ||IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_P)) {
+            ImGui::show_main_menu = !ImGui::show_main_menu;
+        }
 
 
 

@@ -314,13 +314,9 @@ int main() {
             ImGui::EndCollapsingHeader();
         }
 
-
-        if (ImGui::Button("최대화")) {
-            MaximizeWindow();
-        }
         ImGui::End();
 
-        ImGui::ShowDemoWindow();
+        // ImGui::ShowDemoWindow();
 
 
 

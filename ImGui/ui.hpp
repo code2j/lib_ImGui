@@ -47,7 +47,9 @@ namespace ImGui
 
     inline int  theme_id         = 1;     // 0: white, 1: dark
 
-    inline bool flag_change_thema = false;
+    inline bool flag_change_thema  = false;
+    inline bool flag_load_complete = false;
+    inline bool flag_show_menu = false;
 
 
 
