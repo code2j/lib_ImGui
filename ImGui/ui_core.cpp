@@ -180,10 +180,18 @@ namespace ImGui
         // Loading Screen
         // ---------------------------------------------------------------
         static int              lazy_cnt       = 0;
+        static bool             lazy_flag1      = false;
+        static bool             lazy_flag2      = false;
+
         static ImGui::Texture   loading_img;
 
+        lazy_cnt++;
+        if (lazy_cnt > 100)
+            lazy_flag1 = true;
 
-        if (lazy_cnt++ < 100) {
+
+
+        if (!lazy_flag1) {
             // [레이지 스타트 카운트 증가중]
 
             // 이미지 중심이 화면 중심으로 계산
@@ -260,7 +268,7 @@ namespace ImGui
             }
             else {
                 // [이미지가 로딩 안됨]
-                loading_img = ImGui::load_texture("/home/jusik/workspace/lib_ImGui/image.png");
+                loading_img = ImGui::load_texture(IMGUI_ROOT "/image.png");
             }
             ImGui::End();
         }
@@ -270,7 +278,35 @@ namespace ImGui
         }
 
 
-        if (ImGui::flag_load_complete)
+
+        // ---------------------------------------------------------------
+        // 테마 변경
+        // ---------------------------------------------------------------
+        if (ImGui::flag_change_thema) {
+            ImGui::flag_change_thema = false;
+
+            if (ImGui::theme_id == 0) ImGui::theme_white();
+            else                      ImGui::theme_dark();
+        }
+        // ---------------------------------------------------------------
+        // 최초 로딩 완료
+        // ---------------------------------------------------------------
+        if (ImGui::flag_load_complete) {
+            ImGui::flag_load_complete = false;
+            MaximizeWindow();
+            lazy_flag2 = true;
+        }
+        // ---------------------------------------------------------------
+        // 메뉴 on/off 키 입력
+        // ---------------------------------------------------------------
+        if ( (IsKeyDown(KEY_LEFT_ALT) ||IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_P)) {
+            ImGui::show_main_menu = !ImGui::show_main_menu;
+        }
+
+
+
+
+        if (lazy_flag2)
         {
             // ---------------------------------------------------------------
             // 2. 메인 메뉴
@@ -496,6 +532,9 @@ namespace ImGui
             }
 
 
+
+
+
             // ---------------------------------------------------------------
             // ImGui notiy 렌더링
             // ---------------------------------------------------------------
@@ -507,35 +546,8 @@ namespace ImGui
             // ---------------------------------------------------------------
             if (ImGui::show_system_hud)
                 ImGui::draw_system_hud();
-        }
 
 
-
-
-
-
-        // ---------------------------------------------------------------
-        // 테마 변경
-        // ---------------------------------------------------------------
-        if (ImGui::flag_change_thema) {
-            ImGui::flag_change_thema = false;
-
-            if (ImGui::theme_id == 0) ImGui::theme_white();
-            else                      ImGui::theme_dark();
-        }
-        // ---------------------------------------------------------------
-        // 최초 로딩 완료
-        // ---------------------------------------------------------------
-        if (ImGui::flag_load_complete) {
-            ImGui::flag_load_complete = false;
-
-            MaximizeWindow();
-        }
-        // ---------------------------------------------------------------
-        // 메뉴 on/off 키 입력
-        // ---------------------------------------------------------------
-        if ( (IsKeyDown(KEY_LEFT_ALT) ||IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_P)) {
-            ImGui::show_main_menu = !ImGui::show_main_menu;
         }
 
 

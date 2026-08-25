@@ -43,13 +43,13 @@ namespace ImGui
     inline bool show_log_window  = false; // 로거 표시 여부
     inline bool show_style_edit  = false; // 컬러 에디터 표시 여부
     inline bool show_system_hud  = false; // hud 표시 여부
-    inline bool show_main_menu   = true; // 메인 메뉴 표시 여부
+    inline bool show_main_menu   = false; // 메인 메뉴 표시 여부
 
     inline int  theme_id         = 1;     // 0: white, 1: dark
 
     inline bool flag_change_thema  = false;
     inline bool flag_load_complete = false;
-    inline bool flag_show_menu = false;
+    inline bool flag_show_menu     = false;
 
 
 
