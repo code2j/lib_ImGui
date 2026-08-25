@@ -302,10 +302,10 @@ int main() {
             static int current_theme = 1;
 
             ImGui::BeginChild("ThemeSelector", ImVec2(0, 150), true);
-            if (ImGui::ThemeSelector(&ImGuiExt::theme_id))
+            if (ImGui::ThemeSelector(&ImGui::theme_id))
             {
                 // 테마가 변경되었을 때 실행할 로직
-                if (ImGuiExt::theme_id == 0) {
+                if (ImGui::theme_id == 0) {
                     ImGui::style_white();
                 }
                 else {

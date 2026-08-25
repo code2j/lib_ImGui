@@ -28,8 +28,11 @@
 
 #define SKYBOX_ON 1  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
 
-namespace ImGuiExt
+namespace ImGui
 {
+    inline ImVec2 GLOBAL_MOUSE_POS;       // 전역 마우스 좌표
+
+
     // ==================================================
     // 상태 플래그
     // ==================================================
@@ -38,6 +41,8 @@ namespace ImGuiExt
     inline bool show_log_window  = false; // 로거 표시 여부
     inline bool show_style_edit  = false; // 컬러 에디터 표시 여부
     inline int  theme_id         = 1;     // 0: white, 1: dark
+
+
 
 
     // ==================================================
@@ -68,14 +73,11 @@ namespace ImGuiExt
 
 namespace ImGui
 {
-    inline ImVec2 GLOBAL_MOUSE_POS; // 전역 마우스 좌표
-
-
     void init(const char* title, int width = 1280, int height = 720);
     void destroy();
     bool should_close(bool force_close = false);
-    bool context(std::function<void()> func);   // Gui 실행 컨텍스트
-    void load_config(const char* path);         // config 파일 불러오기
+    bool context(std::function<void()> func);
+    void load_config(const char* path);
 
 
     // =====================================================

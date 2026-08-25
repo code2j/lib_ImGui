@@ -115,7 +115,7 @@ void ImGuiLogger::draw(const char *title, bool *p_open)
 
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
-    ImGui::PushFont(ImGuiExt::D2Cording);
+    ImGui::PushFont(ImGui::D2Cording);
     ImGui::Indent(10.0f);
     ImGui::TextUnformatted(buf.begin(), buf.end()); // 텍스트 렌더링
     ImGui::Unindent(10.0f);

@@ -13,18 +13,18 @@ namespace ImGui
     {
         int val;
 
-        if      (sscanf(line, "ShowLogWindow=%d", &val) == 1)   ImGuiExt::show_log_window = (val != 0);
-        else if (sscanf(line, "Show3DViewport=%d", &val) == 1)  ImGuiExt::show_3d_viewport = (val != 0);
-        else if (sscanf(line, "Theme=%d", &val) == 1)           ImGuiExt::theme_id = val;
+        if      (sscanf(line, "ShowLogWindow=%d", &val) == 1)   ImGui::show_log_window = (val != 0);
+        else if (sscanf(line, "Show3DViewport=%d", &val) == 1)  ImGui::show_3d_viewport = (val != 0);
+        else if (sscanf(line, "Theme=%d", &val) == 1)           ImGui::theme_id = val;
     }
 
 
     void write_all(ImGuiContext *ctx, ImGuiSettingsHandler *handler, ImGuiTextBuffer *buf)
     {
         buf->appendf("[%s][Main]\n", handler->TypeName);
-        buf->appendf("ShowLogWindow=%d\n", ImGuiExt::show_log_window ? 1 : 0);
-        buf->appendf("Show3DViewport=%d\n", ImGuiExt::show_3d_viewport ? 1 : 0);
-        buf->appendf("Theme=%d\n", ImGuiExt::theme_id);
+        buf->appendf("ShowLogWindow=%d\n", ImGui::show_log_window ? 1 : 0);
+        buf->appendf("Show3DViewport=%d\n", ImGui::show_3d_viewport ? 1 : 0);
+        buf->appendf("Theme=%d\n", ImGui::theme_id);
         buf->appendf("\n");
     }
 }

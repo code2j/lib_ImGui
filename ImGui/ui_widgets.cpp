@@ -2275,14 +2275,14 @@ bool ImGui::StatusStepBar(const char *str_id, int *current_step, const char **st
     ImDrawList* draw_list = window->DrawList;
 
     // 색상 정의
-    ImVec4 active_col_v     = ImGuiExt::theme_id ? ImColor(87, 242, 135):ImColor(98, 192, 115);    // 부드러운 그린 (활성)
-    ImVec4 inactive_col_v   = ImGuiExt::theme_id ? ImColor(36, 36, 49) : ImColor(200, 200, 200);   // 다크 그레이 (비활성) [dark/white]
-    ImVec4 hover_col_v      = ImGuiExt::theme_id ? ImColor(44, 44, 47) : ImColor(180, 180, 180);   // 호버 색상
+    ImVec4 active_col_v     = ImGui::theme_id ? ImColor(87, 242, 135):ImColor(98, 192, 115);    // 부드러운 그린 (활성)
+    ImVec4 inactive_col_v   = ImGui::theme_id ? ImColor(36, 36, 49) : ImColor(200, 200, 200);   // 다크 그레이 (비활성) [dark/white]
+    ImVec4 hover_col_v      = ImGui::theme_id ? ImColor(44, 44, 47) : ImColor(180, 180, 180);   // 호버 색상
 
 
-    ImU32 text_active_col   = ImGuiExt::theme_id ? IM_COL32(240, 240, 240, 255) : IM_COL32(40, 40, 45, 255); // [dark/white]
-    ImU32 text_inactive_col = ImGuiExt::theme_id ? IM_COL32(130, 130, 130, 255) : IM_COL32(190, 190, 190, 255);
-    ImU32 icon_col          = ImGuiExt::theme_id ? IM_COL32(20, 20, 20, 255)    : IM_COL32(240, 240, 240, 240);
+    ImU32 text_active_col   = ImGui::theme_id ? IM_COL32(240, 240, 240, 255) : IM_COL32(40, 40, 45, 255); // [dark/white]
+    ImU32 text_inactive_col = ImGui::theme_id ? IM_COL32(130, 130, 130, 255) : IM_COL32(190, 190, 190, 255);
+    ImU32 icon_col          = ImGui::theme_id ? IM_COL32(20, 20, 20, 255)    : IM_COL32(240, 240, 240, 240);
 
     float delta_time = GetIO().DeltaTime;
     float anim_speed = 10.0f; // 애니메이션 속도

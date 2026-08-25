@@ -5,8 +5,8 @@
 
 #include <filesystem>
 #include <fstream>
-#include <X11/Xlib.h> // 파일 상단에 추가
-
+#include <X11/Xlib.h>
+#include <csignal>
 namespace fs = std::filesystem;
 
 namespace
@@ -66,22 +66,27 @@ namespace
 }
 
 
+static void sigint_handler(int signum)
+{
+    ImGui::should_close(true);
+}
 
 
 namespace ImGui
 {
+
+
     void init(const char* title, int width, int height)
     {
+        std::signal(SIGINT, sigint_handler);
+
         WINDOW_TITLE = title;
 
         // ---------------------------------------------------------------
         // ImGui & raylib 초기화
         // ---------------------------------------------------------------
-        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT ); // FLAG_WINDOW_TRANSPARENT
-
+        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT | FLAG_WINDOW_MAXIMIZED);
         InitWindow(width, height, title);
-        MaximizeWindow();
-
         SetTargetFPS(60);
         SetExitKey(0); // esc로 인한 종료 방지
 
@@ -101,18 +106,16 @@ namespace ImGui
         // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // 멀티 뷰포트
 
 
-
-
         // ---------------------------------------------------------------
         // 테마 색상 변수 정의
         // ---------------------------------------------------------------
-        if (ImGuiExt::theme_id == 0) ImGui::style_white();
+        if (ImGui::theme_id == 0) ImGui::style_white();
         else                         ImGui::style_dark();
 
 
+        // Style adjustments
         ImGuiStyle& style = ImGui::GetStyle();
 
-        // Style adjustments
         style.WindowPadding     = ImVec2(8.00, 8.00); // Window 내측 여백 (Padding)
         style.FramePadding      = ImVec2(5.00, 6.00); // Frame 내측 여백 (Padding)
         style.CellPadding       = ImVec2(6.00, 6.00); // Table Cell 내측 여백 (Padding)
@@ -136,8 +139,8 @@ namespace ImGui
         style.LogSliderDeadzone = 4;                  // Logarithmic Slider의 데드존(Deadzone) 크기
         style.TabRounding       = 6;                  // Tab 모서리 둥글기 (Rounding)
         style.TabBarBorderSize  = 0;
-
         style.WindowMenuButtonPosition = ImGuiDir_None; // 탭 최소화 버튼 제거
+
 
         // ---------------------------------------------------------------
         // 안티엘리어싱 설정
@@ -145,6 +148,7 @@ namespace ImGui
         style.AntiAliasedLines          = true;
         style.AntiAliasedFill           = true;
         style.AntiAliasedLinesUseTex    = true;
+
 
         // ---------------------------------------------------------------
         // 폰트 설정
@@ -175,7 +179,7 @@ namespace ImGui
         );
 
         // 로거 전용 폰트 로딩
-        ImGuiExt::D2Cording = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
+        ImGui::D2Cording = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
             font2_compressed_data,
             font2_compressed_size,
             FONT_SIZE,
@@ -196,7 +200,7 @@ namespace ImGui
         // ---------------------------------------------------------------
         // 쉐이더 불러오기
         // ---------------------------------------------------------------
-        ImGuiExt::shader_instancing = LoadShader(
+        ImGui::shader_instancing = LoadShader(
             IMGUI_ROOT "/data/shaders/lighting_instancing.vs",
             IMGUI_ROOT "/data/shaders/lighting.fs");
 
@@ -204,9 +208,9 @@ namespace ImGui
         // ---------------------------------------------------------------
         // 쉐이더 설정
         // ---------------------------------------------------------------
-        int ambientLoc = GetShaderLocation(ImGuiExt::shader_instancing, "ambient");
+        int ambientLoc = GetShaderLocation(ImGui::shader_instancing, "ambient");
         float ambient[4] = { 10.0f, 10.0f, 10.0f, 10.0f }; // R, G, B, Alpha 순서
-        SetShaderValue(ImGuiExt::shader_instancing, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
+        SetShaderValue(ImGui::shader_instancing, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
 
 
 
@@ -241,54 +245,6 @@ namespace ImGui
         CloseWindow();
     }
 
-
-    bool should_close(bool force_close)
-    {
-        ImGuiExt::should_close_app |= force_close;
-        return WindowShouldClose() || ImGuiExt::should_close_app;
-    }
-
-
-    void load_config(const char* path)
-    {
-        fs::path p(path);
-
-        // 디렉토리 생성
-        fs::path parent_dir = p.parent_path();
-        if (!parent_dir.empty() && !fs::exists(parent_dir)) {
-            // [폴더가 없음]
-            fs::create_directories(parent_dir); // 하위 폴더까지 한 번에 생성
-        }
-
-
-        // 파일 생성
-        if (!fs::exists(p)) {
-            // [파일이 없음]
-            std::ofstream outfile(p);
-            if (outfile.is_open()) {
-                outfile.close();
-            }
-        }
-
-
-        // config path 설정
-        ImGui::GetIO().IniFilename = path;
-
-
-        // ini 콜백 등록
-        ImGuiSettingsHandler ini_handler;
-        ini_handler.TypeName   = ""; // ini 파일에 기록될 섹션 이름
-        ini_handler.TypeHash   = ImHashStr("");
-        ini_handler.ReadOpenFn = read_open;
-        ini_handler.ReadLineFn = read_line;
-        ini_handler.WriteAllFn = write_all;
-        ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
-    }
-
-    Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
-    bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }
-
-
     bool context(std::function<void()> func)
     {
         if (should_close()) {
@@ -309,17 +265,14 @@ namespace ImGui
             int root_x, root_y, win_x, win_y;
             unsigned int mask_return;
 
-            // X11 API를 통해 OS 전역 마우스 좌표를 쿼리합니다.
-            if (XQueryPointer(display, root, &root_return, &child_return,
-                          &root_x, &root_y, &win_x, &win_y, &mask_return)) {
+            // X11 API를 통해 OS 전역 마우스 좌표를 쿼리
+            if (XQueryPointer(display, root, &root_return, &child_return, &root_x, &root_y, &win_x, &win_y, &mask_return)) {
 
-                // 1. 현재 창의 모니터 상 위치를 가져옵니다.[cite: 1]
                 Vector2 window_pos = GetWindowPosition();
 
-                // 2. 전역 마우스 좌표에서 창의 위치를 빼서 지역 좌표로 변환하여 ImGui에 주입합니다.
                 ImGui::GetIO().AddMousePosEvent((float)root_x - window_pos.x, (float)root_y - window_pos.y);
                 ImGui::GLOBAL_MOUSE_POS = ImVec2((float)root_x, (float)root_y);
-                          }
+            }
         }
 
         ImGui::NewFrame();
@@ -333,49 +286,18 @@ namespace ImGui
         }
 
         static int last_theme = -1;
-        if (last_theme != ImGuiExt::theme_id) {
-            if (ImGuiExt::theme_id == 0) ImGui::style_white();
+        if (last_theme != ImGui::theme_id) {
+            if (ImGui::theme_id == 0) ImGui::style_white();
             else                         ImGui::style_dark();
-            last_theme = ImGuiExt::theme_id;
+            last_theme = ImGui::theme_id;
         }
 
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         int curr_w = GetScreenWidth();
         int curr_h = GetScreenHeight();
 
-
         // ---------------------------------------------------------------
-        // 2. 우측 하단 크기 조절 (Resizing)
-        // ---------------------------------------------------------------
-        Vector2 mousePos = GetMousePosition();
-        Rectangle resizeGripArea = { (float)curr_w - 15, (float)curr_h - 15, 15, 15 };
-
-        if (CheckCollisionPointRec(mousePos, resizeGripArea)) {
-            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNWSE);
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) is_resizing = true;
-        }
-
-        if (is_resizing) {
-            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNWSE);
-            if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-                int newW = (int)mousePos.x;
-                int newH = (int)mousePos.y;
-                if (newW < 800) newW = 800;
-                if (newH < 600) newH = 600;
-                ::SetWindowSize(newW, newH);
-            } else {
-                is_resizing = false;
-            }
-        }
-
-        ImVec2 p1 = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
-        ImVec2 p2 = ImVec2(viewport->Pos.x + viewport->Size.x - 15, viewport->Pos.y + viewport->Size.y);
-        ImVec2 p3 = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y - 15);
-        ImGui::GetForegroundDrawList()->AddTriangleFilled(p1, p2, p3, IM_COL32(150, 150, 150, 255));
-
-
-        // ---------------------------------------------------------------
-        // 3. 메인 메뉴
+        // 2. 메인 메뉴
         // ---------------------------------------------------------------
         {
             ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
@@ -417,7 +339,7 @@ namespace ImGui
             }
 
             // 타이틀 텍스트 출력
-            const char* titleText = "My Custom Title";
+            const char* titleText = WINDOW_TITLE.c_str();
             ImVec2 textSize = ImGui::CalcTextSize(titleText);
 
             float textPosX = (windowSize.x - textSize.x) * 0.5f;
@@ -444,13 +366,13 @@ namespace ImGui
 
             if (ImGui::BeginPopup("SettingsPopup")) {
 
-                ImGui::MenuItem("3D Viewport", "", &ImGuiExt::show_3d_viewport);
-                ImGui::MenuItem("Log", "", &ImGuiExt::show_log_window);
-                ImGui::MenuItem("Style Editor", "", &ImGuiExt::show_style_edit);
+                ImGui::MenuItem("3D Viewport", "", &ImGui::show_3d_viewport);
+                ImGui::MenuItem("Log", "", &ImGui::show_log_window);
+                ImGui::MenuItem("Style Editor", "", &ImGui::show_style_edit);
 
                 if (ImGui::BeginMenu("Theme"))
                 {
-                    ImGui::ThemeSelector(&ImGuiExt::theme_id);
+                    ImGui::ThemeSelector(&ImGui::theme_id);
                     ImGui::EndMenu();
                 }
 
@@ -487,9 +409,9 @@ namespace ImGui
 
 
         // ---------------------------------------------------------------
-        // 4. 렌더링된 텍스처를 담을 뷰포트 창 띄우기
+        // 3. 렌더링된 텍스처를 담을 뷰포트 창 띄우기
         // ---------------------------------------------------------------
-        if (ImGuiExt::show_3d_viewport)
+        if (ImGui::show_3d_viewport)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
@@ -523,23 +445,23 @@ namespace ImGui
             viewport_mouse_pos.y = (imMousePosGlobal.y - imagePos.y) * (WINDOW_HEIGHT / imageSize.y);
 
             // ---------------------------------------------------------------
-            // 6. 사용자 콘텐츠 렌더링 (Raylib 텍스처 + 사용자 ImGui UI)
+            // 4. 사용자 콘텐츠 렌더링 (Raylib 텍스처 + 사용자 ImGui UI)
             // ---------------------------------------------------------------
             BeginTextureMode(view_texture);
             ClearBackground(BLANK);
 
             // 커서가 숨겨져 있을 때 (카메라 조작 중)
             if (IsCursorHidden()) {
-                // 뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구
+                // [뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구]
                 if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
                     EnableCursor();
                 }
                 // 카메라 업데이트 수행
-                UpdateCamera(&ImGuiExt::camera, CAMERA_FREE);
+                UpdateCamera(&ImGui::camera, CAMERA_FREE);
             }
             // 커서가 보일 때 (일반 UI 조작 중)
             else {
-                // 뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)
+                // [뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)]
                 if (ImGui::is_viewport_hovered()) {
                     if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
                         DisableCursor();
@@ -552,7 +474,7 @@ namespace ImGui
 
             // 사용자 람다 콜백 실행
             if (func) {
-                BeginMode3D(ImGuiExt::camera);
+                BeginMode3D(ImGui::camera);
 
     #if(SKYBOX_ON)
                     rlDisableBackfaceCulling();
@@ -578,9 +500,6 @@ namespace ImGui
 
             EndTextureMode();
 
-
-
-
             ImGui::End();
         }
         else
@@ -593,14 +512,14 @@ namespace ImGui
         // ---------------------------------------------------------------
         // ImGui log 렌더링
         // ---------------------------------------------------------------
-        if (ImGuiExt::show_log_window)
-            loggr.draw(" " ICON_MD_SUBJECT " Log ", &ImGuiExt::show_log_window);
+        if (ImGui::show_log_window)
+            loggr.draw(" " ICON_MD_SUBJECT " Log ", &ImGui::show_log_window);
 
 
         // ---------------------------------------------------------------
         // Style Editer
         // ---------------------------------------------------------------
-        if (ImGuiExt::show_style_edit) {
+        if (ImGui::show_style_edit) {
             ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
             ImGui::ShowStyleEditor(&ImGui::GetStyle());
             ImGui::End();
@@ -636,15 +555,58 @@ namespace ImGui
             }
         EndDrawing();
 
-
-
         return true;
     }
+
+    bool should_close(bool force_close)
+    {
+        ImGui::should_close_app |= force_close;
+        return WindowShouldClose() || ImGui::should_close_app;
+    }
+
+    void load_config(const char* path)
+    {
+        fs::path p(path);
+
+        // 디렉토리 생성
+        fs::path parent_dir = p.parent_path();
+        if (!parent_dir.empty() && !fs::exists(parent_dir)) {
+            // [폴더가 없음]
+            fs::create_directories(parent_dir); // 하위 폴더까지 한 번에 생성
+        }
+
+
+        // 파일 생성
+        if (!fs::exists(p)) {
+            // [파일이 없음]
+            std::ofstream outfile(p);
+            if (outfile.is_open()) {
+                outfile.close();
+            }
+        }
+
+
+        // config path 설정
+        ImGui::GetIO().IniFilename = path;
+
+
+        // ini 콜백 등록
+        ImGuiSettingsHandler ini_handler;
+        ini_handler.TypeName   = ""; // ini 파일에 기록될 섹션 이름
+        ini_handler.TypeHash   = ImHashStr("");
+        ini_handler.ReadOpenFn = read_open;
+        ini_handler.ReadLineFn = read_line;
+        ini_handler.WriteAllFn = write_all;
+        ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
+    }
+
+    Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
+    bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }
 
 
     void style_white()
     {
-        if (ImGuiExt::theme_id != 0) return;
+        if (ImGui::theme_id != 0) return;
 
         auto& colors = ImGui::GetStyle().Colors;
 
@@ -758,10 +720,9 @@ namespace ImGui
 
     }
 
-
     void style_dark()
     {
-        if (ImGuiExt::theme_id != 1) return;
+        if (ImGui::theme_id != 1) return;
         auto& colors = ImGui::GetStyle().Colors;
 
         ImVec4 color_bg                 = ImColor(7, 7, 9);
@@ -872,8 +833,6 @@ namespace ImGui
         colors[ImGuiCol_DockingPreview]        = color_primary_active;
         colors[ImGuiCol_DockingEmptyBg]        = color_primary_hover;
     }
-
-
 }
 
 
