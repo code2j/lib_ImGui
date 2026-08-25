@@ -547,9 +547,11 @@ namespace ImGui
         // ---------------------------------------------------------------
         // 7. 메인 화면 최종 출력 및 ImGui 렌더링
         // ---------------------------------------------------------------
-        ImGui::Render();
-
-        BeginDrawing();
+        static int lazy_start = 0;
+        if (lazy_start++  > 550)
+        {
+            ImGui::Render();
+            BeginDrawing();
             ClearBackground(BLANK);
 
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -561,7 +563,10 @@ namespace ImGui
                 ImGui::RenderPlatformWindowsDefault();
                 glfwMakeContextCurrent(backup_current_context);
             }
-        EndDrawing();
+            EndDrawing();
+        }
+
+
 
         return true;
     }

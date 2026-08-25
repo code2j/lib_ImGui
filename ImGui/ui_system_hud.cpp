@@ -110,63 +110,62 @@ void ImGui::draw_system_hud()
         ImGuiWindowFlags_NoNav |
         ImGuiWindowFlags_NoMove;
 
-    static bool show_cores = false;
-    float window_width = 160.0f; // 여백이 늘어났으므로 너비 살짝 증가
-    float margin_right = 15.0f;
-    float margin_top = 15.0f;
-    float gap_between_windows = 8.0f; // 창 사이의 모던한 간격
+    static bool show_cores          = false;
+    const float window_width        = 160.0f;
+    const float margin_right        = 15.0f;
+    const float margin_top          = 15.0f;
+    const float gap_between_windows = 8.0f;  // 창 사이의 간격
+    const float alpha               = 0.4;
 
-    // ==========================================
-    // [모던 스타일 적용] 모서리 둥글게, 내부 여백 및 간격 증가
-    // ==========================================
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
+
 
     // ==========================================
     // 1. 메인 HUD 창
     // ==========================================
     ImGui::SetNextWindowSize(ImVec2(window_width, 0.0f), ImGuiCond_Always);
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - window_width - margin_right, margin_top), ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.4f); // 배경을 살짝 더 진하게 잡아 가독성 향상
+    ImGui::SetNextWindowBgAlpha(alpha);
 
     float main_window_height = 0.0f;
 
     if (ImGui::Begin("Simple CPU HUD Main", nullptr, window_flags)) {
 
         // CPU 텍스트
-        // ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_MEMORY " CPU: %5.1f%%", total_cpu.usage);
-        ImGui::Text(ICON_MD_MEMORY " CPU: %5.1f%%", total_cpu.usage);
+        ImGui::Text(ICON_MD_MEMORY " CPU: %.1f%%", total_cpu.usage);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX(), ImGui::GetCursorPosY())); // 애니메이션 효과 방지용
+            ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX(), ImGui::GetCursorPosY()));
             ImGui::SetTooltip("Click to Show All Core");
         }
         if (ImGui::IsItemClicked()) {
             show_cores = !show_cores;
         }
 
+
         // RAM 텍스트
-        // ImGui::TextColored(ImVec4(0.94f, 0.76f, 0.36f, 1.0f), ICON_MD_STORAGE " RAM: %5.1f%%", ram_usage);
-        ImGui::Text(ICON_MD_STORAGE " RAM: %5.1f%%", ram_usage);
+        ImGui::Text(ICON_MD_STORAGE " RAM: %.1f%%", ram_usage);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%.1f GB/%.1f GB", ram_used_gb, ram_total_gb);
         }
 
-        // 메인 창의 최종 높이를 저장 (세부 창 위치 계산용)
+
+        // 메인 창의 최종 높이를 저장
         main_window_height = ImGui::GetWindowHeight();
     }
     ImGui::End();
 
-    // ==========================================
-    // 2. 세부 정보 창 (CPU 클릭 시)
-    // ==========================================
+
+    // ------------------------------------------
+    //  세부 정보 창 (CPU 클릭 시)
+    // ------------------------------------------
     if (show_cores && !core_cpus.empty()) {
-        // 메인 창 바로 아래에 일정한 간격(gap_between_windows)을 두고 반응형으로 배치
         float details_pos_y = margin_top + main_window_height + gap_between_windows;
 
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - window_width - margin_right, details_pos_y), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(window_width, 0.0f), ImGuiCond_Always);
-        ImGui::SetNextWindowBgAlpha(0.4f);
+        ImGui::SetNextWindowBgAlpha(alpha);
 
         if (ImGui::Begin("Simple CPU HUD Details", nullptr, window_flags)) {
 
