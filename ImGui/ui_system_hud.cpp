@@ -5,23 +5,37 @@
 #include <sstream>
 #include <algorithm>
 #include <vector>
+#include <cstdio> // popen, pclose 사용
 
 namespace {
     struct CpuData {
         unsigned long long prev_idle = 0;
         unsigned long long prev_total = 0;
         float usage = 0.0f;
+        float temp = -1.0f;
     };
 
-    // 전체 및 코어별 CPU 사용량 업데이트 함수
+    struct RamData {
+        float usage = 0.0f;
+        float used_gb = 0.0f;
+        float total_gb = 0.0f;
+    };
+
+    struct GpuData {
+        float usage = 0.0f;
+        float mem_used_gb = 0.0f;
+        float mem_total_gb = 0.0f;
+        float temp = -1.0f;
+        bool available = false;
+    };
+
+    // 1. CPU 사용량 업데이트
     void update_cpu_usage(CpuData& total_cpu, std::vector<CpuData>& core_cpus)
     {
         std::ifstream file("/proc/stat");
         std::string line;
-
         int core_idx = 0;
         while (std::getline(file, line)) {
-            // "cpu"로 시작하는 줄만 파싱 (전체 cpu 및 cpu0, cpu1 등)
             if (line.compare(0, 3, "cpu") != 0) break;
 
             std::istringstream ss(line);
@@ -35,9 +49,8 @@ namespace {
 
             CpuData* target = nullptr;
             if (cpu_label == "cpu") {
-                target = &total_cpu; // 첫 번째 줄은 전체 사용량
+                target = &total_cpu;
             } else {
-                // 코어 개수에 맞춰 백터 크기 동적 할당
                 if (core_idx >= core_cpus.size()) core_cpus.resize(core_idx + 1);
                 target = &core_cpus[core_idx];
                 core_idx++;
@@ -46,35 +59,30 @@ namespace {
             if (target) {
                 unsigned long long total_diff = current_total - target->prev_total;
                 unsigned long long idle_diff = current_idle - target->prev_idle;
-
                 if (total_diff > 0) {
                     target->usage = static_cast<float>(total_diff - idle_diff) / total_diff * 100.0f;
                 }
-
                 target->prev_idle = current_idle;
                 target->prev_total = current_total;
             }
         }
     }
-}
 
-void ImGui::draw_system_hud()
-{
-    static CpuData total_cpu;
-    static std::vector<CpuData> core_cpus;
-    static float ram_usage = 0.0f;
-    static float ram_used_gb = 0.0f;
-    static float ram_total_gb = 0.0f;
-    static double last_time = 0.0;
+    // 2. CPU 온도 업데이트
+    void update_cpu_temp(CpuData& total_cpu)
+    {
+        std::ifstream temp_file("/sys/class/thermal/thermal_zone0/temp");
+        long millicelsius = 0;
+        if (temp_file >> millicelsius) {
+            total_cpu.temp = millicelsius / 1000.0f;
+        } else {
+            total_cpu.temp = -1.0f;
+        }
+    }
 
-    const double update_time = 0.5;
-
-    double current_time = ImGui::GetTime();
-
-    // 데이터 갱신 로직 (기존과 동일)
-    if (current_time - last_time > update_time) {
-        update_cpu_usage(total_cpu, core_cpus);
-
+    // 3. RAM 사용량 업데이트
+    void update_ram_usage(RamData& ram)
+    {
         std::ifstream mem_file("/proc/meminfo");
         std::string mem_line;
         long long mem_total = 0, mem_available = 0;
@@ -93,10 +101,61 @@ void ImGui::draw_system_hud()
 
         if (mem_total > 0) {
             long long mem_used = mem_total - mem_available;
-            ram_usage = static_cast<float>(mem_used) / mem_total * 100.0f;
-            ram_used_gb = static_cast<float>(mem_used) / (1024.0f * 1024.0f);
-            ram_total_gb = static_cast<float>(mem_total) / (1024.0f * 1024.0f);
+            ram.usage = static_cast<float>(mem_used) / mem_total * 100.0f;
+            ram.used_gb = static_cast<float>(mem_used) / (1024.0f * 1024.0f);
+            ram.total_gb = static_cast<float>(mem_total) / (1024.0f * 1024.0f);
         }
+    }
+
+    // 4. GPU 사용량 및 온도 업데이트 (NVIDIA)
+    void update_gpu_usage(GpuData& gpu)
+    {
+        FILE* pipe = popen("nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader,nounits 2>/dev/null", "r");
+        if (!pipe) {
+            gpu.available = false;
+            return;
+        }
+
+        char buffer[128];
+        if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            std::string result = buffer;
+            std::replace(result.begin(), result.end(), ',', ' ');
+            std::istringstream iss(result);
+
+            float util, mem_used_mib, mem_total_mib, temp;
+            if (iss >> util >> mem_used_mib >> mem_total_mib >> temp) {
+                gpu.usage = util;
+                gpu.mem_used_gb = mem_used_mib / 1024.0f;
+                gpu.mem_total_gb = mem_total_mib / 1024.0f;
+                gpu.temp = temp;
+                gpu.available = true;
+            } else {
+                gpu.available = false;
+            }
+        } else {
+            gpu.available = false;
+        }
+
+        pclose(pipe);
+    }
+}
+
+void ImGui::draw_system_hud()
+{
+    static CpuData total_cpu;
+    static std::vector<CpuData> core_cpus;
+    static RamData ram;
+    static GpuData gpu;
+    static double last_time = 0.0;
+
+    const double update_time = 0.5;
+    double current_time = ImGui::GetTime();
+
+    if (current_time - last_time > update_time) {
+        update_cpu_usage(total_cpu, core_cpus);
+        update_cpu_temp(total_cpu);
+        update_ram_usage(ram);
+        update_gpu_usage(gpu);
 
         last_time = current_time;
     }
@@ -111,16 +170,16 @@ void ImGui::draw_system_hud()
         ImGuiWindowFlags_NoMove;
 
     static bool show_cores          = false;
-    const float window_width        = 160.0f;
+
+    const float window_width        = 260.0f;
     const float margin_right        = 15.0f;
     const float margin_top          = 15.0f;
-    const float gap_between_windows = 8.0f;  // 창 사이의 간격
+    const float gap_between_windows = 8.0f;
     const float alpha               = 0.4;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
-
 
     // ==========================================
     // 1. 메인 HUD 창
@@ -131,34 +190,74 @@ void ImGui::draw_system_hud()
 
     float main_window_height = 0.0f;
 
-    if (ImGui::Begin("Simple CPU HUD Main", nullptr, window_flags)) {
+    if (ImGui::Begin("Simple System HUD Main", nullptr, window_flags)) {
 
-        // CPU 텍스트
-        ImGui::Text(ICON_MD_MEMORY " CPU: %.1f%%", total_cpu.usage);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX(), ImGui::GetCursorPosY()));
-            ImGui::SetTooltip("Click to Show All Core");
+        if (ImGui::BeginTable("MainHUDTable", 2, ImGuiTableFlags_None)) {
+            // [수정됨] 첫 번째 열(라벨)의 고정 폭을 55.0f -> 75.0f 로 늘려 아이콘과 글자가 겹치지 않게 함
+            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+            // --- [CPU Row] ---
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text(ICON_MD_MEMORY " CPU");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Click to Show All Core");
+            if (ImGui::IsItemClicked()) show_cores = !show_cores;
+
+            ImGui::TableNextColumn();
+            char cpu_val[64];
+            if (total_cpu.temp > 0.0f) snprintf(cpu_val, sizeof(cpu_val), "%.1f%% (%.1f ℃)", total_cpu.usage, total_cpu.temp);
+            else snprintf(cpu_val, sizeof(cpu_val), "%.1f%%", total_cpu.usage);
+
+            float text_width = ImGui::CalcTextSize(cpu_val).x;
+            float avail = ImGui::GetContentRegionAvail().x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, avail - text_width));
+            ImGui::TextUnformatted(cpu_val);
+
+
+            // --- [RAM Row] ---
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text(ICON_MD_STORAGE " RAM");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%.1f GB/%.1f GB", ram.used_gb, ram.total_gb);
+
+            ImGui::TableNextColumn();
+            char ram_val[64];
+            snprintf(ram_val, sizeof(ram_val), "%.1f%%", ram.usage);
+
+            text_width = ImGui::CalcTextSize(ram_val).x;
+            avail = ImGui::GetContentRegionAvail().x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, avail - text_width));
+            ImGui::TextUnformatted(ram_val);
+
+
+            // --- [GPU Row] ---
+            if (gpu.available) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Text(ICON_MD_MEMORY " GPU");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("VRAM: %.1f GB/%.1f GB", gpu.mem_used_gb, gpu.mem_total_gb);
+
+                ImGui::TableNextColumn();
+                char gpu_val[64];
+                if (gpu.temp > 0.0f) snprintf(gpu_val, sizeof(gpu_val), "%.1f%% (%.1f ℃)", gpu.usage, gpu.temp);
+                else snprintf(gpu_val, sizeof(gpu_val), "%.1f%%", gpu.usage);
+
+                text_width = ImGui::CalcTextSize(gpu_val).x;
+                avail = ImGui::GetContentRegionAvail().x;
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, avail - text_width));
+                ImGui::TextUnformatted(gpu_val);
+            }
+
+            ImGui::EndTable();
         }
-        if (ImGui::IsItemClicked()) {
-            show_cores = !show_cores;
-        }
 
-
-        // RAM 텍스트
-        ImGui::Text(ICON_MD_STORAGE " RAM: %.1f%%", ram_usage);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("%.1f GB/%.1f GB", ram_used_gb, ram_total_gb);
-        }
-
-
-        // 메인 창의 최종 높이를 저장
         main_window_height = ImGui::GetWindowHeight();
     }
     ImGui::End();
 
-
     // ------------------------------------------
-    //  세부 정보 창 (CPU 클릭 시)
+    // 2. 세부 정보 창 (CPU 클릭 시)
     // ------------------------------------------
     if (show_cores && !core_cpus.empty()) {
         float details_pos_y = margin_top + main_window_height + gap_between_windows;
@@ -179,8 +278,9 @@ void ImGui::draw_system_hud()
             if (range <= 0.001f) range = 1.0f;
 
             if (ImGui::BeginTable("CoreUsageTable", 2, ImGuiTableFlags_None)) {
-                ImGui::TableSetupColumn("CoreLabel", ImGuiTableColumnFlags_WidthFixed, 65.0f);
-                ImGui::TableSetupColumn("UsageValue", ImGuiTableColumnFlags_WidthFixed, 55.0f); // 여백 조정
+                // [수정됨] "Core XX" 텍스트 공간 확보
+                ImGui::TableSetupColumn("CoreLabel", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+                ImGui::TableSetupColumn("UsageValue", ImGuiTableColumnFlags_WidthStretch);
 
                 for (size_t i = 0; i < core_cpus.size(); ++i) {
                     float t = (core_cpus[i].usage - min_usage) / range;
@@ -190,11 +290,19 @@ void ImGui::draw_system_hud()
                     ImVec4 color = ImVec4(r, g, b, 1.0f);
 
                     ImGui::TableNextRow();
+
                     ImGui::TableNextColumn();
                     ImGui::TextColored(color, "Core %zu", i);
 
                     ImGui::TableNextColumn();
-                    ImGui::TextColored(color, "%5.1f%%", core_cpus[i].usage);
+                    char core_val[32];
+                    snprintf(core_val, sizeof(core_val), "%5.1f%%", core_cpus[i].usage);
+
+                    float text_width = ImGui::CalcTextSize(core_val).x;
+                    float avail = ImGui::GetContentRegionAvail().x;
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, avail - text_width));
+
+                    ImGui::TextColored(color, "%s", core_val);
                 }
                 ImGui::EndTable();
             }
@@ -202,7 +310,5 @@ void ImGui::draw_system_hud()
         ImGui::End();
     }
 
-    // 스타일 롤백 (다른 ImGui 창에 영향이 가지 않도록 해제)
     ImGui::PopStyleVar(3);
-
 }
