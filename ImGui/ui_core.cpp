@@ -413,6 +413,7 @@ namespace ImGui
         // ---------------------------------------------------------------
         // 3. 렌더링된 텍스처를 담을 뷰포트 창 띄우기
         // ---------------------------------------------------------------
+        if (ImGui::show_main_menu)
         if (ImGui::show_3d_viewport)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -514,6 +515,7 @@ namespace ImGui
         // ---------------------------------------------------------------
         // ImGui log 렌더링
         // ---------------------------------------------------------------
+        if (ImGui::show_main_menu)
         if (ImGui::show_log_window)
             loggr.draw(" " ICON_MD_SUBJECT " Log ", &ImGui::show_log_window);
 
@@ -521,6 +523,7 @@ namespace ImGui
         // ---------------------------------------------------------------
         // Style Editer
         // ---------------------------------------------------------------
+        if (ImGui::show_main_menu)
         if (ImGui::show_style_edit) {
             ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
             ImGui::ShowStyleEditor(&ImGui::GetStyle());
@@ -613,6 +616,7 @@ namespace ImGui
         ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
     }
 
+    void    show_menu(bool b)                        { show_main_menu = b; }
     Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
     bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }
 
