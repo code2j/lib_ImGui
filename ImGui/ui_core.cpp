@@ -369,6 +369,7 @@ namespace ImGui
                 ImGui::MenuItem("3D Viewport", "", &ImGui::show_3d_viewport);
                 ImGui::MenuItem("Log", "", &ImGui::show_log_window);
                 ImGui::MenuItem("Style Editor", "", &ImGui::show_style_edit);
+                ImGui::MenuItem("System HUD", "", &ImGui::show_system_hud);
 
                 if (ImGui::BeginMenu("Theme"))
                 {
@@ -535,6 +536,12 @@ namespace ImGui
         ImGui::PopStyleVar(1);
         ImGui::PopStyleColor(1);
 
+
+        // ---------------------------------------------------------------
+        // System HUD
+        // ---------------------------------------------------------------
+        if (ImGui::show_system_hud)
+            ImGui::draw_system_hud();
 
         // ---------------------------------------------------------------
         // 7. 메인 화면 최종 출력 및 ImGui 렌더링

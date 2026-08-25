@@ -1,7 +1,10 @@
 #include "ui.hpp"
 #include <iostream>
 
-
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <algorithm>
 Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
@@ -20,9 +23,6 @@ int main() {
     {
     ImGui::context([&]()
     {
-
-
-
 
 
         // ----------------------
