@@ -135,7 +135,8 @@ void ImGui::draw_system_hud()
     if (ImGui::Begin("Simple CPU HUD Main", nullptr, window_flags)) {
 
         // CPU 텍스트
-        ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_MEMORY " CPU: %5.1f%%", total_cpu.usage);
+        // ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_MEMORY " CPU: %5.1f%%", total_cpu.usage);
+        ImGui::Text(ICON_MD_MEMORY " CPU: %5.1f%%", total_cpu.usage);
         if (ImGui::IsItemHovered()) {
             ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX(), ImGui::GetCursorPosY())); // 애니메이션 효과 방지용
             ImGui::SetTooltip("Click to Show All Core");
@@ -145,7 +146,8 @@ void ImGui::draw_system_hud()
         }
 
         // RAM 텍스트
-        ImGui::TextColored(ImVec4(0.94f, 0.76f, 0.36f, 1.0f), ICON_MD_STORAGE " RAM: %5.1f%%", ram_usage);
+        // ImGui::TextColored(ImVec4(0.94f, 0.76f, 0.36f, 1.0f), ICON_MD_STORAGE " RAM: %5.1f%%", ram_usage);
+        ImGui::Text(ICON_MD_STORAGE " RAM: %5.1f%%", ram_usage);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%.1f GB/%.1f GB", ram_used_gb, ram_total_gb);
         }
