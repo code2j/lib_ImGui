@@ -140,8 +140,12 @@ namespace {
     }
 }
 
-void ImGui::draw_system_hud()
+void ImGui::draw_system_hud(bool open)
 {
+    if (!open) {
+        return;
+    }
+
     static CpuData total_cpu;
     static std::vector<CpuData> core_cpus;
     static RamData ram;

@@ -9,7 +9,7 @@ public:
     ~ImGuiLogger();
 
     void clear();
-    void draw(const char* title, bool* p_open = nullptr);
+    void draw(const char* title, bool open);
 
 protected:
     virtual int overflow(int c) override;
