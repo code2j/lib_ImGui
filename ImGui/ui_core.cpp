@@ -179,19 +179,18 @@ namespace ImGui
         // ---------------------------------------------------------------
         // Loading Screen
         // ---------------------------------------------------------------
-        static int              lazy_cnt       = 0;
-        static bool             lazy_flag1      = false;
-        static bool             lazy_flag2      = false;
+        static int              lazy_cnt                = 0;
+        static bool             lazy_flag_now_loading   = false;
+        static bool             lazy_flag_now_rendering = false;
 
         static ImGui::Texture   loading_img;
 
         lazy_cnt++;
-        if (lazy_cnt > 100)
-            lazy_flag1 = true;
+        if (lazy_cnt > 100) // 0.0166hz * 100 = 1.66s
+            lazy_flag_now_loading = true;
 
 
-
-        if (!lazy_flag1) {
+        if (!lazy_flag_now_loading) {
             // [레이지 스타트 카운트 증가중]
 
             // 이미지 중심이 화면 중심으로 계산
@@ -242,10 +241,8 @@ namespace ImGui
                 static const ImWchar icon_ranges[] = { ICON_MIN_MD, ICON_MAX_16_MD, 0 };
                 ImGuiIO& io = ImGui::GetIO();
 
-                if (lazy_cnt == 1) {
 
-                }
-                else if (lazy_cnt == 2) {
+                if (lazy_cnt == 2) {
                     // 아이콘 폰트
                     io.Fonts->AddFontFromMemoryCompressedTTF(
                         MaterialSymbolsRounded_compressed_data,
@@ -255,7 +252,7 @@ namespace ImGui
                         icon_ranges
                     );
                 }
-                else if (lazy_cnt == 3) {
+                if (lazy_cnt == 3) {
                     // 로거 전용 폰트
                     ImGui::D2Cording = io.Fonts->AddFontFromMemoryCompressedTTF(
                         font2_compressed_data,
@@ -294,7 +291,7 @@ namespace ImGui
         if (ImGui::flag_load_complete) {
             ImGui::flag_load_complete = false;
             MaximizeWindow();
-            lazy_flag2 = true;
+            lazy_flag_now_rendering = true;
         }
         // ---------------------------------------------------------------
         // 메뉴 on/off 키 입력
@@ -306,144 +303,33 @@ namespace ImGui
 
 
 
-        if (lazy_flag2)
+        if (lazy_flag_now_rendering)
         {
-            // ---------------------------------------------------------------
-            // 2. 메인 메뉴
-            // ---------------------------------------------------------------
+            // -----------------------
+            // 메뉴 렌더링
+            // -----------------------
             if (ImGui::show_main_menu)
-            {
-                ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
-                                         ImGuiWindowFlags_NoReserveScrollbar |
-                                         ImGuiWindowFlags_NoDocking |
-                                         ImGuiWindowFlags_NoScrollbar;
+                ImGui::draw_menu();
 
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
-                ImGui::Begin("window", nullptr, flags);
-                ImGui::PopStyleVar();
+            // -----------------------
+            // ImGui log 렌더링
+            // -----------------------
+            if (ImGui::show_log_window && ImGui::show_main_menu)
+                loggr.draw(" " ICON_MD_SUBJECT " Log ", &ImGui::show_log_window);
 
-                // ---------------------
-                // 커스텀 타이틀바
-                // ---------------------
-                const float titlebar_height = 34.0f;
-                const float button_width = 45.0f;
-                ImVec2 windowPos = ImGui::GetWindowPos();
-                ImVec2 windowSize = ImGui::GetWindowSize();
-
-                //  타이틀 바 배경 그리기
-                ImDrawList* drawList = ImGui::GetWindowDrawList();
-                float windowRounding = ImGui::GetStyle().WindowRounding;
-
-                drawList->AddRectFilled(
-                    windowPos,
-                    ImVec2(windowPos.x + windowSize.x, windowPos.y + titlebar_height),
-                    ImGui::GetColorU32(ImGuiCol_WindowBg),
-                    windowRounding,
-                    ImDrawFlags_RoundCornersTop
-                );
-
-                // 타이틀 바 드래그 이동 처리 (버튼 2개 크기만큼 제외)
-                ImGui::SetCursorPos(ImVec2(0, 0));
-                ImGui::InvisibleButton("##title_drag", ImVec2(windowSize.x - (button_width * 2), titlebar_height));
-                if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-                {
-                    ImVec2 delta = ImGui::GetIO().MouseDelta;
-                    ImGui::SetWindowPos(ImVec2(windowPos.x + delta.x, windowPos.y + delta.y));
-                }
-
-                // 타이틀 텍스트 출력
-                const char* titleText = WINDOW_TITLE.c_str();
-                ImVec2 textSize = ImGui::CalcTextSize(titleText);
-
-                float textPosX = (windowSize.x - textSize.x) * 0.5f;
-                float textPosY = (titlebar_height - textSize.y) * 0.3f;
-
-                ImGui::SetCursorPos(ImVec2(textPosX, textPosY));
-                ImGui::Text("%s", titleText);
-
-
-                //  설정 버튼
-                ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 2), 0));
-
-                ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-
-                if (ImGui::ButtonX(ICON_MD_SETTINGS, ImVec2(button_width, titlebar_height), false)) {
-                    ImGui::OpenPopup("SettingsPopup");
-                }
-
-                ImGui::PopStyleVar(1);
-                ImGui::PopStyleColor(3);
-
-                if (ImGui::BeginPopup("SettingsPopup")) {
-
-                    ImGui::MenuItem("3D Viewport", "", &ImGui::show_3d_viewport);
-                    ImGui::MenuItem("Log", "", &ImGui::show_log_window);
-                    ImGui::MenuItem("Style Editor", "", &ImGui::show_style_edit);
-                    ImGui::MenuItem("System HUD", "", &ImGui::show_system_hud);
-
-                    if (ImGui::BeginMenu("Theme"))
-                    {
-                        if (ImGui::ThemeSelector(&ImGui::theme_id)) {
-                            ImGui::flag_change_thema = true;
-                        }
-                        ImGui::EndMenu();
-                    }
-
-                    ImGui::EndPopup();
-                }
-
-
-                // 닫기 버튼
-                ImGui::SetCursorPos(ImVec2(windowSize.x - button_width, 0));
-
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(181, 65, 66, 255));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-
-                if (ImGui::ButtonX(ICON_MD_CLOSE, ImVec2(button_width, titlebar_height), false))
-                {
-                    ImGui::should_close(true);
-                }
-
-                ImGui::PopStyleVar(1);
-                ImGui::PopStyleColor(3);
-                // --- 타이틀 바 끝 ---
-
-                // 영역을 DockSpace로 설정
-                ImGui::SetCursorPosY(titlebar_height);
-                ImGuiID dockspace_id = ImGui::GetID("MyInternalDockSpace");
-                ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, IM_COL32(10, 10, 10, 0));
-                ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
-                ImGui::PopStyleColor(1);
-
+            // -----------------------
+            // Style Editer
+            // -----------------------
+            if (ImGui::show_style_edit && ImGui::show_main_menu) {
+                ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
+                ImGui::ShowStyleEditor(&ImGui::GetStyle());
                 ImGui::End();
-
-
-
-                // ---------------------------------------------------------------
-                // ImGui log 렌더링
-                // ---------------------------------------------------------------
-                if (ImGui::show_log_window)
-                    loggr.draw(" " ICON_MD_SUBJECT " Log ", &ImGui::show_log_window);
-
-                // ---------------------------------------------------------------
-                // Style Editer
-                // ---------------------------------------------------------------
-                if (ImGui::show_style_edit) {
-                    ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
-                    ImGui::ShowStyleEditor(&ImGui::GetStyle());
-                    ImGui::End();
-                }
             }
 
 
-            // ---------------------------------------------------------------
+            // -----------------------
             // 3. 렌더링된 텍스처를 담을 뷰포트 창 띄우기
-            // ---------------------------------------------------------------
+            // -----------------------
             if (ImGui::show_main_menu)
             if (ImGui::show_3d_viewport)
             {
@@ -531,23 +417,16 @@ namespace ImGui
                 if (func) func();
             }
 
-
-
-
-
-            // ---------------------------------------------------------------
+            // -----------------------
             // ImGui notiy 렌더링
-            // ---------------------------------------------------------------
+            // -----------------------
             ImGui::RenderNotifications();
 
-
-            // ---------------------------------------------------------------
+            // -----------------------
             // System HUD
-            // ---------------------------------------------------------------
+            // -----------------------
             if (ImGui::show_system_hud)
                 ImGui::draw_system_hud();
-
-
         }
 
 
@@ -617,11 +496,120 @@ namespace ImGui
     }
 
     void    show_menu(bool b)                        { show_main_menu = b; }
+
+    void draw_menu()
+    {
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
+                                 ImGuiWindowFlags_NoReserveScrollbar |
+                                 ImGuiWindowFlags_NoDocking |
+                                 ImGuiWindowFlags_NoScrollbar;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
+        ImGui::Begin("window", nullptr, flags);
+        ImGui::PopStyleVar();
+
+        // ---------------------
+        // 커스텀 타이틀바
+        // ---------------------
+        const float titlebar_height = 34.0f;
+        const float button_width = 45.0f;
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 windowSize = ImGui::GetWindowSize();
+
+        //  타이틀 바 배경 그리기
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        float windowRounding = ImGui::GetStyle().WindowRounding;
+
+        drawList->AddRectFilled(
+            windowPos,
+            ImVec2(windowPos.x + windowSize.x, windowPos.y + titlebar_height),
+            ImGui::GetColorU32(ImGuiCol_WindowBg),
+            windowRounding,
+            ImDrawFlags_RoundCornersTop
+        );
+
+        // 타이틀 바 드래그 이동 처리 (버튼 2개 크기만큼 제외)
+        ImGui::SetCursorPos(ImVec2(0, 0));
+        ImGui::InvisibleButton("##title_drag", ImVec2(windowSize.x - (button_width * 2), titlebar_height));
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+        {
+            ImVec2 delta = ImGui::GetIO().MouseDelta;
+            ImGui::SetWindowPos(ImVec2(windowPos.x + delta.x, windowPos.y + delta.y));
+        }
+
+        // 타이틀 텍스트 출력
+        const char* titleText = WINDOW_TITLE.c_str();
+        ImVec2 textSize = ImGui::CalcTextSize(titleText);
+
+        float textPosX = (windowSize.x - textSize.x) * 0.5f;
+        float textPosY = (titlebar_height - textSize.y) * 0.3f;
+
+        ImGui::SetCursorPos(ImVec2(textPosX, textPosY));
+        ImGui::Text("%s", titleText);
+
+
+        //  설정 버튼
+        ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 2), 0));
+
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        if (ImGui::ButtonX(ICON_MD_SETTINGS, ImVec2(button_width, titlebar_height), false))
+        {
+            ImGui::OpenPopup("SettingsPopup");
+        }
+        ImGui::PopStyleVar(1);
+        ImGui::PopStyleColor(3);
+
+        if (ImGui::BeginPopup("SettingsPopup")) {
+
+            ImGui::MenuItem("3D Viewport", "", &ImGui::show_3d_viewport);
+            ImGui::MenuItem("Log", "", &ImGui::show_log_window);
+            ImGui::MenuItem("Style Editor", "", &ImGui::show_style_edit);
+            ImGui::MenuItem("System HUD", "", &ImGui::show_system_hud);
+
+            if (ImGui::BeginMenu("Theme"))
+            {
+                if (ImGui::ThemeSelector(&ImGui::theme_id)) {
+                    ImGui::flag_change_thema = true;
+                }
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndPopup();
+        }
+
+
+        // 닫기 버튼
+        ImGui::SetCursorPos(ImVec2(windowSize.x - button_width, 0));
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(181, 65, 66, 255));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
+        if (ImGui::ButtonX(ICON_MD_CLOSE, ImVec2(button_width, titlebar_height), false))
+        {
+            ImGui::should_close(true);
+        }
+
+        ImGui::PopStyleVar(1);
+        ImGui::PopStyleColor(3);
+        // --- 타이틀 바 끝 ---
+
+        // 영역을 DockSpace로 설정
+        ImGui::SetCursorPosY(titlebar_height);
+        ImGuiID dockspace_id = ImGui::GetID("MyInternalDockSpace");
+        ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, IM_COL32(10, 10, 10, 0));
+        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+        ImGui::PopStyleColor(1);
+
+        ImGui::End();
+    }
+
     Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
     bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }
-
-
-
 }
 
 

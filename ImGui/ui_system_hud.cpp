@@ -219,7 +219,7 @@ void ImGui::draw_system_hud()
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text(ICON_MD_STORAGE " RAM");
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("usage: %.1f GB/%.1f GB", ram.used_gb, ram.total_gb);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("USAGE: %.1f GB/%.1f GB", ram.used_gb, ram.total_gb);
 
             ImGui::TableNextColumn();
             char ram_val[64];

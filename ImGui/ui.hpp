@@ -83,6 +83,8 @@ namespace ImGui
     void load_config(const char* path);
     void show_menu(bool b);
 
+    void draw_menu();
+
 
     // =====================================================
     // 뷰포트 마우스 및 상태 유틸리티
