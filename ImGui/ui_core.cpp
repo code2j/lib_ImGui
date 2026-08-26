@@ -105,9 +105,9 @@ namespace ImGui
             ImDrawFlags_RoundCornersTop
         );
 
-        // 타이틀 바 드래그 이동 처리 (버튼 2개 크기만큼 제외)
+        // 타이틀 바 드래그 이동 처리 (버튼 3개 크기만큼 제외)
         ImGui::SetCursorPos(ImVec2(0, 0));
-        ImGui::InvisibleButton("##title_drag", ImVec2(windowSize.x - (button_width * 2), titlebar_height));
+        ImGui::InvisibleButton("##title_drag", ImVec2(windowSize.x - (button_width * 3), titlebar_height));
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
             ImVec2 delta = ImGui::GetIO().MouseDelta;
@@ -125,8 +125,8 @@ namespace ImGui
         ImGui::Text("%s", titleText);
 
 
-        //  설정 버튼
-        ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 2), 0));
+        // 1. 설정 버튼 (우측에서 3번째)
+        ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 3), 0));
 
         ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
@@ -158,7 +158,25 @@ namespace ImGui
         }
 
 
-        // 닫기 버튼
+        // 2. 최소화 버튼 (우측에서 2번째) - show_menu 끄기
+        ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 2), 0));
+
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
+        // 머터리얼 아이콘에서 일반적으로 최소화를 나타내는 마이너스 기호(REMOVE) 사용
+        if (ImGui::ButtonX(ICON_MD_REMOVE, ImVec2(button_width, titlebar_height), false))
+        {
+            ImGui::show_menu = false;
+        }
+
+        ImGui::PopStyleVar(1);
+        ImGui::PopStyleColor(3);
+
+
+        // 3. 닫기 버튼 (가장 우측)
         ImGui::SetCursorPos(ImVec2(windowSize.x - button_width, 0));
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
@@ -425,7 +443,6 @@ namespace ImGui
                 ImGui::End();
             }
 
-
             // -----------------------
             // 3. 렌더링된 텍스처를 담을 뷰포트 창 띄우기
             // -----------------------
@@ -525,6 +542,45 @@ namespace ImGui
             // System HUD
             // -----------------------
             ImGui::draw_system_hud(ImGui::show_system_hud);
+
+            // -----------------------
+            // 우측 하단 메뉴 토글 버튼
+            // -----------------------
+            const float PADDING = 15.0f;
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+            ImVec2 window_pos = ImVec2(
+                viewport->WorkPos.x + PADDING,
+                viewport->WorkPos.y + viewport->WorkSize.y - PADDING
+            );
+
+            ImVec2 window_pos_pivot = ImVec2(0.0f, 1.0f);
+
+            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+            ImGui::SetNextWindowBgAlpha(0.0f); // 창 배경 투명화
+
+            ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
+                                     ImGuiWindowFlags_AlwaysAutoResize |
+                                     ImGuiWindowFlags_NoSavedSettings |
+                                     ImGuiWindowFlags_NoFocusOnAppearing |
+                                     ImGuiWindowFlags_NoNav |
+                                     ImGuiWindowFlags_NoMove;
+
+            if (ImGui::Begin("##MenuToggleBtn", nullptr, flags)) {
+                const char* btn_text = ImGui::show_menu ? ICON_MD_PAGE_CONTROL : ICON_MD_PAGE_CONTROL;
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.1f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.2f));
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+                if (ImGui::ButtonX(btn_text, ImVec2(0, 0), true))
+                {
+                    ImGui::show_menu = !ImGui::show_menu; // 토글
+                }
+                ImGui::PopStyleColor(3);
+                ImGui::PopStyleVar();
+            }
+            ImGui::End();
+
         }
 
 
