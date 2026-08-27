@@ -81,7 +81,7 @@ namespace ImGui
     bool should_close(bool force_close = false);
     bool context(std::function<void()> func);
     void load_config(const char* path);
-    void enable_menu(bool b);
+    void open_menu(bool b);
 
 
     // =====================================================

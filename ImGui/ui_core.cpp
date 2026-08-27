@@ -649,7 +649,7 @@ namespace ImGui
         ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
     }
 
-    void enable_menu(bool b) { ImGui::show_menu = b; }
+    void open_menu(bool b) { ImGui::show_menu = b; }
 
     Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
     bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }
