@@ -311,7 +311,7 @@ namespace ImGui
         static int  lazy_cnt                = 0;
         static bool lazy_flag_now_loading   = false;
         static bool lazy_flag_now_rendering = false;
-        static ImGui::Texture loading_img   = ImGui::load_texture(IMGUI_ROOT "/image.png");
+        static ImGui::Texture loading_img   = ImGui::load_texture(IMGUI_ROOT "/uon_logo.png");
 
         lazy_cnt++;
         if (lazy_cnt > 100) // 0.0166hz * 100 = 1.66s

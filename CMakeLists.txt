@@ -35,7 +35,7 @@ if(${PROJECT_IS_TOP_LEVEL})
 
     target_compile_definitions(main
             PRIVATE
-            IMGUI_ROOT="${CMAKE_CURRENT_SOURCE_DIR}"
+            ROOT_PATH="${CMAKE_CURRENT_SOURCE_DIR}"
     )
 
     target_link_libraries(main
