@@ -432,7 +432,7 @@ namespace ImGui
             // ImGui log 렌더링
             // -----------------------
             if (ImGui::show_menu)
-            loggr.draw(" " ICON_MD_SUBJECT " Log ", ImGui::show_log_window);
+            loggr.draw(" " ICON_MD_SUBJECT " Log ");
 
             // -----------------------
             // Style Editer

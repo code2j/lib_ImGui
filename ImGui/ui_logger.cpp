@@ -51,7 +51,7 @@ void ImGuiLogger::clear()
     buf.clear();
 }
 
-void ImGuiLogger::draw(const char *title, bool open)
+void ImGuiLogger::draw(const char *title)
 {
     const ImVec2 BUTTON_SIZE = ImVec2(35, 35);
 

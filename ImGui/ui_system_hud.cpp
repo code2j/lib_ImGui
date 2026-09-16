@@ -179,7 +179,7 @@ void ImGui::draw_system_hud(bool open)
     const float margin_right        = 15.0f;
     const float margin_top          = 15.0f;
     const float gap_between_windows = 8.0f;
-    const float alpha               = 0.4;
+    const float alpha               = 0.88;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
