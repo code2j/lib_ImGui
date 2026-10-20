@@ -11,7 +11,9 @@ add_subdirectory(raylib)
 add_subdirectory(ImGui)
 
 
-target_link_libraries(ImGui PUBLIC raylib)
+target_link_libraries(ImGui
+        PUBLIC raylib
+)
 
 
 # ==================================================================
