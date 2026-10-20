@@ -10,6 +10,9 @@ add_library(ImGui
         ${IMGUI_SRC}
 )
 
+find_package(X11 REQUIRED)
+target_link_libraries(ImGui PRIVATE X11::X11 X11::Xext)
+
 
 # ==================================================================
 # ImGui 헤더

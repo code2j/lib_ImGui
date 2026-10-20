@@ -6,11 +6,90 @@
 #include <filesystem>
 #include <fstream>
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/extensions/shape.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+#include <cmath>
 #include <csignal>
 namespace fs = std::filesystem;
 
 namespace
 {
+    int native_window_focus = -1;
+
+    void update_window_stacking()
+    {
+        Display* display = glfwGetX11Display();
+        Window window = glfwGetX11Window(glfwGetCurrentContext());
+        const bool focused = glfwGetWindowAttrib(glfwGetCurrentContext(), GLFW_FOCUSED);
+        if (native_window_focus == (int)focused) return;
+        native_window_focus = focused;
+
+        // GNOME can keep a maximized transparent window above the active app
+        // despite restack requests. Explicitly lower its layer while unfocused,
+        // then restore the normal layer when the user selects it again.
+        XEvent event = {};
+        event.xclient.type = ClientMessage;
+        event.xclient.display = display;
+        event.xclient.window = window;
+        event.xclient.message_type = XInternAtom(display, "_NET_WM_STATE", False);
+        event.xclient.format = 32;
+        event.xclient.data.l[0] = focused ? 0 : 1; // _NET_WM_STATE_REMOVE / ADD
+        event.xclient.data.l[1] = XInternAtom(display, "_NET_WM_STATE_BELOW", False);
+        event.xclient.data.l[3] = 1; // Request from an application.
+        XSendEvent(display, DefaultRootWindow(display), False,
+                   SubstructureRedirectMask | SubstructureNotifyMask, &event);
+        XFlush(display);
+    }
+
+    // Let X11 hit-test the visible UI in the normal desktop stacking order.
+    // Toggling passthrough from WantCaptureMouse cannot account for other apps
+    // covering our window, and also makes the first click depend on frame timing.
+    void update_input_region()
+    {
+        Display* display = glfwGetX11Display();
+        static const bool has_input_shape = [display]() {
+            int event_base, error_base, major, minor;
+            return XShapeQueryExtension(display, &event_base, &error_base) &&
+                   XShapeQueryVersion(display, &major, &minor) &&
+                   (major > 1 || (major == 1 && minor >= 1));
+        }();
+        if (!has_input_shape) return;
+
+        Window window = glfwGetX11Window(glfwGetCurrentContext());
+        ImGuiContext& g = *ImGui::GetCurrentContext();
+        // Popups need outside clicks for dismissal; X11 still respects other
+        // applications above this native window.
+        if (g.OpenPopupStack.Size > 0) {
+            XShapeCombineMask(display, window, ShapeInput, 0, 0, None, ShapeSet);
+        } else {
+            Region region = XCreateRegion();
+            for (ImGuiWindow* ui_window : g.Windows) {
+                if (!ui_window->Active || ui_window->Hidden ||
+                    (ui_window->Flags & ImGuiWindowFlags_NoMouseInputs)) continue;
+
+                ImRect bounds = ui_window->OuterRectClipped;
+                ImVec2 padding = g.Style.TouchExtraPadding;
+                if (!(ui_window->Flags & (ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)))
+                    padding = ImMax(padding, ImVec2(g.Style.WindowBorderHoverPadding,
+                                                   g.Style.WindowBorderHoverPadding));
+                bounds.Expand(padding);
+                bounds.ClipWith(ImRect(ImVec2(0, 0), g.IO.DisplaySize));
+                int x = (int)std::floor(bounds.Min.x);
+                int y = (int)std::floor(bounds.Min.y);
+                int width = (int)std::ceil(bounds.Max.x) - x;
+                int height = (int)std::ceil(bounds.Max.y) - y;
+                if (width <= 0 || height <= 0) continue;
+                XRectangle rect = { (short)x, (short)y,
+                                    (unsigned short)width, (unsigned short)height };
+                XUnionRectWithRegion(&rect, region, region);
+            }
+            XShapeCombineRegion(display, window, ShapeInput, 0, 0, region, ShapeSet);
+            XDestroyRegion(region);
+        }
+        XFlush(display);
+    }
 
     // ==================================================
     // 뷰포트 상태
@@ -158,7 +237,7 @@ namespace ImGui
         }
 
 
-        // 2. 최소화 버튼 (우측에서 2번째) - show_menu 끄기
+        // 2. 최소화 버튼 (우측에서 2번째)
         ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 2), 0));
 
         ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
@@ -169,7 +248,7 @@ namespace ImGui
         // 머터리얼 아이콘에서 일반적으로 최소화를 나타내는 마이너스 기호(REMOVE) 사용
         if (ImGui::ButtonX(ICON_MD_REMOVE, ImVec2(button_width, titlebar_height), false))
         {
-            ImGui::show_menu = false;
+            MinimizeWindow();
         }
 
         ImGui::PopStyleVar(1);
@@ -214,6 +293,7 @@ namespace ImGui
         // ---------------------------------------------------------------
         SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT);
         InitWindow(width, height, title);
+        native_window_focus = -1;
         SetTargetFPS(60);
         SetExitKey(0); // esc로 인한 종료 방지
 
@@ -273,10 +353,11 @@ namespace ImGui
         // ---------------------------------------------------------------
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
+        update_window_stacking();
 
 
-        // 패스스루 마우스 이벤트
-        static Display* display = XOpenDisplay(NULL);
+        // 전역 좌표는 HUD용으로만 사용한다. ImGui 입력은 GLFW가 전달한다.
+        Display* display = glfwGetX11Display();
 
         if (display) {
             Window root = DefaultRootWindow(display);
@@ -287,22 +368,11 @@ namespace ImGui
             // X11 API를 통해 OS 전역 마우스 좌표를 쿼리
             if (XQueryPointer(display, root, &root_return, &child_return, &root_x, &root_y, &win_x, &win_y, &mask_return)) {
 
-                Vector2 window_pos = GetWindowPosition();
-
-                ImGui::GetIO().AddMousePosEvent((float)root_x - window_pos.x, (float)root_y - window_pos.y);
                 ImGui::GLOBAL_MOUSE_POS = ImVec2((float)root_x, (float)root_y);
             }
         }
 
         ImGui::NewFrame();
-
-        if (ImGui::GetIO().WantCaptureMouse) {
-            ClearWindowState(FLAG_WINDOW_MOUSE_PASSTHROUGH);
-            // SetWindowState(FLAG_WINDOW_TOPMOST);
-        } else {
-            SetWindowState(FLAG_WINDOW_MOUSE_PASSTHROUGH);
-            // ClearWindowState(FLAG_WINDOW_TOPMOST);
-        }
 
 
         // ---------------------------------------------------------------
@@ -590,6 +660,7 @@ namespace ImGui
         // ImGui, Raylib 렌더링
         // ---------------------------------------------------------------
         ImGui::Render();
+        update_input_region();
         BeginDrawing();
         ClearBackground(BLANK);
 
@@ -654,5 +725,3 @@ namespace ImGui
     Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
     bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }
 }
-
-
