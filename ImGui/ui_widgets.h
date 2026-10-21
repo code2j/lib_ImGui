@@ -32,6 +32,19 @@ namespace ImGui
     // Widget: Toggle Button
     // ====================================================
     bool Toggle(const char* str_id, bool* v);
+    // ====================================================
+    // Widget: Input Text
+    // ====================================================
+    bool InputTextX(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = NULL, void* user_data = NULL);
+    bool InputTextMultilineX(const char* label, char* buf, size_t buf_size, const ImVec2& size = ImVec2(0, 0), ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = NULL, void* user_data = NULL);
+
+
+    // ====================================================
+    // Widget: Numeric Input
+    // ====================================================
+    bool InputX(const char* label, int* v, int step = 1, int step_fast = 100, ImGuiInputTextFlags flags = 0);
+    bool InputX(const char* label, float* v, float step = 0.0f, float step_fast = 0.0f, const char* format = "%.3f", ImGuiInputTextFlags flags = 0);
+    bool InputX(const char* label, double* v, double step = 0.0, double step_fast = 0.0, const char* format = "%.6f", ImGuiInputTextFlags flags = 0);
 
 
     // ====================================================

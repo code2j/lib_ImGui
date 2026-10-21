@@ -37,27 +37,25 @@ int main() {
             ImGui::Separator();
 
             static bool is_c = false;
-            ImGui::Check("체크박스 (커스텀)", &is_c);
-            ImGui::Dummy(ImVec2(0, 15.0f));
-
+            ImGui::Check("체크박스", &is_c);
 
             static int radio_idx = 0;
-            ImGui::Radio("라디오 1 (커스텀)", &radio_idx, 0);
-            ImGui::Radio("라디오 2 (커스텀)", &radio_idx, 1);
-            ImGui::Dummy(ImVec2(0, 15.0f));
+            ImGui::Radio("라디오 1", &radio_idx, 0);
+            ImGui::Radio("라디오 2", &radio_idx, 1);
 
-            if (ImGui::Button("일반 버튼", ImVec2(100, 0))) {
-                // 버튼 클릭 이벤트
+            if (ImGui::Button("버튼 1", ImVec2(100, 0))) {
+                // 버튼이벤트
             }
             ImGui::SameLine();
+
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-            if (ImGui::Button("위험 버튼", ImVec2(100, 0))) {
-                // 경고/삭제 버튼 이벤트
+            if (ImGui::Button("버튼 2", ImVec2(100, 0))) {
+                // 버튼 이벤트
             }
             ImGui::PopStyleColor(3);
-            ImGui::Dummy(ImVec2(0, 15.0f));
+            ImGui::Dummy(ImVec2(0, 20.0f));
 
 
             // ==========================================
@@ -67,14 +65,14 @@ int main() {
             ImGui::Separator();
 
             static char text_buf[128] = "Hello, Custom ImGui!";
-            ImGui::InputText("텍스트 입력", text_buf, IM_COUNTOF(text_buf));
+            ImGui::InputTextX("텍스트 입력", text_buf, IM_COUNTOF(text_buf));
 
             static char pw_buf[64] = "";
-            ImGui::InputText("비밀번호", pw_buf, IM_COUNTOF(pw_buf), ImGuiInputTextFlags_Password);
+            ImGui::InputTextX("비밀번호", pw_buf, IM_COUNTOF(pw_buf), ImGuiInputTextFlags_Password);
 
             static char multiline_buf[256] = "여기에\n여러 줄의\n텍스트를 입력하세요.";
-            ImGui::InputTextMultiline("메모", multiline_buf, IM_COUNTOF(multiline_buf), ImVec2(0, 60));
-            ImGui::Dummy(ImVec2(0, 15.0f));
+            ImGui::InputTextMultilineX("메모", multiline_buf, IM_COUNTOF(multiline_buf), ImVec2(0, 80));
+            ImGui::Dummy(ImVec2(0, 20.0f));
 
 
 
@@ -85,16 +83,15 @@ int main() {
             ImGui::Separator();
 
             static double drag_value = 50.0f;
-            ImGui::Drag("드래그 (커스텀)", &drag_value, 1.0f, 0.0f, 100.0f, "%.1f");
+            ImGui::Drag("Drag", &drag_value, 1.0f, 0.0f, 100.0f, "%.1f");
 
             static float slider_value = 30.0f;
-            ImGui::SliderFloatX("슬라이더 FloatX", &slider_value, 0.0f, 100.0f, "%.1f");
-            ImGui::SliderX("슬라이더 X", &slider_value, 0.0f, 100.0f, "%.1f");
-            ImGui::Slider("슬라이더 (값 표시 숨김)", &slider_value, 0.0f, 100.0f);
+            // ImGui::SliderX("Slider1", &slider_value, 0.0f, 100.0f, "%.1f");
+            ImGui::Slider("Slider2", &slider_value, 0.0f, 100.0f);
 
             static float range_min = 20.0f, range_max = 80.0f;
-            ImGui::SliderRangeX("범위 슬라이더 X", &range_min, &range_max, 0.0f, 100.0f);
-            ImGui::SliderRange("범위 슬라이더 (기본)", &range_min, &range_max, 0.0f, 100.0f);
+            // ImGui::SliderRangeX("Slider Range1", &range_min, &range_max, 0.0f, 100.0f);
+            ImGui::SliderRange("Slider Range2", &range_min, &range_max, 0.0f, 100.0f);
             ImGui::Dummy(ImVec2(0, 15.0f));
 
             // ==========================================
@@ -197,9 +194,9 @@ int main() {
             ImGui::SliderRange("Range", &price_min, &price_max, 0.0f, 10.0f, "%.1f");
             ImGui::Dummy(ImVec2(0, 1));
 
-            static int cnt = 1.0;
-            if (ImGui::InputInt("Input", &cnt)) {
-                cnt = std::max(static_cast<int>(price_min), std::min(cnt, static_cast<int>(price_max)));
+            static float cnt = 1.0;
+            if (ImGui::InputX("Input", &cnt, 0.1)) {
+                // cnt = std::max(static_cast<int>(price_min), std::min(cnt, static_cast<int>(price_max)));
             }
             ImGui::Dummy(ImVec2(0, 1));
 

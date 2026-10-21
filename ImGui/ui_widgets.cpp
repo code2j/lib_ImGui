@@ -428,6 +428,252 @@ bool ImGui::Radio(const char* label, int* v, int v_button)
     return pressed;
 }
 
+bool ImGui::InputTextX(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
+{
+    IM_ASSERT(!(flags & ImGuiInputTextFlags_Multiline)); // call InputTextMultiline()
+
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const float w = CalcItemWidth();
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+    const ImVec2 pos = window->DC.CursorPos;
+
+    // _drag_와 동일하게 라벨은 왼쪽, 입력란은 가용 영역의 오른쪽 끝에 배치한다.
+    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+    const float frame_x = pos.x + total_width - w;
+    window->DC.CursorPos.x = frame_x;
+
+    // 빈 라벨로 원본 편집 동작을 사용하되, 호출자가 지정한 라벨의 ID는 유지한다.
+    PushOverrideID(id);
+    const bool value_changed = InputTextEx("", NULL, buf, (int)buf_size, ImVec2(w, GetFrameHeight()), flags, callback, user_data);
+    PopID();
+
+    // 다음 행의 시작점과 전체 항목 영역에 왼쪽 라벨 영역을 반영한다.
+    window->DC.CursorPos.x = pos.x;
+    g.LastItemData.Rect.Min.x = pos.x;
+    if (label_size.x > 0.0f)
+        RenderText(ImVec2(pos.x, pos.y + style.FramePadding.y), label);
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags);
+    return value_changed;
+}
+
+bool ImGui::InputTextMultilineX(const char* label, char* buf, size_t buf_size, const ImVec2& size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+    const ImVec2 pos = window->DC.CursorPos;
+
+    // 원본과 동일한 기본 크기(8줄)를 사용하며, 음수 크기는 이동 전 가용 영역을 기준으로 계산한다.
+    const ImVec2 frame_size = CalcItemSize(size, CalcItemWidth(), g.FontSize * 8.0f + style.FramePadding.y * 2.0f);
+    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + frame_size.x;
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+    window->DC.CursorPos.x = pos.x + total_width - frame_size.x;
+
+    // 원본의 여러 줄 편집/스크롤 동작을 사용하고 라벨은 별도로 왼쪽에 그린다.
+    PushOverrideID(id);
+    const bool value_changed = InputTextEx("", NULL, buf, (int)buf_size, frame_size, flags | ImGuiInputTextFlags_Multiline, callback, user_data);
+    PopID();
+
+    window->DC.CursorPos.x = pos.x;
+    g.LastItemData.Rect.Min.x = pos.x;
+    if (label_size.x > 0.0f)
+        RenderText(ImVec2(pos.x, pos.y + style.FramePadding.y), label);
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags);
+    return value_changed;
+}
+
+namespace ImGui
+{
+static bool InputScalarX(const char* label, ImGuiDataType data_type, void* p_data, const void* p_step, const void* p_step_fast, const char* format, ImGuiInputTextFlags flags)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const ImVec2 label_size = CalcTextSize(label, NULL, true);
+    const ImVec2 pos = window->DC.CursorPos;
+    const float w = CalcItemWidth();
+    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+    window->DC.CursorPos.x = pos.x + total_width - w;
+    PushOverrideID(id);
+
+    IM_ASSERT((flags & ImGuiInputTextFlags_EnterReturnsTrue) == 0); // Not supported by InputScalar(). Please open an issue if you this would be useful to you. Otherwise use IsItemDeactivatedAfterEdit()!
+
+    if (format == NULL)
+        format = DataTypeGetInfo(data_type)->PrintFmt;
+
+    void* p_data_default = (g.NextItemData.HasFlags & ImGuiNextItemDataFlags_HasRefVal) ? &g.NextItemData.RefVal : &g.DataTypeZeroValue;
+
+    char buf[64];
+    if ((flags & ImGuiInputTextFlags_DisplayEmptyRefVal) && DataTypeCompare(data_type, p_data, p_data_default) == 0)
+        buf[0] = 0;
+    else
+        DataTypeFormatString(buf, IM_COUNTOF(buf), data_type, p_data, format);
+
+    // Disable the MarkItemEdited() call in InputText but keep ImGuiItemStatusFlags_Edited.
+    // We call MarkItemEdited() ourselves by comparing the actual data rather than the string.
+    g.NextItemData.ItemFlags |= ImGuiItemFlags_NoMarkEdited;
+    flags |= ImGuiInputTextFlags_AutoSelectAll | (ImGuiInputTextFlags)ImGuiInputTextFlags_LocalizeDecimalPoint;
+
+    bool value_changed = false;
+    if (p_step == NULL)
+    {
+        if (InputText("", buf, IM_COUNTOF(buf), flags))
+            value_changed = DataTypeApplyFromText(buf, data_type, p_data, format, (flags & ImGuiInputTextFlags_ParseEmptyRefVal) ? p_data_default : NULL);
+    }
+    else
+    {
+        const float button_size = GetFrameHeight();
+
+        // [핵심 변경] 첫 번째 버튼이 렌더링되어 설정된 너비 값을 소모하기 전에 전체 길이를 미리 캐싱합니다.
+        const float full_width = CalcItemWidth();
+        const float input_width = ImMax(1.0f, full_width - (button_size + style.ItemInnerSpacing.x) * 2);
+
+        BeginGroup(); // The only purpose of the group here is to allow the caller to query item data e.g. IsItemActive()
+        PushID("");
+
+        const ImVec2 backup_frame_padding = style.FramePadding;
+
+        // 1. 좌측 '<' 버튼
+        style.FramePadding.x = style.FramePadding.y;
+        if (flags & ImGuiInputTextFlags_ReadOnly)
+            BeginDisabled();
+        PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
+
+        PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
+        if (ButtonX("<", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
+        {
+            DataTypeApplyOp(data_type, '-', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
+            value_changed = true;
+        }
+
+        PopStyleVar();
+        PopStyleColor(3);
+        PopItemFlag();
+        if (flags & ImGuiInputTextFlags_ReadOnly)
+            EndDisabled();
+
+        // 2. 중앙 InputText
+        style.FramePadding = backup_frame_padding;
+        SameLine(0, style.ItemInnerSpacing.x);
+
+        // 미리 계산해둔 input_width를 적용하여 원래의 위젯 전체 길이가 보장되도록 설정
+        SetNextItemWidth(input_width);
+
+        ImVec2 input_pos = window->DC.CursorPos;
+        ImGuiID input_id = window->GetID("");
+        bool is_active = (g.ActiveId == input_id);
+
+        if (!is_active)
+            PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+        if (InputText("", buf, IM_COUNTOF(buf), flags))
+        {
+            if (DataTypeApplyFromText(buf, data_type, p_data, format, (flags & ImGuiInputTextFlags_ParseEmptyRefVal) ? p_data_default : NULL))
+                value_changed = true;
+        }
+
+        if (!is_active)
+        {
+            PopStyleColor();
+
+            ImVec2 text_size = CalcTextSize(buf);
+            ImVec2 text_pos = ImVec2(
+                input_pos.x + (input_width - text_size.x) * 0.5f,
+                input_pos.y + style.FramePadding.y
+            );
+
+            ImVec2 clip_min = input_pos;
+            ImVec2 clip_max = ImVec2(input_pos.x + input_width, input_pos.y + button_size);
+
+            window->DrawList->PushClipRect(clip_min, clip_max, true);
+            window->DrawList->AddText(text_pos, GetColorU32(ImGuiCol_Text), buf);
+            window->DrawList->PopClipRect();
+        }
+        IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Inputable);
+
+        // 3. 우측 '>' 버튼
+        SameLine(0, style.ItemInnerSpacing.x);
+        style.FramePadding.x = style.FramePadding.y;
+        if (flags & ImGuiInputTextFlags_ReadOnly)
+            BeginDisabled();
+        PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
+
+        PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
+        PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
+        PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+
+        if (ButtonX(">", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
+        {
+            DataTypeApplyOp(data_type, '+', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
+            value_changed = true;
+        }
+
+        PopStyleVar();
+        PopStyleColor(3);
+        PopItemFlag();
+        if (flags & ImGuiInputTextFlags_ReadOnly)
+            EndDisabled();
+
+        style.FramePadding = backup_frame_padding;
+
+        PopID();
+        EndGroup();
+    }
+
+    PopID();
+    window->DC.CursorPos.x = pos.x;
+    g.LastItemData.Rect.Min.x = pos.x;
+    if (label_size.x > 0.0f)
+        RenderText(ImVec2(pos.x, pos.y + style.FramePadding.y), label);
+
+    g.LastItemData.ItemFlags &= ~ImGuiItemFlags_NoMarkEdited;
+    if (value_changed)
+        MarkItemEdited(g.LastItemData.ID);
+
+    return value_changed;
+}
+
+bool InputX(const char* label, int* v, int step, int step_fast, ImGuiInputTextFlags flags)
+{
+    const char* format = (flags & ImGuiInputTextFlags_CharsHexadecimal) ? "%08X" : "%d";
+    return InputScalarX(label, ImGuiDataType_S32, v, step > 0 ? &step : NULL, step_fast > 0 ? &step_fast : NULL, format, flags);
+}
+
+bool InputX(const char* label, float* v, float step, float step_fast, const char* format, ImGuiInputTextFlags flags)
+{
+    return InputScalarX(label, ImGuiDataType_Float, v, step > 0.0f ? &step : NULL, step_fast > 0.0f ? &step_fast : NULL, format, flags);
+}
+
+bool InputX(const char* label, double* v, double step, double step_fast, const char* format, ImGuiInputTextFlags flags)
+{
+    return InputScalarX(label, ImGuiDataType_Double, v, step > 0.0 ? &step : NULL, step_fast > 0.0 ? &step_fast : NULL, format, flags);
+}
+}
+
 bool ImGui::_drag_(const char* label, ImGuiDataType data_type, void* p_data, float v_speed, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
 {
     ImGuiWindow* window = GetCurrentWindow();
@@ -2858,5 +3104,3 @@ void ImGui::Help(const char *desc)
         ImGui::EndTooltip();
     }
 }
-
-
