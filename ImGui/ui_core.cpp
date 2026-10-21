@@ -16,30 +16,37 @@ namespace fs = std::filesystem;
 
 namespace
 {
-    int native_window_focus = -1;
+    int native_window_state = -1;
+    bool window_pinned = false;
 
     void update_window_stacking()
     {
         Display* display = glfwGetX11Display();
         Window window = glfwGetX11Window(glfwGetCurrentContext());
         const bool focused = glfwGetWindowAttrib(glfwGetCurrentContext(), GLFW_FOCUSED);
-        if (native_window_focus == (int)focused) return;
-        native_window_focus = focused;
+        const int state = (focused ? 1 : 0) | (window_pinned ? 2 : 0);
+        if (native_window_state == state) return;
+        native_window_state = state;
 
         // GNOME can keep a maximized transparent window above the active app
         // despite restack requests. Explicitly lower its layer while unfocused,
-        // then restore the normal layer when the user selects it again.
+        // then restore the normal layer when selected. A pinned window stays
+        // above other apps even when they receive focus.
         XEvent event = {};
         event.xclient.type = ClientMessage;
         event.xclient.display = display;
         event.xclient.window = window;
         event.xclient.message_type = XInternAtom(display, "_NET_WM_STATE", False);
         event.xclient.format = 32;
-        event.xclient.data.l[0] = focused ? 0 : 1; // _NET_WM_STATE_REMOVE / ADD
+        event.xclient.data.l[0] = (focused || window_pinned) ? 0 : 1; // REMOVE / ADD
         event.xclient.data.l[1] = XInternAtom(display, "_NET_WM_STATE_BELOW", False);
         event.xclient.data.l[3] = 1; // Request from an application.
         XSendEvent(display, DefaultRootWindow(display), False,
                    SubstructureRedirectMask | SubstructureNotifyMask, &event);
+        if (window_pinned)
+            SetWindowState(FLAG_WINDOW_TOPMOST);
+        else
+            ClearWindowState(FLAG_WINDOW_TOPMOST);
         XFlush(display);
     }
 
@@ -110,7 +117,6 @@ namespace
     // ==================================================
     // 독 스페이스 & 타이틀바 상태
     // ==================================================
-    const float TITLEBAR_HEIGHT = 0.0;
     bool is_resizing            = false;
     bool is_dragging_title_bar  = false;
     Vector2 drag_offset         = { 0.0, 0.0 };
@@ -184,9 +190,9 @@ namespace ImGui
             ImDrawFlags_RoundCornersTop
         );
 
-        // 타이틀 바 드래그 이동 처리 (버튼 3개 크기만큼 제외)
+        // 타이틀 바 드래그 이동 처리 (버튼 4개 크기만큼 제외)
         ImGui::SetCursorPos(ImVec2(0, 0));
-        ImGui::InvisibleButton("##title_drag", ImVec2(windowSize.x - (button_width * 3), titlebar_height));
+        ImGui::InvisibleButton("##title_drag", ImVec2(ImMax(1.0f, windowSize.x - (button_width * 4)), titlebar_height));
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
             ImVec2 delta = ImGui::GetIO().MouseDelta;
@@ -204,14 +210,34 @@ namespace ImGui
         ImGui::Text("%s", titleText);
 
 
+        // 핀 고정 버튼 (우측에서 4번째)
+        ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 4), 0));
+        // Read the accent colors before overriding the button palette.
+        const ImVec4 pin_bg = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+        const ImVec4 pin_hovered = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+        const ImVec4 pin_active = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+        ImGui::PushStyleColor(ImGuiCol_Button, window_pinned ? pin_bg : ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, window_pinned ? pin_hovered : ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, window_pinned ? pin_active : ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+        ImGui::PushStyleColor(ImGuiCol_Text, window_pinned ? ImVec4(1, 1, 1, 1) : ImGui::GetStyleColorVec4(ImGuiCol_Text));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        if (ImGui::ButtonX(ICON_MD_KEEP "##window_pin", ImVec2(button_width, titlebar_height), false)) {
+            window_pinned = !window_pinned;
+            update_window_stacking();
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", window_pinned ? "고정 해제 " : "항상 위에 고정 ");
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(4);
+
         // 1. 설정 버튼 (우측에서 3번째)
         ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 3), 0));
 
         ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        if (ImGui::ButtonX(ICON_MD_SETTINGS, ImVec2(button_width, titlebar_height), false))
+        if (ImGui::ButtonX(ICON_MD_SETTINGS "##window_setting", ImVec2(button_width, titlebar_height), false))
         {
             ImGui::OpenPopup("SettingsPopup");
         }
@@ -241,12 +267,12 @@ namespace ImGui
         ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 2), 0));
 
         ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
         // 머터리얼 아이콘에서 일반적으로 최소화를 나타내는 마이너스 기호(REMOVE) 사용
-        if (ImGui::ButtonX(ICON_MD_REMOVE, ImVec2(button_width, titlebar_height), false))
+        if (ImGui::ButtonX(ICON_MD_REMOVE "##window_minimaze", ImVec2(button_width, titlebar_height), false))
         {
             MinimizeWindow();
         }
@@ -293,7 +319,8 @@ namespace ImGui
         // ---------------------------------------------------------------
         SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT);
         InitWindow(width, height, title);
-        native_window_focus = -1;
+        native_window_state = -1;
+        window_pinned = false;
         SetTargetFPS(60);
         SetExitKey(0); // esc로 인한 종료 방지
 
