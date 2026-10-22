@@ -18,6 +18,7 @@ namespace
 {
     int native_window_state = -1;
     bool window_pinned = false;
+    std::string config_path;
 
     void update_window_stacking()
     {
@@ -246,19 +247,22 @@ namespace ImGui
 
         if (ImGui::BeginPopup("SettingsPopup")) {
 
-            ImGui::MenuItem("3D Viewport", "", &ImGui::show_3d_viewport);
-            ImGui::MenuItem("Log", "", &ImGui::show_log_window);
+            bool config_changed = ImGui::MenuItem("3D Viewport", "", &ImGui::show_3d_viewport);
+            config_changed |= ImGui::MenuItem("Log", "", &ImGui::show_log_window);
             ImGui::MenuItem("Style Editor", "", &ImGui::show_style_edit);
-            ImGui::MenuItem("System HUD", "", &ImGui::show_system_hud);
+            config_changed |= ImGui::MenuItem("System HUD", "", &ImGui::show_system_hud);
 
             if (ImGui::BeginMenu("Theme"))
             {
                 if (ImGui::ThemeSelector(&ImGui::theme_id)) {
                     ImGui::flag_change_thema = true;
+                    config_changed = true;
                 }
                 ImGui::EndMenu();
             }
 
+            if (config_changed && ImGui::GetIO().IniFilename != nullptr)
+                ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
             ImGui::EndPopup();
         }
 
@@ -537,7 +541,7 @@ namespace ImGui
             // -----------------------
             // ImGui log 렌더링
             // -----------------------
-            if (ImGui::show_menu)
+            if (ImGui::show_menu && ImGui::show_log_window)
             loggr.draw(" " ICON_MD_SUBJECT " Log ");
 
             // -----------------------
@@ -704,7 +708,8 @@ namespace ImGui
 
 
         // config path 설정
-        ImGui::GetIO().IniFilename = path;
+        config_path = fs::absolute(p).string();
+        ImGui::GetIO().IniFilename = config_path.c_str();
 
 
         // ini 콜백 등록
@@ -714,7 +719,10 @@ namespace ImGui
         ini_handler.ReadOpenFn = read_open;
         ini_handler.ReadLineFn = read_line;
         ini_handler.WriteAllFn = write_all;
-        ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
+        if (ImGui::FindSettingsHandler(ini_handler.TypeName) == nullptr)
+            ImGui::AddSettingsHandler(&ini_handler);
+
+        ImGui::LoadIniSettingsFromDisk(ImGui::GetIO().IniFilename);
     }
 
     void open_menu(bool b) { ImGui::show_menu = b; }
