@@ -4020,7 +4020,7 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
         PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-        if (ButtonX("<", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
+        if (IconButton("<", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
         {
             DataTypeApplyOp(data_type, '-', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
             value_changed = true;
@@ -4083,7 +4083,7 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data
         PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-        if (ButtonX(">", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
+        if (IconButton(">", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
         {
             DataTypeApplyOp(data_type, '+', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
             value_changed = true;

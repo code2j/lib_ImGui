@@ -16,6 +16,7 @@ int main() {
     bool is_loading = true;
     ImGui::Texture texture1 = ImGui::load_texture(IMGUI_ROOT "/image.png");
 
+
     while (!ImGui::should_close()) {
     ImGui::context([&]()
     {
@@ -37,14 +38,21 @@ int main() {
             ImGui::Separator();
 
             static bool is_c = false;
-            ImGui::Check("체크박스", &is_c);
+            if (ImGui::Check("체크박스", &is_c)) {
+                if (is_c)
+                    ImGui::NotifyInfo("체크박스 선택됨");
+                else
+                    ImGui::NotifyInfo("체크박스 해제됨");
+            }
 
             static int radio_idx = 0;
-            ImGui::Radio("라디오 1", &radio_idx, 0);
-            ImGui::Radio("라디오 2", &radio_idx, 1);
+            if (ImGui::Radio("라디오 1", &radio_idx, 0))
+                ImGui::NotifyInfo("라디오 1 선택됨");
+            if (ImGui::Radio("라디오 2", &radio_idx, 1))
+                ImGui::NotifyInfo("라디오 2 선택됨");
 
             if (ImGui::Button("버튼 1", ImVec2(100, 0))) {
-                // 버튼이벤트
+                ImGui::NotifyInfo("버튼 1 클릭됨");
             }
             ImGui::SameLine();
 
@@ -52,7 +60,7 @@ int main() {
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
             if (ImGui::Button("버튼 2", ImVec2(100, 0))) {
-                // 버튼 이벤트
+                ImGui::NotifyInfo("버튼 2 클릭됨");
             }
             ImGui::PopStyleColor(3);
             ImGui::Dummy(ImVec2(0, 20.0f));
@@ -65,13 +73,13 @@ int main() {
             ImGui::Separator();
 
             static char text_buf[128] = "Hello, Custom ImGui!";
-            ImGui::InputTextX("텍스트 입력", text_buf, IM_COUNTOF(text_buf));
+            ImGui::InputTextLine("텍스트 입력", text_buf, IM_COUNTOF(text_buf));
 
             static char pw_buf[64] = "";
-            ImGui::InputTextX("비밀번호", pw_buf, IM_COUNTOF(pw_buf), ImGuiInputTextFlags_Password);
+            ImGui::InputTextLine("비밀번호", pw_buf, IM_COUNTOF(pw_buf), ImGuiInputTextFlags_Password);
 
             static char multiline_buf[256] = "여기에\n여러 줄의\n텍스트를 입력하세요.";
-            ImGui::InputTextMultilineX("메모", multiline_buf, IM_COUNTOF(multiline_buf), ImVec2(0, 80));
+            ImGui::InputTextLines("메모", multiline_buf, IM_COUNTOF(multiline_buf), ImVec2(0, 80));
             ImGui::Dummy(ImVec2(0, 20.0f));
 
 
@@ -195,7 +203,7 @@ int main() {
             ImGui::Dummy(ImVec2(0, 1));
 
             static float cnt = 1.0;
-            if (ImGui::InputX("Input", &cnt, 0.1)) {
+            if (ImGui::InputNum("Input", &cnt, 0.1)) {
                 // cnt = std::max(static_cast<int>(price_min), std::min(cnt, static_cast<int>(price_max)));
             }
             ImGui::Dummy(ImVec2(0, 1));

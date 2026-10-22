@@ -191,7 +191,7 @@ void ImGui::EndCollapsingHeader()
     }
 }
 
-bool ImGui::ButtonX(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags)
+bool ImGui::IconButton(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags)
 {
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -428,7 +428,7 @@ bool ImGui::Radio(const char* label, int* v, int v_button)
     return pressed;
 }
 
-bool ImGui::InputTextX(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
+bool ImGui::InputTextLine(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
 {
     IM_ASSERT(!(flags & ImGuiInputTextFlags_Multiline)); // call InputTextMultiline()
 
@@ -464,7 +464,7 @@ bool ImGui::InputTextX(const char* label, char* buf, size_t buf_size, ImGuiInput
     return value_changed;
 }
 
-bool ImGui::InputTextMultilineX(const char* label, char* buf, size_t buf_size, const ImVec2& size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
+bool ImGui::InputTextLines(const char* label, char* buf, size_t buf_size, const ImVec2& size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
 {
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -498,7 +498,7 @@ bool ImGui::InputTextMultilineX(const char* label, char* buf, size_t buf_size, c
 
 namespace ImGui
 {
-static bool InputScalarX(const char* label, ImGuiDataType data_type, void* p_data, const void* p_step, const void* p_step_fast, const char* format, ImGuiInputTextFlags flags)
+static bool _inputnum_(const char* label, ImGuiDataType data_type, void* p_data, const void* p_step, const void* p_step_fast, const char* format, ImGuiInputTextFlags flags)
 {
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
@@ -563,7 +563,7 @@ static bool InputScalarX(const char* label, ImGuiDataType data_type, void* p_dat
         PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-        if (ButtonX("<", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
+        if (IconButton("<", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
         {
             DataTypeApplyOp(data_type, '-', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
             value_changed = true;
@@ -626,7 +626,7 @@ static bool InputScalarX(const char* label, ImGuiDataType data_type, void* p_dat
         PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(125, 125, 125, 30));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-        if (ButtonX(">", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
+        if (IconButton(">", ImVec2(button_size, button_size), ImGuiButtonFlags_None))
         {
             DataTypeApplyOp(data_type, '+', p_data, p_data, g.IO.KeyCtrl && p_step_fast ? p_step_fast : p_step);
             value_changed = true;
@@ -657,20 +657,20 @@ static bool InputScalarX(const char* label, ImGuiDataType data_type, void* p_dat
     return value_changed;
 }
 
-bool InputX(const char* label, int* v, int step, int step_fast, ImGuiInputTextFlags flags)
+bool InputNum(const char* label, int* v, int step, int step_fast, ImGuiInputTextFlags flags)
 {
     const char* format = (flags & ImGuiInputTextFlags_CharsHexadecimal) ? "%08X" : "%d";
-    return InputScalarX(label, ImGuiDataType_S32, v, step > 0 ? &step : NULL, step_fast > 0 ? &step_fast : NULL, format, flags);
+    return _inputnum_(label, ImGuiDataType_S32, v, step > 0 ? &step : NULL, step_fast > 0 ? &step_fast : NULL, format, flags);
 }
 
-bool InputX(const char* label, float* v, float step, float step_fast, const char* format, ImGuiInputTextFlags flags)
+bool InputNum(const char* label, float* v, float step, float step_fast, const char* format, ImGuiInputTextFlags flags)
 {
-    return InputScalarX(label, ImGuiDataType_Float, v, step > 0.0f ? &step : NULL, step_fast > 0.0f ? &step_fast : NULL, format, flags);
+    return _inputnum_(label, ImGuiDataType_Float, v, step > 0.0f ? &step : NULL, step_fast > 0.0f ? &step_fast : NULL, format, flags);
 }
 
-bool InputX(const char* label, double* v, double step, double step_fast, const char* format, ImGuiInputTextFlags flags)
+bool InputNum(const char* label, double* v, double step, double step_fast, const char* format, ImGuiInputTextFlags flags)
 {
-    return InputScalarX(label, ImGuiDataType_Double, v, step > 0.0 ? &step : NULL, step_fast > 0.0 ? &step_fast : NULL, format, flags);
+    return _inputnum_(label, ImGuiDataType_Double, v, step > 0.0 ? &step : NULL, step_fast > 0.0 ? &step_fast : NULL, format, flags);
 }
 }
 
@@ -1666,7 +1666,15 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
     if (temp_input_is_active)
     {
         const bool clamp_enabled = (flags & ImGuiSliderFlags_ClampOnInput) != 0;
-        return TempInputScalar(frame_bb, id, label, data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
+        // 입력 모드에서도 왼쪽 라벨을 유지하고, 입력란의 기본 우측 라벨은 숨긴다.
+        if (label_size.x > 0.0f)
+            RenderText(ImVec2(pos.x, frame_bb.Min.y + style.FramePadding.y), label);
+
+        PushOverrideID(id);
+        const bool value_changed = TempInputScalar(frame_bb, id, "", data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
+        PopID();
+        IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Inputable);
+        return value_changed;
     }
 
     // =========================================================================

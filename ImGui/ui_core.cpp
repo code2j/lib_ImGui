@@ -221,7 +221,7 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, window_pinned ? pin_active : ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
         ImGui::PushStyleColor(ImGuiCol_Text, window_pinned ? ImVec4(1, 1, 1, 1) : ImGui::GetStyleColorVec4(ImGuiCol_Text));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        if (ImGui::ButtonX(ICON_MD_KEEP "##window_pin", ImVec2(button_width, titlebar_height), false)) {
+        if (ImGui::IconButton(ICON_MD_KEEP "##window_pin", ImVec2(button_width, titlebar_height), false)) {
             window_pinned = !window_pinned;
             update_window_stacking();
         }
@@ -237,7 +237,7 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        if (ImGui::ButtonX(ICON_MD_SETTINGS "##window_setting", ImVec2(button_width, titlebar_height), false))
+        if (ImGui::IconButton(ICON_MD_SETTINGS "##window_setting", ImVec2(button_width, titlebar_height), false))
         {
             ImGui::OpenPopup("SettingsPopup");
         }
@@ -272,7 +272,7 @@ namespace ImGui
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
         // 머터리얼 아이콘에서 일반적으로 최소화를 나타내는 마이너스 기호(REMOVE) 사용
-        if (ImGui::ButtonX(ICON_MD_REMOVE "##window_minimaze", ImVec2(button_width, titlebar_height), false))
+        if (ImGui::IconButton(ICON_MD_REMOVE "##window_minimaze", ImVec2(button_width, titlebar_height), false))
         {
             MinimizeWindow();
         }
@@ -289,7 +289,7 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 
-        if (ImGui::ButtonX(ICON_MD_CLOSE, ImVec2(button_width, titlebar_height), false))
+        if (ImGui::IconButton(ICON_MD_CLOSE, ImVec2(button_width, titlebar_height), false))
         {
             ImGui::should_close(true);
         }
@@ -669,7 +669,7 @@ namespace ImGui
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.1f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.2f));
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-                if (ImGui::ButtonX(btn_text, ImVec2(0, 0), true))
+                if (ImGui::IconButton(btn_text, ImVec2(0, 0), true))
                 {
                     ImGui::show_menu = !ImGui::show_menu; // 토글
                 }
