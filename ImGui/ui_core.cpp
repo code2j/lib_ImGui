@@ -16,8 +16,9 @@ namespace fs = std::filesystem;
 
 namespace
 {
-    int native_window_state = -1;
     bool window_pinned = false;
+    int previous_window_focus = -1;
+    Window previous_active_window = None;
     std::string config_path;
 
     void update_window_stacking()
@@ -25,30 +26,67 @@ namespace
         Display* display = glfwGetX11Display();
         Window window = glfwGetX11Window(glfwGetCurrentContext());
         const bool focused = glfwGetWindowAttrib(glfwGetCurrentContext(), GLFW_FOCUSED);
-        const int state = (focused ? 1 : 0) | (window_pinned ? 2 : 0);
-        if (native_window_state == state) return;
-        native_window_state = state;
+        const bool focus_changed = previous_window_focus != (int)focused;
+        previous_window_focus = focused;
+        static const Atom state_atom = XInternAtom(display, "_NET_WM_STATE", False);
+        static const Atom above_atom = XInternAtom(display, "_NET_WM_STATE_ABOVE", False);
+        static const Atom below_atom = XInternAtom(display, "_NET_WM_STATE_BELOW", False);
+        static const Atom active_atom = XInternAtom(display, "_NET_ACTIVE_WINDOW", False);
+        Atom actual_type;
+        int format;
+        unsigned long count, remaining;
+        unsigned char* data = nullptr;
+        // Switching between two other apps (including across monitors) does
+        // not send another FocusOut to us. Track desktop activation as well.
+        Window active = None;
+        if (XGetWindowProperty(display, DefaultRootWindow(display), active_atom,
+                               0, 1, False, XA_WINDOW, &actual_type, &format,
+                               &count, &remaining, &data) == Success &&
+            actual_type == XA_WINDOW && format == 32 && count == 1)
+            active = *reinterpret_cast<Window*>(data);
+        if (data) XFree(data);
+        data = nullptr;
+        const bool activation_changed = active != None && active != previous_active_window;
+        if (active != None) previous_active_window = active;
+        const bool restack = focus_changed || activation_changed;
+        const int result = XGetWindowProperty(display, window, state_atom, 0, 1024,
+                                             False, XA_ATOM, &actual_type, &format,
+                                             &count, &remaining, &data);
+        bool above = false, below = false;
+        if (result == Success && actual_type == XA_ATOM && format == 32) {
+            const Atom* states = reinterpret_cast<const Atom*>(data);
+            for (unsigned long i = 0; i < count; ++i) {
+                above |= states[i] == above_atom;
+                below |= states[i] == below_atom;
+            }
+        }
+        if (data) XFree(data);
+        if (result != Success) return;
 
-        // GNOME can keep a maximized transparent window above the active app
-        // despite restack requests. Explicitly lower its layer while unfocused,
-        // then restore the normal layer when selected. A pinned window stays
-        // above other apps even when they receive focus.
-        XEvent event = {};
-        event.xclient.type = ClientMessage;
-        event.xclient.display = display;
-        event.xclient.window = window;
-        event.xclient.message_type = XInternAtom(display, "_NET_WM_STATE", False);
-        event.xclient.format = 32;
-        event.xclient.data.l[0] = (focused || window_pinned) ? 0 : 1; // REMOVE / ADD
-        event.xclient.data.l[1] = XInternAtom(display, "_NET_WM_STATE_BELOW", False);
-        event.xclient.data.l[3] = 1; // Request from an application.
-        XSendEvent(display, DefaultRootWindow(display), False,
-                   SubstructureRedirectMask | SubstructureNotifyMask, &event);
-        if (window_pinned)
-            SetWindowState(FLAG_WINDOW_TOPMOST);
-        else
-            ClearWindowState(FLAG_WINDOW_TOPMOST);
-        XFlush(display);
+        // Read the WM's actual state rather than raylib's cached TOPMOST flag.
+        // Focus changes and WM actions can invalidate a previously sent request.
+        auto set_state = [&](Atom atom, bool enabled) {
+            XEvent event = {};
+            event.xclient.type = ClientMessage;
+            event.xclient.display = display;
+            event.xclient.window = window;
+            event.xclient.message_type = state_atom;
+            event.xclient.format = 32;
+            event.xclient.data.l[0] = enabled ? 1 : 0; // ADD / REMOVE
+            event.xclient.data.l[1] = atom;
+            event.xclient.data.l[3] = 1; // Request from an application.
+            XSendEvent(display, DefaultRootWindow(display), False,
+                       SubstructureRedirectMask | SubstructureNotifyMask, &event);
+        };
+        const bool want_above = window_pinned;
+        const bool want_below = !window_pinned && !focused;
+        // Remove the opposite layer before requesting a new one.
+        if (above && !want_above) set_state(above_atom, false);
+        if (below && !want_below) set_state(below_atom, false);
+        if (above && want_above && restack) set_state(above_atom, false);
+        if (want_above && (!above || restack)) set_state(above_atom, true);
+        if (!below && want_below) set_state(below_atom, true);
+        if ((window_pinned && restack) || above != want_above || below != want_below) XFlush(display);
     }
 
     // Let X11 hit-test the visible UI in the normal desktop stacking order.
@@ -306,8 +344,9 @@ namespace ImGui
         // ---------------------------------------------------------------
         SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT);
         InitWindow(width, height, title);
-        native_window_state = -1;
         window_pinned = false;
+        previous_window_focus = -1;
+        previous_active_window = None;
         SetTargetFPS(60);
         SetExitKey(0); // esc로 인한 종료 방지
 
