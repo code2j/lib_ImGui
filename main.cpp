@@ -28,7 +28,6 @@ int main() {
         ImGui::Begin(" " ICON_MD_TUNE " 제어 패널 ");
 
         if (ImGui::BeginCollapsingHeader(ICON_MD_WIDGETS " Widgets Example ")) {
-            // Child 창 시작
             ImGui::BeginChild("Widgets_Child", ImVec2(0, 1300), true);
 
             // ==========================================
@@ -59,8 +58,8 @@ int main() {
                     ImGui::NotifyInfo("토글 해제됨");
             }
 
-
-            float btn_width = ImGui::GetContentRegionAvail().x / 4.1f;
+            // 버튼
+            float btn_width = ImGui::GetContentRegionAvail().x / 4.15f;
             ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32(100, 141, 222, 255)); // 기본
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(120, 161, 242, 255)); // 호버 (밝게)
             ImGui::PushStyleColor(ImGuiCol_ButtonActive,  IM_COL32( 80, 121, 202, 255)); // 클릭 (어둡게)
@@ -274,12 +273,6 @@ int main() {
         }
 
         ImGui::End();
-
-        // ImGui::ShowDemoWindow();
-
-
-
-
 
     });  }
 

@@ -1009,8 +1009,28 @@ bool ImGui::_dropdown_(const char *label, int *current_item, const char *(*gette
     popup_bg.w *= anim_t; // 투명도 애니메이션 반영
     PushStyleColor(ImGuiCol_PopupBg, ImGui::ColorConvertFloat4ToU32(popup_bg));
 
-    // 실제 콤보 박스 렌더링 ("##combo"를 사용해 라벨 숨김)
-    bool combo_started = BeginCombo("##combo", preview_value, ImGuiComboFlags_None);
+    // 기본 화살표 버튼과 배경을 생략하고, 헤더와 같은 아래쪽 꺾쇠를 직접 그린다.
+    // 팝업이 열리면 현재 창이 바뀌므로 부모 창의 DrawList를 사용한다.
+    const ImRect combo_bb(ImVec2(combo_x, pos.y), ImVec2(combo_x + w, pos.y + GetFrameHeight()));
+    const float arrow_width = GetFrameHeight();
+    bool combo_started = BeginCombo("##combo", NULL, ImGuiComboFlags_NoArrowButton);
+    if (window->ClipRect.Overlaps(combo_bb))
+    {
+        // 긴 선택 텍스트가 꺾쇠 영역과 겹치지 않도록 미리보기 영역을 제한한다.
+        const ImVec2 preview_min = combo_bb.Min + style.FramePadding;
+        const ImVec2 preview_max(ImMax(preview_min.x, combo_bb.Max.x - arrow_width), combo_bb.Max.y);
+        if (preview_value != NULL)
+            RenderTextClippedEx(window->DrawList, preview_min, preview_max, preview_value, NULL, NULL);
+
+        const ImVec2 center(combo_bb.Max.x - arrow_width * 0.5f, combo_bb.GetCenter().y);
+        const float chevron_size = 5.0f;
+        const ImVec2 points[3] = {
+            ImVec2(center.x - chevron_size, center.y - chevron_size * 0.4f),
+            ImVec2(center.x, center.y + chevron_size * 0.6f),
+            ImVec2(center.x + chevron_size, center.y - chevron_size * 0.4f)
+        };
+        window->DrawList->AddPolyline(points, 3, GetColorU32(ImGuiCol_Text), 0, 2.0f);
+    }
 
     // 스타일 복구
     PopStyleColor(1); // FrameBg 복구

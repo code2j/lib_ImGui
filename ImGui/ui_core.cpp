@@ -163,6 +163,7 @@ namespace ImGui
 
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
                                  ImGuiWindowFlags_NoDocking |
+                                 ImGuiWindowFlags_NoScrollWithMouse |
                                  ImGuiWindowFlags_NoScrollbar;
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
@@ -336,9 +337,10 @@ namespace ImGui
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // 키보드 네비게이션 활성화
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // 도킹 활성화
 
+
         // 폰트 불러오기
         ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
-            compressed_data, compressed_size,
+            level2_compressed_data, level2_compressed_size,
             FONT_SIZE,
             NULL,
             io.Fonts->GetGlyphRangesKorean()
@@ -646,45 +648,6 @@ namespace ImGui
             // System HUD
             // -----------------------
             ImGui::draw_system_hud(ImGui::show_system_hud);
-
-            // -----------------------
-            // 우측 하단 메뉴 토글 버튼
-            // -----------------------
-            const float PADDING = 15.0f;
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-            ImVec2 window_pos = ImVec2(
-                viewport->WorkPos.x + PADDING,
-                viewport->WorkPos.y + viewport->WorkSize.y - PADDING
-            );
-
-            ImVec2 window_pos_pivot = ImVec2(0.0f, 1.0f);
-
-            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-            ImGui::SetNextWindowBgAlpha(0.0f); // 창 배경 투명화
-
-            ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
-                                     ImGuiWindowFlags_AlwaysAutoResize |
-                                     ImGuiWindowFlags_NoSavedSettings |
-                                     ImGuiWindowFlags_NoFocusOnAppearing |
-                                     ImGuiWindowFlags_NoNav |
-                                     ImGuiWindowFlags_NoMove;
-
-            if (ImGui::Begin("##MenuToggleBtn", nullptr, flags)) {
-                const char* btn_text = ImGui::show_menu ? ICON_MD_PAGE_CONTROL : ICON_MD_PAGE_CONTROL;
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.1f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.2f));
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-                if (ImGui::IconButton(btn_text, ImVec2(0, 0), true))
-                {
-                    ImGui::show_menu = !ImGui::show_menu; // 토글
-                }
-                ImGui::PopStyleColor(3);
-                ImGui::PopStyleVar();
-            }
-            ImGui::End();
-
         }
 
 

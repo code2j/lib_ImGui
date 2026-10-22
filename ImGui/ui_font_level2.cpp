@@ -1,7 +1,7 @@
 // File: 'font.ttf' (2423896 bytes)
 // Exported using binary_to_compressed_c.exe -u8 "font.ttf" MyFont
-static const unsigned int compressed_size = 1032606;
-static const unsigned char compressed_data[1032606] =
+static const unsigned int level2_compressed_size = 1032606;
+static const unsigned char level2_compressed_data[1032606] =
 {
     87,188,0,0,0,0,0,0,0,36,252,88,0,4,0,0,37,0,1,0,0,0,18,130,4,46,4,0,32,70,70,84,77,137,0,74,100,0,36,247,184,130,21,40,28,71,68,69,70,0,40,71,115,130,15,32,212,130,15,40,30,71,80,79,
     83,12,88,37,84,130,15,48,244,0,0,4,68,71,83,85,66,108,145,116,143,0,36,252,56,130,31,44,32,79,83,47,50,233,165,231,164,0,0,1,168,130,15,60,96,99,109,97,112,115,151,70,238,0,1,31,188,
