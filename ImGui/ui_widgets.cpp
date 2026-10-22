@@ -822,6 +822,104 @@ bool ImGui::Drag(const char *label, int *v, float v_speed, float v_min, float v_
     return _drag_(label, ImGuiDataType_S32, v, v_speed, &v_min, &v_max, format, flags);
 }
 
+namespace ImGui
+{
+static bool BeginListBoxX(const char* label, const ImVec2& size_arg)
+{
+    ImGuiContext& g = *GImGui;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const char* label_end = FindRenderedTextEnd(label);
+    const ImVec2 label_size = CalcTextSize(label, label_end, false);
+    const ImVec2 pos = window->DC.CursorPos;
+    const ImVec2 size = ImTrunc(CalcItemSize(size_arg, CalcItemWidth(), GetTextLineHeightWithSpacing() * 7.25f + style.FramePadding.y * 2.0f));
+    const float min_width = size.x + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f);
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+    const ImVec2 frame_size(size.x, ImMax(size.y, label_size.y));
+    const ImRect frame_bb(ImVec2(pos.x + total_width - size.x, pos.y), ImVec2(pos.x + total_width, pos.y + frame_size.y));
+    const ImRect total_bb(pos, ImVec2(frame_bb.Max.x, frame_bb.Max.y));
+    g.NextItemData.ClearFlags();
+
+    if (!IsRectVisible(total_bb.Min, total_bb.Max))
+    {
+        ItemSize(total_bb.GetSize(), style.FramePadding.y);
+        ItemAdd(total_bb, 0, &frame_bb);
+        g.NextWindowData.ClearFlags();
+        return false;
+    }
+
+    // 그룹에 왼쪽 라벨과 오른쪽 목록 영역을 모두 포함한다.
+    BeginGroup();
+    if (label_size.x > 0.0f)
+    {
+        const ImVec2 label_pos(pos.x, pos.y + style.FramePadding.y);
+        RenderText(label_pos, label, label_end, false);
+        window->DC.CursorMaxPos = ImMax(window->DC.CursorMaxPos, label_pos + label_size);
+        AlignTextToFramePadding();
+    }
+    window->DC.CursorPos = frame_bb.Min;
+    BeginChild(id, frame_size, ImGuiChildFlags_FrameStyle);
+    return true;
+}
+}
+
+bool ImGui::List(const char* label, int* current_item, const char* const items[], int items_count, int height_in_items)
+{
+    const auto getter = [](void* data, int idx) -> const char* {
+        return ((const char* const*)data)[idx];
+    };
+    return List(label, current_item, getter, (void*)items, items_count, height_in_items);
+}
+
+bool ImGui::List(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx), void* user_data, int items_count, int height_in_items)
+{
+    ImGuiContext& g = *GImGui;
+
+    // Calculate size from "height_in_items"
+    if (height_in_items < 0)
+        height_in_items = ImMin(items_count, 7);
+    float height_in_items_f = height_in_items + 0.25f;
+    ImVec2 size(0.0f, ImTrunc(GetTextLineHeightWithSpacing() * height_in_items_f + g.Style.FramePadding.y * 2.0f));
+
+    if (!BeginListBoxX(label, size))
+        return false;
+
+    // Assume all items have even height (= 1 line of text). If you need items of different height,
+    // you can create a custom version of ListBox() in your code without using the clipper.
+    bool value_changed = false;
+    ImGuiListClipper clipper;
+    clipper.Begin(items_count, GetTextLineHeightWithSpacing()); // We know exactly our line height here so we pass it as a minor optimization, but generally you don't need to.
+    clipper.IncludeItemByIndex(*current_item);
+    while (clipper.Step())
+        for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+        {
+            const char* item_text = getter(user_data, i);
+            if (item_text == NULL)
+                item_text = "*Unknown item*";
+
+            PushID(i);
+            const bool item_selected = (i == *current_item);
+            if (Selectable(item_text, item_selected))
+            {
+                *current_item = i;
+                value_changed = true;
+            }
+            if (item_selected)
+                SetItemDefaultFocus();
+            PopID();
+        }
+    EndListBox();
+
+    if (value_changed)
+        MarkItemEdited(g.LastItemData.ID);
+
+    return value_changed;
+}
+
 bool ImGui::_dropdown_(const char *label, int *current_item, const char *(*getter)(void *user_data, int idx), void *user_data, int items_count, int popup_max_height_in_items)
 {
     bool is_dark = true;

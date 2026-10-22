@@ -59,6 +59,13 @@ namespace ImGui
 
 
     // ====================================================
+    // Widget: List Box
+    // ====================================================
+    bool List(const char* label, int* current_item, const char* const items[], int items_count, int height_in_items = -1);
+    bool List(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx), void* user_data, int items_count, int height_in_items = -1);
+
+
+    // ====================================================
     // Widget: Combo Box
     // ====================================================
     bool _dropdown_(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx), void* user_data, int items_count, int popup_max_height_in_items = -1);

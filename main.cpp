@@ -61,33 +61,40 @@ int main() {
 
 
             float btn_width = ImGui::GetContentRegionAvail().x / 4.1f;
-            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(100, 141, 222, 255 ));
-            if (ImGui::Button("알림 - 정보", ImVec2(btn_width, 0))) {
+            ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32(100, 141, 222, 255)); // 기본
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(120, 161, 242, 255)); // 호버 (밝게)
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  IM_COL32( 80, 121, 202, 255)); // 클릭 (어둡게)
+            if (ImGui::Button("알림\n정보", ImVec2(btn_width, 0))) {
                 ImGui::NotifyInfo("정보 메세지 표시");
             }
-            ImGui::PopStyleColor();
+            ImGui::PopStyleColor(3);
             ImGui::SameLine();
 
-            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(46, 160, 67, 255));
-            if (ImGui::Button("알림 - 성공", ImVec2(btn_width, 0))) {
+            ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32( 46, 160,  67, 255)); // 기본
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32( 66, 180,  87, 255)); // 호버 (밝게)
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  IM_COL32( 26, 140,  47, 255)); // 클릭 (어둡게)
+            if (ImGui::Button("알림\n성공", ImVec2(btn_width, 0))) {
                 ImGui::NotifySucc("성공 메세지 표시");
             }
-            ImGui::PopStyleColor();
+            ImGui::PopStyleColor(3);
             ImGui::SameLine();
 
-
-            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(227, 179, 65, 255));
-            if (ImGui::Button("알림 - 경고", ImVec2(btn_width, 0))) {
+            ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32(227, 179,  65, 255)); // 기본
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(247, 199,  85, 255)); // 호버 (밝게)
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  IM_COL32(207, 159,  45, 255)); // 클릭 (어둡게)
+            if (ImGui::Button("알림\n경고", ImVec2(btn_width, 0))) {
                 ImGui::NotifyWarn("경고 메세지 표시");
             }
-            ImGui::PopStyleColor();
+            ImGui::PopStyleColor(3);
             ImGui::SameLine();
 
-            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(224, 108, 117, 255));
-            if (ImGui::Button("알림 - 에러", ImVec2(btn_width, 0))) {
+            ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32(224, 108, 117, 255)); // 기본
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(244, 128, 137, 255)); // 호버 (밝게)
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  IM_COL32(204,  88,  97, 255)); // 클릭 (어둡게)
+            if (ImGui::Button("알림\n에러", ImVec2(btn_width, 0))) {
                 ImGui::NotifyError("에러 메세지 표시");
             }
-            ImGui::PopStyleColor();
+            ImGui::PopStyleColor(3);
             ImGui::Dummy(ImVec2(0, 20.0f));
 
 
@@ -108,7 +115,6 @@ int main() {
             ImGui::Dummy(ImVec2(0, 20.0f));
 
 
-
             // ==========================================
             // 3. 슬라이더 및 드래그 (Sliders & Drags)
             // ==========================================
@@ -125,7 +131,7 @@ int main() {
             static float range_min = 20.0f, range_max = 80.0f;
             // ImGui::SliderRangeX("Slider Range1", &range_min, &range_max, 0.0f, 100.0f);
             ImGui::SliderRange("Slider Range2", &range_min, &range_max, 0.0f, 100.0f);
-            ImGui::Dummy(ImVec2(0, 15.0f));
+            ImGui::Dummy(ImVec2(0, 20.0f));
 
 
             // ==========================================
@@ -139,8 +145,8 @@ int main() {
 
             static int listbox_item_current = 1;
             const char* listbox_items[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange" };
-            ImGui::ListBox("과일 목록", &listbox_item_current, listbox_items, IM_COUNTOF(listbox_items), 4);
-            ImGui::Dummy(ImVec2(0, 15.0f));
+            ImGui::List("과일 목록", &listbox_item_current, listbox_items, IM_COUNTOF(listbox_items), 4);
+            ImGui::Dummy(ImVec2(0, 20.0f));
 
 
             // ==========================================
@@ -157,23 +163,6 @@ int main() {
             ImGui::ColorEdit4("알파 포함 색상", color_rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
             ImGui::Dummy(ImVec2(0, 15.0f));
 
-
-            // ==========================================
-            // 6. 상태 및 진행률 (Misc / Progress)
-            // ==========================================
-            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_INFO " Status & Misc");
-            ImGui::Separator();
-
-            static float progress = 0.0f;
-            progress += 0.005f; // 애니메이션 효과를 위해 임의 증가
-            if (progress > 1.0f) progress = 0.0f;
-
-            ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f), "로딩 중...");
-
-            ImGui::TextWrapped("위젯 위로 마우스를 올리면 툴팁을 확인할 수 있습니다.");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("이것은 ImGui 표준 툴팁입니다.");
-            }
 
             ImGui::EndChild();
             ImGui::EndCollapsingHeader();
