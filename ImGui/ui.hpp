@@ -73,11 +73,11 @@ namespace ImGui
 
 namespace ImGui
 {
-    void init(const char* title, int width = 1280, int height = 720);
-    void destroy();
-    bool should_close(bool force_close = false);
-    bool context(std::function<void()> func);
-    void load_config(const char* path);
+    void Init(const char* title, int width = 1280, int height = 720);
+    void Destroy();
+    bool ShouldClose(bool force_close = false);
+    bool Context(std::function<void()> func);
+    void LoadConfig(const char* path);
 
     // 뷰포트 마우스 및 상태 유틸리티
     Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치

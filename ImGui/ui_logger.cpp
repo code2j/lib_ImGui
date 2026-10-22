@@ -1,58 +1,87 @@
 #include "ui_logger.h"
 #include "ui_icon.h"
 #include "ui.hpp"
-
+#include <iostream>
 
 namespace
 {
-    bool            auto_scroll;
-    ImGuiTextBuffer buf;
-    std::streambuf* old_buf;
-}
+    // std::cout 연결에 필요한 streambuf 구현은 외부 API에서 숨긴다.
+    class LoggerStream : public std::streambuf
+    {
+    public:
+        bool auto_scroll = true;
+        ImGuiTextBuffer buf;
+        std::streambuf* old_buf = nullptr;
 
+        ~LoggerStream() override { Restore(); }
 
-int ImGuiLogger::overflow(int c)
-{
-    if (c != EOF) {
-        // 1. ImGui 버퍼에 텍스트 저장
-        buf.appendf("%c", (char)c);
-
-        // 2. 기존 터미널(콘솔) 버퍼에도 동일하게 출력 (추가된 부분)
-        if (old_buf) {
-            old_buf->sputc(c);
+        void Restore()
+        {
+            if (old_buf != nullptr)
+            {
+                if (std::cout.rdbuf() == this)
+                    std::cout.rdbuf(old_buf);
+                old_buf = nullptr;
+            }
         }
+
+    protected:
+        int_type overflow(int_type c) override
+        {
+            if (traits_type::eq_int_type(c, traits_type::eof()))
+                return traits_type::not_eof(c);
+
+            const char ch = traits_type::to_char_type(c);
+            buf.append(&ch, &ch + 1);
+            if (old_buf != nullptr)
+                return old_buf->sputc(ch);
+            return c;
+        }
+
+        std::streamsize xsputn(const char* s, std::streamsize n) override
+        {
+            if (n <= 0)
+                return 0;
+            buf.append(s, s + n);
+            return old_buf != nullptr ? old_buf->sputn(s, n) : n;
+        }
+
+        int sync() override
+        {
+            return old_buf != nullptr ? old_buf->pubsync() : 0;
+        }
+    };
+
+    LoggerStream& GetLogger()
+    {
+        static LoggerStream logger;
+        return logger;
     }
-    return c;
 }
 
-std::streamsize ImGuiLogger::xsputn(const char *s, std::streamsize n)
+void ImGui::InitLogger()
 {
-    buf.append(s, s + n);
-
-    if (old_buf) {
-        old_buf->sputn(s, n);
-    }
-    return n;
+    LoggerStream& logger = GetLogger();
+    if (logger.old_buf != nullptr)
+        return;
+    logger.buf.clear();
+    logger.auto_scroll = true;
+    logger.old_buf = std::cout.rdbuf(&logger);
 }
 
-ImGuiLogger::ImGuiLogger()
+void ImGui::ShutdownLogger()
 {
-    auto_scroll = true;
-    old_buf = std::cout.rdbuf(this);
+    GetLogger().Restore();
 }
 
-ImGuiLogger::~ImGuiLogger()
+void ImGui::ClearLogger()
 {
-    std::cout.rdbuf(old_buf);
+    GetLogger().buf.clear();
 }
 
-void ImGuiLogger::clear()
+void ImGui::ShowLogger(const char *title)
 {
-    buf.clear();
-}
-
-void ImGuiLogger::draw(const char *title)
-{
+    LoggerStream& logger = GetLogger();
     const ImVec2 BUTTON_SIZE = ImVec2(35, 35);
 
     if (!ImGui::Begin(title)) {
@@ -75,7 +104,7 @@ void ImGuiLogger::draw(const char *title)
 
     // 로그 지우기 버튼
     if (ImGui::IconButton(ICON_MD_DELETE, BUTTON_SIZE, ImGuiButtonFlags_None)) {
-        clear();
+        ClearLogger();
     }
 
     if (ImGui::IsItemHovered()) {
@@ -84,14 +113,14 @@ void ImGuiLogger::draw(const char *title)
 
 
     // 오토 스크롤 토글 버튼
-    if (auto_scroll) {
+    if (logger.auto_scroll) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_Text]);
     } else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
     }
 
     if (ImGui::IconButton(ICON_MD_WRAP_TEXT, BUTTON_SIZE, ImGuiButtonFlags_None)) {
-        auto_scroll = !auto_scroll;
+        logger.auto_scroll = !logger.auto_scroll;
     }
 
     ImGui::PopStyleColor(3); // 텍스트 색상 Pop
@@ -117,14 +146,14 @@ void ImGuiLogger::draw(const char *title)
 
     ImGui::PushFont(ImGui::LOGGER_FONT);
     ImGui::Indent(10.0f);
-    ImGui::TextUnformatted(buf.begin(), buf.end()); // 텍스트 렌더링
+    ImGui::TextUnformatted(logger.buf.begin(), logger.buf.end()); // 텍스트 렌더링
     ImGui::Unindent(10.0f);
     ImGui::PopFont();
 
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
     // 자동 스크롤 로직
-    if (auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+    if (logger.auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
         ImGui::SetScrollHereY(1.0f);
     }
 

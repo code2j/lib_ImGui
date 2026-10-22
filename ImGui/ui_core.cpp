@@ -129,26 +129,12 @@ namespace
     const float  FONT_SIZE   = 20;
     const float  ICON_SIZE   = 28;
     const ImVec2 ICON_OFFSET = ImVec2(0, 6);
-
-
-
-    // ==================================================
-    // 로그 윈도우
-    // ==================================================
-    ImGuiLogger loggr;
-
-
-    // ==================================================
-    // 스카이 박스
-    // ==================================================
-    Model skybox;
-
 }
 
 
 static void sigint_handler(int signum)
 {
-    ImGui::should_close(true);
+    ImGui::ShouldClose(true);
 }
 
 
@@ -156,12 +142,8 @@ static void sigint_handler(int signum)
 
 namespace ImGui
 {
-    static void draw_menu(bool open)
+    static void ShowMenu()
     {
-        if (!open) {
-            return;
-        }
-
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
                                  ImGuiWindowFlags_NoDocking |
                                  ImGuiWindowFlags_NoScrollWithMouse |
@@ -295,7 +277,7 @@ namespace ImGui
 
         if (ImGui::IconButton(ICON_MD_CLOSE, ImVec2(button_width, titlebar_height), false))
         {
-            ImGui::should_close(true);
+            ImGui::ShouldClose(true);
         }
 
         ImGui::PopStyleVar(1);
@@ -312,8 +294,9 @@ namespace ImGui
         ImGui::End();
     }
 
-    void init(const char* title, int width, int height)
+    void Init(const char* title, int width, int height)
     {
+        ImGui::InitLogger();
         std::signal(SIGINT, sigint_handler);
 
         WINDOW_TITLE = title;
@@ -394,7 +377,7 @@ namespace ImGui
         MaximizeWindow();
     }
 
-    void destroy()
+    void Destroy()
     {
         destroy_textures();
         UnloadRenderTexture(::view_texture);
@@ -404,11 +387,12 @@ namespace ImGui
         ImPlot3D::DestroyContext();
         ImGui::DestroyContext();
         CloseWindow();
+        ImGui::ShutdownLogger();
     }
 
-    bool context(std::function<void()> func)
+    bool Context(std::function<void()> func)
     {
-        if (should_close()) {
+        if (ShouldClose()) {
             return false;
         }
 
@@ -454,13 +438,13 @@ namespace ImGui
         // -----------------------
         // 메뉴 렌더링
         // -----------------------
-        ImGui::draw_menu(true);
+        ImGui::ShowMenu();
 
         // -----------------------
         // ImGui log 렌더링
         // -----------------------
         if (ImGui::show_log_window)
-        loggr.draw(" " ICON_MD_SUBJECT " Log ");
+        ImGui::ShowLogger(" " ICON_MD_SUBJECT " Log ");
 
         // -----------------------
         // Style Editer
@@ -590,13 +574,13 @@ namespace ImGui
         return true;
     }
 
-    bool should_close(bool force_close)
+    bool ShouldClose(bool force_close)
     {
         ImGui::should_close_app |= force_close;
         return WindowShouldClose() || ImGui::should_close_app;
     }
 
-    void load_config(const char* path)
+    void LoadConfig(const char* path)
     {
         fs::path p(path);
 
