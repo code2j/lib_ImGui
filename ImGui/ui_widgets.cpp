@@ -497,6 +497,62 @@ bool ImGui::InputTextLines(const char* label, char* buf, size_t buf_size, const 
     return value_changed;
 }
 
+bool ImGui::ColorEdit3X(const char* label, float col[3], ImGuiColorEditFlags flags)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    const ImGuiStyle& style = GetStyle();
+    const ImVec2 pos = window->DC.CursorPos;
+    const bool show_label = (flags & ImGuiColorEditFlags_NoLabel) == 0;
+    const ImVec2 label_size = show_label ? CalcTextSize(label, NULL, true) : ImVec2(0, 0);
+    const float w = CalcItemWidth();
+    const float widget_width = (flags & ImGuiColorEditFlags_NoInputs) ? GetFrameHeight() : w;
+    const float min_width = widget_width + (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f);
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+
+    // 원본의 편집/팝업 동작과 라벨 ID를 유지하고, 배치와 라벨 렌더링만 변경한다.
+    window->DC.CursorPos.x = pos.x + total_width - widget_width;
+    SetNextItemWidth(w);
+    const bool value_changed = ColorEdit3(label, col, flags | ImGuiColorEditFlags_NoLabel);
+
+    window->DC.CursorPos.x = pos.x;
+    GImGui->LastItemData.Rect.Min.x = pos.x;
+    if (label_size.x > 0.0f)
+        RenderText(ImVec2(pos.x, pos.y + style.FramePadding.y), label);
+
+    return value_changed;
+}
+
+bool ImGui::ColorEdit4X(const char* label, float col[4], ImGuiColorEditFlags flags)
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    const ImGuiStyle& style = GetStyle();
+    const ImVec2 pos = window->DC.CursorPos;
+    const bool show_label = (flags & ImGuiColorEditFlags_NoLabel) == 0;
+    const ImVec2 label_size = show_label ? CalcTextSize(label, NULL, true) : ImVec2(0, 0);
+    const float w = CalcItemWidth();
+    const float widget_width = (flags & ImGuiColorEditFlags_NoInputs) ? GetFrameHeight() : w;
+    const float min_width = widget_width + (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f);
+    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+
+    // 원본의 편집/팝업 동작과 라벨 ID를 유지하고, 배치와 라벨 렌더링만 변경한다.
+    window->DC.CursorPos.x = pos.x + total_width - widget_width;
+    SetNextItemWidth(w);
+    const bool value_changed = ColorEdit4(label, col, flags | ImGuiColorEditFlags_NoLabel);
+
+    window->DC.CursorPos.x = pos.x;
+    GImGui->LastItemData.Rect.Min.x = pos.x;
+    if (label_size.x > 0.0f)
+        RenderText(ImVec2(pos.x, pos.y + style.FramePadding.y), label);
+
+    return value_changed;
+}
+
 namespace ImGui
 {
 static bool _inputnum_(const char* label, ImGuiDataType data_type, void* p_data, const void* p_step, const void* p_step_fast, const char* format, ImGuiInputTextFlags flags)
@@ -903,10 +959,23 @@ bool ImGui::List(const char* label, int* current_item, const char* (*getter)(voi
 
             PushID(i);
             const bool item_selected = (i == *current_item);
-            if (Selectable(item_text, item_selected))
+            const ImVec2 item_pos = GetCursorScreenPos();
+            const float item_width = GetContentRegionAvail().x;
+            const float item_height = GetTextLineHeight();
+            if (Selectable("##item", item_selected, ImGuiSelectableFlags_None, ImVec2(0, item_height)))
             {
                 *current_item = i;
                 value_changed = true;
+            }
+
+            // 드롭다운과 같은 체크 표시를 위해 오른쪽 영역을 확보한다.
+            const float marker_width = 24.0f;
+            const ImVec2 text_max(item_pos.x + ImMax(0.0f, item_width - marker_width), item_pos.y + item_height);
+            RenderTextClipped(item_pos, text_max, item_text, FindRenderedTextEnd(item_text), NULL);
+            if (i == *current_item)
+            {
+                const ImVec2 check_pos(item_pos.x + item_width - marker_width, item_pos.y + (item_height - 14.0f) * 0.5f);
+                RenderCheckMark(GetWindowDrawList(), check_pos, GetColorU32(ImGuiCol_Text), 14.0f);
             }
             if (item_selected)
                 SetItemDefaultFocus();

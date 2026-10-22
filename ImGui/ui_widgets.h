@@ -59,6 +59,13 @@ namespace ImGui
 
 
     // ====================================================
+    // Widget: Color Edit
+    // ====================================================
+    bool ColorEdit3X(const char* label, float col[3], ImGuiColorEditFlags flags = 0);
+    bool ColorEdit4X(const char* label, float col[4], ImGuiColorEditFlags flags = 0);
+
+
+    // ====================================================
     // Widget: List Box
     // ====================================================
     bool List(const char* label, int* current_item, const char* const items[], int items_count, int height_in_items = -1);

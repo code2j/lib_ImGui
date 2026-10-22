@@ -28,7 +28,7 @@ int main() {
         ImGui::Begin(" " ICON_MD_TUNE " 제어 패널 ");
 
         if (ImGui::BeginCollapsingHeader(ICON_MD_WIDGETS " Widgets Example ")) {
-            ImGui::BeginChild("Widgets_Child", ImVec2(0, 1300), true);
+            ImGui::BeginChild("Widgets_Child", ImVec2(0, 1150), true);
 
             // ==========================================
             // 1. 기본 컨트롤 (Basic Controls)
@@ -124,12 +124,24 @@ int main() {
             ImGui::Drag("Drag", &drag_value, 1.0f, 0.0f, 100.0f, "%.1f");
 
             static float slider_value = 30.0f;
-            // ImGui::SliderX("Slider1", &slider_value, 0.0f, 100.0f, "%.1f");
             ImGui::Slider("Slider2", &slider_value, 0.0f, 100.0f);
 
             static float range_min = 20.0f, range_max = 80.0f;
-            // ImGui::SliderRangeX("Slider Range1", &range_min, &range_max, 0.0f, 100.0f);
             ImGui::SliderRange("Slider Range2", &range_min, &range_max, 0.0f, 100.0f);
+            ImGui::Dummy(ImVec2(0, 20.0f));
+
+
+            // ==========================================
+            // Input Number
+            // ==========================================
+            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_CONFIRMATION_NUMBER " Input Number");
+            ImGui::Separator();
+
+            static int input_scalar_value = 50;
+            ImGui::InputNum("Input Scalar", &input_scalar_value);
+
+            static double input_double_value = 50.0;
+            ImGui::InputNum("Input Double", &input_double_value, 0.01, 0, "%0.2f");
             ImGui::Dummy(ImVec2(0, 20.0f));
 
 
@@ -151,17 +163,14 @@ int main() {
             // ==========================================
             // 5. 색상 선택기 (Color Pickers)
             // ==========================================
-            ImGui::Dummy(ImVec2(0, 15.0f));
             ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_COLOR_LENS " Color Pickers");
             ImGui::Separator();
 
             static float color_rgb[3] = { 0.36f, 0.41f, 0.94f };
-            ImGui::ColorEdit3("테마 색상", color_rgb);
+            ImGui::ColorEdit3X("테마 색상", color_rgb);
 
             static float color_rgba[4] = { 0.8f, 0.2f, 0.3f, 0.5f };
-            ImGui::ColorEdit4("알파 포함 색상", color_rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
-            ImGui::Dummy(ImVec2(0, 15.0f));
-
+            ImGui::ColorEdit4X("알파 포함 색상", color_rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
 
             ImGui::EndChild();
             ImGui::EndCollapsingHeader();
@@ -186,7 +195,7 @@ int main() {
             static int current_account_status = 2;
 
             ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
-            ImGui::BeginChild("상태바", ImVec2(0, 200), true);
+            ImGui::BeginChild("상태바", ImVec2(0, 230), true);
 
             // 1. 스테이터스 바 렌더링 (상단 위치)
             ImGui::StatusStepBar("##AccountStatusStepBar", &current_account_status, status_labels, 4);
@@ -202,7 +211,7 @@ int main() {
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
 
             ImGui::PushItemWidth(input_width);
-            if (ImGui::InputInt("##상태", &current_account_status)) {
+            if (ImGui::InputNum("##상태", &current_account_status)) {
                 current_account_status = std::max(0, std::min(current_account_status, 3));
             }
             ImGui::PopItemWidth();
@@ -273,7 +282,6 @@ int main() {
         }
 
         ImGui::End();
-
     });  }
 
 
