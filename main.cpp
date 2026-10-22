@@ -51,18 +51,34 @@ int main() {
             if (ImGui::Radio("라디오 2", &radio_idx, 1))
                 ImGui::NotifyInfo("라디오 2 선택됨");
 
-            if (ImGui::Button("버튼 1", ImVec2(100, 0))) {
-                ImGui::NotifyInfo("버튼 1 클릭됨");
+            static bool is_t = false;
+            if (ImGui::Toggle("토글", &is_t)) {
+                if (is_t)
+                    ImGui::NotifyInfo("토글 선택됨");
+                else
+                    ImGui::NotifyInfo("토글 해제됨");
+            }
+
+            if (ImGui::Button("알림 - 정보", ImVec2(100, 0))) {
+                ImGui::NotifyInfo("정보 메세지 표시");
             }
             ImGui::SameLine();
 
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-            if (ImGui::Button("버튼 2", ImVec2(100, 0))) {
-                ImGui::NotifyInfo("버튼 2 클릭됨");
+            if (ImGui::Button("알림 - 성공", ImVec2(100, 0))) {
+                ImGui::NotifySucc("성공 메세지 표시");
             }
-            ImGui::PopStyleColor(3);
+            ImGui::SameLine();
+
+            if (ImGui::Button("알림 - 경고", ImVec2(100, 0))) {
+                ImGui::NotifyWarn("경고 메세지 표시");
+            }
+            ImGui::SameLine();
+
+            if (ImGui::Button("알림 - 에러", ImVec2(100, 0))) {
+                ImGui::NotifyError("에러 메세지 표시");
+            }
+            ImGui::SameLine();
+
             ImGui::Dummy(ImVec2(0, 20.0f));
 
 
@@ -102,6 +118,7 @@ int main() {
             ImGui::SliderRange("Slider Range2", &range_min, &range_max, 0.0f, 100.0f);
             ImGui::Dummy(ImVec2(0, 15.0f));
 
+
             // ==========================================
             // 4. 리스트 및 드롭다운 (Lists & Dropdowns)
             // ==========================================
@@ -109,12 +126,13 @@ int main() {
             ImGui::Separator();
 
             static int current_theme = 1;
-            ImGui::DropDown("테마 선택 (DropDown)", &current_theme, "Light Theme\0Dark Theme\0Classic Theme\0", 3);
+            ImGui::DropDown("DropDown", &current_theme, "선택 1\0선택 2\0선택 3\0", 3);
 
             static int listbox_item_current = 1;
             const char* listbox_items[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange" };
             ImGui::ListBox("과일 목록", &listbox_item_current, listbox_items, IM_COUNTOF(listbox_items), 4);
             ImGui::Dummy(ImVec2(0, 15.0f));
+
 
             // ==========================================
             // 5. 색상 선택기 (Color Pickers)
@@ -129,6 +147,7 @@ int main() {
             static float color_rgba[4] = { 0.8f, 0.2f, 0.3f, 0.5f };
             ImGui::ColorEdit4("알파 포함 색상", color_rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
             ImGui::Dummy(ImVec2(0, 15.0f));
+
 
             // ==========================================
             // 6. 상태 및 진행률 (Misc / Progress)
@@ -148,69 +167,6 @@ int main() {
             }
 
             ImGui::EndChild();
-            ImGui::EndCollapsingHeader();
-        }
-
-        if (ImGui::BeginCollapsingHeader(ICON_MD_CHAT_INFO " Notification Example ")) {
-            // [알림 버튼 샘플]
-            if (ImGui::Button(" 알림 정보 ")) {
-                ImGui::NotifyInfo("정보 알림이 표시 됩니다.");
-                std::cout << "[Info ] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
-            }
-            ImGui::SameLine();
-
-            if (ImGui::Button(" 알림 성공 ")) {
-                ImGui::NotifySucc("성공 알림이 표시 됩니다.");
-                std::cout << "[Succ ] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
-            }
-            ImGui::SameLine();
-
-            if (ImGui::Button(" 알림 경고 ")) {
-                ImGui::NotifyWarn("경고 알림이 표시 됩니다.");
-                std::cout << "[Warn ] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
-            }
-            ImGui::SameLine();
-
-            if (ImGui::Button(" 알림 에러 ")) {
-                ImGui::NotifyError("에러 알림이 표시 됩니다.");
-                std::cout << "[Error] cout으로 출력된 문자열은 Imgui::Logger에 표시됩니다." << std::endl;
-            }
-
-            ImGui::EndCollapsingHeader();
-        }
-
-        if (ImGui::BeginCollapsingHeader(ICON_MD_TUNE " Slider Example ")) {
-            // [드래그 슬라이더 샘플]
-            ImGui::BeginChild("##slider", ImVec2(0, 190), true);
-            ImGui::PushItemWidth(300);
-
-            static float drag = 10.0f;
-            ImGui::DragFloat("Drag", &drag);
-            ImGui::Dummy(ImVec2(0, 1));
-
-            static float slider = 0.314f;
-            ImGui::SliderFloat("Slider", &slider, 0.0f, 1.0f);
-            ImGui::Dummy(ImVec2(0, 1));
-
-            static float sliderx = 0.314f;
-            ImGui::SliderX("SlideXr", &sliderx, 0.0f, 1.0f);
-            ImGui::Dummy(ImVec2(0, 1));
-
-            // [범위 슬라이더 샘플]
-            static float price_min = 0.0f;
-            static float price_max = 10.0f;
-            ImGui::SliderRange("Range", &price_min, &price_max, 0.0f, 10.0f, "%.1f");
-            ImGui::Dummy(ImVec2(0, 1));
-
-            static float cnt = 1.0;
-            if (ImGui::InputNum("Input", &cnt, 0.1)) {
-                // cnt = std::max(static_cast<int>(price_min), std::min(cnt, static_cast<int>(price_max)));
-            }
-            ImGui::Dummy(ImVec2(0, 1));
-
-            ImGui::PopItemWidth();
-            ImGui::EndChild();
-
             ImGui::EndCollapsingHeader();
         }
 
