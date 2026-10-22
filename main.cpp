@@ -57,7 +57,6 @@ int main() {
                     ImGui::NotifyInfo("토글 해제됨");
             }
 
-            // 버튼
             float btn_width = ImGui::GetContentRegionAvail().x / 4.15f;
             ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32(100, 141, 222, 255)); // 기본
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(120, 161, 242, 255)); // 호버 (밝게)
@@ -133,11 +132,11 @@ int main() {
             // ==========================================
             // Input Number
             // ==========================================
-            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_CONFIRMATION_NUMBER " Input Number");
+            ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_NUMBERS " Input Number");
             ImGui::Separator();
 
             static int input_scalar_value = 50;
-            ImGui::InputNum("Input Scalar", &input_scalar_value);
+            ImGui::InputNum("Input Int", &input_scalar_value);
 
             static double input_double_value = 50.0;
             ImGui::InputNum("Input Double", &input_double_value, 0.01, 0, "%0.2f");
