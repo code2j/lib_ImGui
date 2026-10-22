@@ -129,8 +129,6 @@ namespace ImGui
         colors[ImGuiCol_Tab]                   = color_bg;
         colors[ImGuiCol_TabHovered]            = color_primary_hover;
         colors[ImGuiCol_TabSelected]           = color_tab_active;
-        colors[ImGuiCol_TabUnfocused]          = color_bg;
-        colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.24, 0.34, 0.44, 1.00);
         colors[ImGuiCol_TabSelectedOverline]   = color_transparent;
         colors[ImGuiCol_TabDimmed]             = color_bg;
         colors[ImGuiCol_TabDimmedSelected]     = color_tab_active;
@@ -244,8 +242,6 @@ namespace ImGui
         colors[ImGuiCol_Tab]                   = color_bg;
         colors[ImGuiCol_TabHovered]            = color_primary_hover;
         colors[ImGuiCol_TabSelected]           = theme_tab_active;
-        colors[ImGuiCol_TabUnfocused]          = color_bg;
-        colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.24, 0.34, 0.44, 1.00);
         colors[ImGuiCol_TabSelectedOverline]   = color_transparent;
         colors[ImGuiCol_TabDimmed]             = color_bg;
         colors[ImGuiCol_TabDimmedSelected]     = theme_tab_active;

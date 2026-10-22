@@ -162,7 +162,6 @@ namespace ImGui
         }
 
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
-                                 ImGuiWindowFlags_NoReserveScrollbar |
                                  ImGuiWindowFlags_NoDocking |
                                  ImGuiWindowFlags_NoScrollbar;
 
@@ -336,6 +335,14 @@ namespace ImGui
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // 키보드 네비게이션 활성화
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // 도킹 활성화
+
+        // 폰트 불러오기
+        ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
+            compressed_data, compressed_size,
+            FONT_SIZE,
+            NULL,
+            io.Fonts->GetGlyphRangesKorean()
+        );
 
 
         // ---------------------------------------------------------------

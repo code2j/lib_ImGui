@@ -59,26 +59,35 @@ int main() {
                     ImGui::NotifyInfo("토글 해제됨");
             }
 
-            if (ImGui::Button("알림 - 정보", ImVec2(100, 0))) {
+
+            float btn_width = ImGui::GetContentRegionAvail().x / 4.1f;
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(100, 141, 222, 255 ));
+            if (ImGui::Button("알림 - 정보", ImVec2(btn_width, 0))) {
                 ImGui::NotifyInfo("정보 메세지 표시");
             }
+            ImGui::PopStyleColor();
             ImGui::SameLine();
 
-            if (ImGui::Button("알림 - 성공", ImVec2(100, 0))) {
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(46, 160, 67, 255));
+            if (ImGui::Button("알림 - 성공", ImVec2(btn_width, 0))) {
                 ImGui::NotifySucc("성공 메세지 표시");
             }
+            ImGui::PopStyleColor();
             ImGui::SameLine();
 
-            if (ImGui::Button("알림 - 경고", ImVec2(100, 0))) {
+
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(227, 179, 65, 255));
+            if (ImGui::Button("알림 - 경고", ImVec2(btn_width, 0))) {
                 ImGui::NotifyWarn("경고 메세지 표시");
             }
+            ImGui::PopStyleColor();
             ImGui::SameLine();
 
-            if (ImGui::Button("알림 - 에러", ImVec2(100, 0))) {
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(224, 108, 117, 255));
+            if (ImGui::Button("알림 - 에러", ImVec2(btn_width, 0))) {
                 ImGui::NotifyError("에러 메세지 표시");
             }
-            ImGui::SameLine();
-
+            ImGui::PopStyleColor();
             ImGui::Dummy(ImVec2(0, 20.0f));
 
 
