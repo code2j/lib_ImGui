@@ -342,9 +342,33 @@ namespace ImGui
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // 도킹 활성화
 
 
-        // 폰트 불러오기
-        ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(
+        ImFontConfig icon_config;
+        icon_config.MergeMode = true;
+        icon_config.GlyphOffset = ICON_OFFSET;
+        icon_config.GlyphMinAdvanceX = FONT_SIZE;
+        static const ImWchar icon_ranges[] = { ICON_MIN_MD, ICON_MAX_16_MD, 0 };
+
+        // 기본 폰트 로딩
+        io.Fonts->AddFontFromMemoryCompressedTTF(
             level2_compressed_data, level2_compressed_size,
+            FONT_SIZE,
+            NULL,
+            io.Fonts->GetGlyphRangesKorean()
+        );
+
+        // 아이콘 폰트 로딩
+        io.Fonts->AddFontFromMemoryCompressedTTF(
+            MaterialSymbolsRounded_compressed_data,
+            MaterialSymbolsRounded_compressed_size,
+            ICON_SIZE,
+            &icon_config,
+            icon_ranges
+        );
+
+        // 로거 전용 폰트 로딩
+        ImGui::LOGGER_FONT = io.Fonts->AddFontFromMemoryCompressedTTF(
+            font2_compressed_data,
+            font2_compressed_size,
             FONT_SIZE,
             NULL,
             io.Fonts->GetGlyphRangesKorean()
@@ -367,6 +391,7 @@ namespace ImGui
         ImGui_ImplOpenGL3_Init("#version 130");
 
         view_texture = LoadRenderTexture((int)WINDOW_WIDTH, (int)WINDOW_HEIGHT);
+        MaximizeWindow();
     }
 
     void destroy()
@@ -388,15 +413,16 @@ namespace ImGui
         }
 
 
-        // ---------------------------------------------------------------
+        // -----------------------
         // 1. ImGui 프레임 시작
-        // ---------------------------------------------------------------
+        // -----------------------
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         update_window_stacking();
 
-
+        // -----------------------
         // 전역 좌표는 HUD용으로만 사용한다. ImGui 입력은 GLFW가 전달한다.
+        // -----------------------
         Display* display = glfwGetX11Display();
 
         if (display) {
@@ -415,251 +441,139 @@ namespace ImGui
         ImGui::NewFrame();
 
 
-        // ---------------------------------------------------------------
-        // Loading Screen
-        // ---------------------------------------------------------------
-        static int  lazy_cnt                = 0;
-        static bool lazy_flag_now_loading   = false;
-        static bool lazy_flag_now_rendering = false;
-        static ImGui::Texture loading_img   = ImGui::load_texture(IMGUI_ROOT "/uon_logo.png");
-
-        lazy_cnt++;
-        if (lazy_cnt > 100) // 0.0166hz * 100 = 1.66s
-            lazy_flag_now_loading = true;
-
-
-
-        if (!lazy_flag_now_loading) {
-            // [레이지 카운트 기다리는 중]
-
-            // 이미지 중심이 화면 중심으로 계산
-            ImVec2 display_size = ImGui::GetIO().DisplaySize;
-            ImGui::SetNextWindowPos(
-                ImVec2(display_size.x * 0.5f, display_size.y * 0.5f),
-                ImGuiCond_Always,
-                ImVec2(0.5f, 0.5f)
-            );
-
-            ImGui::SetNextWindowSize(ImVec2(300, 300));
-
-            ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
-                                     ImGuiWindowFlags_NoBackground |
-                                     ImGuiWindowFlags_NoBringToFrontOnFocus;
-
-            ImGui::Begin("##LoadingScreen", nullptr, flags);
-            ImVec2 avail = ImGui::GetContentRegionAvail();
-
-            if (auto tex = loading_img.lock()) {
-                // [이미지 로딩됨]
-                float img_aspect = (float) tex->width / (float) tex->height;
-                float avail_aspect = avail.x / avail.y;
-
-                ImVec2 size;
-                if (avail_aspect > img_aspect) {
-                    size.y = avail.y;
-                    size.x = size.y * img_aspect;
-                } else {
-                    size.x = avail.x;
-                    size.y = size.x / img_aspect;
-                }
-
-                float cursor_x = (avail.x - size.x) * 0.5f;
-                float cursor_y = (avail.y - size.y) * 0.5f;
-                ImGui::SetCursorPos(ImVec2(cursor_x, cursor_y));
-
-
-                // 로딩 이미지 표시
-                ImGui::Image(tex->id, size);
-
-
-                // 아이콘 폰트 추가
-                ImFontConfig config;
-                config.MergeMode        = true;
-                config.GlyphOffset      = ICON_OFFSET;
-                config.GlyphMinAdvanceX = FONT_SIZE;
-                static const ImWchar icon_ranges[] = { ICON_MIN_MD, ICON_MAX_16_MD, 0 };
-                ImGuiIO& io = ImGui::GetIO();
-
-
-                if (lazy_cnt == 2) {
-                    // 아이콘 폰트
-                    io.Fonts->AddFontFromMemoryCompressedTTF(
-                        MaterialSymbolsRounded_compressed_data,
-                        MaterialSymbolsRounded_compressed_size,
-                        ICON_SIZE,
-                        &config,
-                        icon_ranges
-                    );
-                }
-
-                if (lazy_cnt == 3) {
-                    // 로거 전용 폰트
-                    ImGui::D2Cording = io.Fonts->AddFontFromMemoryCompressedTTF(
-                        font2_compressed_data,
-                        font2_compressed_size,
-                        FONT_SIZE,
-                        NULL,
-                        io.Fonts->GetGlyphRangesKorean()
-                    );
-                }
-            }
-            ImGui::End();
-        }
-        else {
-            // [레이지 스타트 카운팅 넘음]
-            ImGui::flag_load_complete = true;
-        }
-
-
-
-        // ---------------------------------------------------------------
+        // -----------------------
         // 테마 변경
-        // ---------------------------------------------------------------
+        // -----------------------
         if (ImGui::flag_change_thema) {
             ImGui::flag_change_thema = false;
 
             if (ImGui::theme_id == 0) ImGui::theme_white();
             else                      ImGui::theme_dark();
         }
-        // ---------------------------------------------------------------
-        // 최초 로딩 완료
-        // ---------------------------------------------------------------
-        if (ImGui::flag_load_complete) {
-            ImGui::flag_load_complete = false; // off
-            lazy_flag_now_rendering = true; // 렌더링 시작
-            MaximizeWindow();
+
+        // -----------------------
+        // 메뉴 렌더링
+        // -----------------------
+        ImGui::draw_menu(ImGui::show_menu);
+
+        // -----------------------
+        // ImGui log 렌더링
+        // -----------------------
+        if (ImGui::show_menu && ImGui::show_log_window)
+        loggr.draw(" " ICON_MD_SUBJECT " Log ");
+
+        // -----------------------
+        // Style Editer
+        // -----------------------
+        if (ImGui::show_style_edit && ImGui::show_menu) {
+            ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
+            ImGui::ShowStyleEditor(&ImGui::GetStyle());
+            ImGui::End();
         }
 
-
-        if (lazy_flag_now_rendering)
+        // -----------------------
+        // 3. 렌더링된 텍스처를 담을 뷰포트 창 띄우기
+        // -----------------------
+        if (ImGui::show_menu)
+        if (ImGui::show_3d_viewport)
         {
-            // -----------------------
-            // 메뉴 렌더링
-            // -----------------------
-            ImGui::draw_menu(ImGui::show_menu);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-            // -----------------------
-            // ImGui log 렌더링
-            // -----------------------
-            if (ImGui::show_menu && ImGui::show_log_window)
-            loggr.draw(" " ICON_MD_SUBJECT " Log ");
+            ImGui::Begin(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ");
 
-            // -----------------------
-            // Style Editer
-            // -----------------------
-            if (ImGui::show_style_edit && ImGui::show_menu) {
-                ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
-                ImGui::ShowStyleEditor(&ImGui::GetStyle());
-                ImGui::End();
+            ImVec2 availSize = ImGui::GetContentRegionAvail();
+            float targetAspect = WINDOW_WIDTH / WINDOW_HEIGHT;
+            float availAspect = availSize.x / availSize.y;
+
+            ImVec2 imageSize;
+            if (availAspect > targetAspect) {
+                imageSize.y = availSize.y;
+                imageSize.x = imageSize.y * targetAspect;
+            } else {
+                imageSize.x = availSize.x;
+                imageSize.y = imageSize.x / targetAspect;
             }
 
-            // -----------------------
-            // 3. 렌더링된 텍스처를 담을 뷰포트 창 띄우기
-            // -----------------------
-            if (ImGui::show_menu)
-            if (ImGui::show_3d_viewport)
-            {
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+            ImVec2 cursorStartPos = ImGui::GetCursorScreenPos();
+            float offsetX = (availSize.x - imageSize.x) * 0.5f;
+            float offsetY = (availSize.y - imageSize.y) * 0.5f;
+            ImVec2 imagePos = ImVec2(cursorStartPos.x + offsetX, cursorStartPos.y + offsetY);
+            ImGui::SetCursorScreenPos(imagePos);
 
-                ImGui::Begin(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ");
+            ImTextureID tex_id = (ImTextureID)(intptr_t) view_texture.texture.id;
+            ImGui::Image(tex_id, imageSize, ImVec2(0, 1), ImVec2(1, 0));
 
-                ImVec2 availSize = ImGui::GetContentRegionAvail();
-                float targetAspect = WINDOW_WIDTH / WINDOW_HEIGHT;
-                float availAspect = availSize.x / availSize.y;
+            ::is_viewport_hovered = ImGui::IsItemHovered();
+            ImVec2 imMousePosGlobal = ImGui::GetMousePos();
+            viewport_mouse_pos.x = (imMousePosGlobal.x - imagePos.x) * (WINDOW_WIDTH / imageSize.x);
+            viewport_mouse_pos.y = (imMousePosGlobal.y - imagePos.y) * (WINDOW_HEIGHT / imageSize.y);
 
-                ImVec2 imageSize;
-                if (availAspect > targetAspect) {
-                    imageSize.y = availSize.y;
-                    imageSize.x = imageSize.y * targetAspect;
-                } else {
-                    imageSize.x = availSize.x;
-                    imageSize.y = imageSize.x / targetAspect;
+            // ---------------------------------------------------------------
+            // 4. 사용자 콘텐츠 렌더링 (Raylib 텍스처 + 사용자 ImGui UI)
+            // ---------------------------------------------------------------
+            BeginTextureMode(view_texture);
+            ClearBackground(BLANK);
+
+            // 커서가 숨겨져 있을 때 (카메라 조작 중)
+            if (IsCursorHidden()) {
+                // [뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구]
+                if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+                    EnableCursor();
                 }
-
-                ImVec2 cursorStartPos = ImGui::GetCursorScreenPos();
-                float offsetX = (availSize.x - imageSize.x) * 0.5f;
-                float offsetY = (availSize.y - imageSize.y) * 0.5f;
-                ImVec2 imagePos = ImVec2(cursorStartPos.x + offsetX, cursorStartPos.y + offsetY);
-                ImGui::SetCursorScreenPos(imagePos);
-
-                ImTextureID tex_id = (ImTextureID)(intptr_t) view_texture.texture.id;
-                ImGui::Image(tex_id, imageSize, ImVec2(0, 1), ImVec2(1, 0));
-
-                ::is_viewport_hovered = ImGui::IsItemHovered();
-                ImVec2 imMousePosGlobal = ImGui::GetMousePos();
-                viewport_mouse_pos.x = (imMousePosGlobal.x - imagePos.x) * (WINDOW_WIDTH / imageSize.x);
-                viewport_mouse_pos.y = (imMousePosGlobal.y - imagePos.y) * (WINDOW_HEIGHT / imageSize.y);
-
-                // ---------------------------------------------------------------
-                // 4. 사용자 콘텐츠 렌더링 (Raylib 텍스처 + 사용자 ImGui UI)
-                // ---------------------------------------------------------------
-                BeginTextureMode(view_texture);
-                ClearBackground(BLANK);
-
-                // 커서가 숨겨져 있을 때 (카메라 조작 중)
-                if (IsCursorHidden()) {
-                    // [뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구]
+                // 카메라 업데이트 수행
+                UpdateCamera(&ImGui::camera, CAMERA_FREE);
+            }
+            // 커서가 보일 때 (일반 UI 조작 중)
+            else {
+                // [뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)]
+                if (ImGui::is_viewport_hovered()) {
                     if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                        EnableCursor();
-                    }
-                    // 카메라 업데이트 수행
-                    UpdateCamera(&ImGui::camera, CAMERA_FREE);
-                }
-                // 커서가 보일 때 (일반 UI 조작 중)
-                else {
-                    // [뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)]
-                    if (ImGui::is_viewport_hovered()) {
-                        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                            DisableCursor();
-                        }
+                        DisableCursor();
                     }
                 }
-
-
-                ImGui::PopStyleVar();
-
-                // 사용자 람다 콜백 실행
-                if (func) {
-                    BeginMode3D(ImGui::camera);
-                        // 그리드
-                        DrawGrid(10, 1);
-
-                        // 월드 축
-                        draw_axes(0.5, 0.01);
-
-                        // 외부 함수
-                        func();
-                    EndMode3D();
-                    DrawFPS(10, 10);
-                }
-
-                EndTextureMode();
-
-                ImGui::End();
-            }
-            else
-            {
-                // 3D 뷰포트가 아예 꺼져있을 때도 사용자 UI 루프가 돌도록 처리
-                if (func) func();
             }
 
-            // -----------------------
-            // ImGui notiy 렌더링
-            // -----------------------
-            ImGui::RenderNotifications();
 
-            // -----------------------
-            // System HUD
-            // -----------------------
-            ImGui::draw_system_hud(ImGui::show_system_hud);
+            ImGui::PopStyleVar();
+
+            // 사용자 람다 콜백 실행
+            if (func) {
+                BeginMode3D(ImGui::camera);
+                    // 그리드
+                    DrawGrid(10, 1);
+
+                    // 월드 축
+                    draw_axes(0.5, 0.01);
+
+                    // 외부 함수
+                    func();
+                EndMode3D();
+                DrawFPS(10, 10);
+            }
+
+            EndTextureMode();
+
+            ImGui::End();
+        }
+        else
+        {
+            // 3D 뷰포트가 아예 꺼져있을 때도 사용자 UI 루프가 돌도록 처리
+            if (func) func();
         }
 
+        // -----------------------
+        // ImGui notiy 렌더링
+        // -----------------------
+        ImGui::RenderNotifications();
 
+        // -----------------------
+        // System HUD
+        // -----------------------
+        ImGui::draw_system_hud(ImGui::show_system_hud);
 
-
-        // ---------------------------------------------------------------
+        // -----------------------
         // ImGui, Raylib 렌더링
-        // ---------------------------------------------------------------
+        // -----------------------
         ImGui::Render();
         update_input_region();
         BeginDrawing();

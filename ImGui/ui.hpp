@@ -28,7 +28,6 @@
 #include "ui_style.h"
 
 
-#define SKYBOX_ON 0  // 1: 스카이 박스 보임, 0: 스카이박스 안보임
 
 namespace ImGui
 {
@@ -38,17 +37,16 @@ namespace ImGui
     // ==================================================
     // 상태 플래그
     // ==================================================
-    inline bool should_close_app = false; // 앱 닫기 여부
-    inline bool show_3d_viewport = false; // 3d 뷰포트 보이기 여부
-    inline bool show_log_window  = false; // 로거 표시 여부
-    inline bool show_style_edit  = false; // 컬러 에디터 표시 여부
-    inline bool show_system_hud  = false; // hud 표시 여부
-    inline bool show_menu        = false; // 메인 메뉴 표시 여부
+    inline bool should_close_app   = false; // 앱 닫기 여부
+    inline bool show_3d_viewport   = false; // 3d 뷰포트 보이기 여부
+    inline bool show_log_window    = false; // 로거 표시 여부
+    inline bool show_style_edit    = false; // 컬러 에디터 표시 여부
+    inline bool show_system_hud    = false; // hud 표시 여부
+    inline bool show_menu          = false; // 메인 메뉴 표시 여부
 
-    inline int  theme_id         = 1;     // 0: white, 1: dark
+    inline int  theme_id           = 1;     // 0: white, 1: dark
 
     inline bool flag_change_thema  = false;
-    inline bool flag_load_complete = false;
     inline bool flag_show_menu     = false;
 
 
@@ -56,7 +54,7 @@ namespace ImGui
     // ==================================================
     // 폰트 객체
     // ==================================================
-    inline ImFont* D2Cording = nullptr;
+    inline ImFont* LOGGER_FONT      = nullptr;
 
 
 
@@ -64,7 +62,7 @@ namespace ImGui
     // 3d 카메라 정의
     // ==================================================
     inline Camera camera = {
-        { 1.0, 0.5, 2.0 },      // position
+        { 1.0, 0.5, 2.0 },       // position
         { 0.0, 0.0, 0.0 },       // target
         { 0.0, 1.0, 0.0 },       // up
         45.0f,                   // fovy
@@ -83,10 +81,7 @@ namespace ImGui
     void load_config(const char* path);
     void open_menu(bool b);
 
-
-    // =====================================================
     // 뷰포트 마우스 및 상태 유틸리티
-    // =====================================================
     Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
     bool    is_viewport_hovered();
 }
