@@ -454,27 +454,24 @@ namespace ImGui
         // -----------------------
         // 메뉴 렌더링
         // -----------------------
-        ImGui::draw_menu(ImGui::show_menu);
+        ImGui::draw_menu(true);
 
         // -----------------------
         // ImGui log 렌더링
         // -----------------------
-        if (ImGui::show_menu && ImGui::show_log_window)
+        if (ImGui::show_log_window)
         loggr.draw(" " ICON_MD_SUBJECT " Log ");
 
         // -----------------------
         // Style Editer
         // -----------------------
-        if (ImGui::show_style_edit && ImGui::show_menu) {
-            ImGui::Begin(" " ICON_MD_STYLE " Style Editor ");
+        if (ImGui::show_style_edit) {
             ImGui::ShowStyleEditor(&ImGui::GetStyle());
-            ImGui::End();
         }
 
         // -----------------------
         // 3. 렌더링된 텍스처를 담을 뷰포트 창 띄우기
         // -----------------------
-        if (ImGui::show_menu)
         if (ImGui::show_3d_viewport)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -639,7 +636,6 @@ namespace ImGui
         ImGui::LoadIniSettingsFromDisk(ImGui::GetIO().IniFilename);
     }
 
-    void open_menu(bool b) { ImGui::show_menu = b; }
 
     Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
     bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }

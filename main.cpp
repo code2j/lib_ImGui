@@ -11,7 +11,6 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 int main() {
     ImGui::init("테스트 프로그램", 1280, 720);
     ImGui::load_config("../imgui.ini");
-    ImGui::open_menu(true);
 
     bool is_loading = true;
     ImGui::Texture texture1 = ImGui::load_texture(IMGUI_ROOT "/image.png");
@@ -167,10 +166,10 @@ int main() {
             ImGui::Separator();
 
             static float color_rgb[3] = { 0.36f, 0.41f, 0.94f };
-            ImGui::ColorEdit3X("테마 색상", color_rgb);
+            ImGui::ColorEdit3X("컬러3", color_rgb);
 
             static float color_rgba[4] = { 0.8f, 0.2f, 0.3f, 0.5f };
-            ImGui::ColorEdit4X("알파 포함 색상", color_rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
+            ImGui::ColorEdit4X("컬러4", color_rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
 
             ImGui::EndChild();
             ImGui::EndCollapsingHeader();

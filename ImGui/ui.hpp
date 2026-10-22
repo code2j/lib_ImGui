@@ -42,7 +42,6 @@ namespace ImGui
     inline bool show_log_window    = false; // 로거 표시 여부
     inline bool show_style_edit    = false; // 컬러 에디터 표시 여부
     inline bool show_system_hud    = false; // hud 표시 여부
-    inline bool show_menu          = false; // 메인 메뉴 표시 여부
 
     inline int  theme_id           = 1;     // 0: white, 1: dark
 
@@ -79,7 +78,6 @@ namespace ImGui
     bool should_close(bool force_close = false);
     bool context(std::function<void()> func);
     void load_config(const char* path);
-    void open_menu(bool b);
 
     // 뷰포트 마우스 및 상태 유틸리티
     Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
