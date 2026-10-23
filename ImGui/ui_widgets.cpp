@@ -962,11 +962,13 @@ bool ImGui::List(const char* label, int* current_item, const char* (*getter)(voi
             const ImVec2 item_pos = GetCursorScreenPos();
             const float item_width = GetContentRegionAvail().x;
             const float item_height = GetTextLineHeight();
+            PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
             if (Selectable("##item", item_selected, ImGuiSelectableFlags_None, ImVec2(0, item_height)))
             {
                 *current_item = i;
                 value_changed = true;
             }
+            PopStyleColor();
 
             // 드롭다운과 같은 체크 표시를 위해 오른쪽 영역을 확보한다.
             const float marker_width = 24.0f;
@@ -1064,25 +1066,36 @@ bool ImGui::_dropdown_(const char *label, int *current_item, const char *(*gette
         PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
     }
 
-    // 4. Main Frame 스타일 적용
+    // 열린 상태의 아웃라인은 유지한다.
     if (is_open)
     {
-        PushStyleColor(ImGuiCol_Border, ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
+        PushStyleColor(ImGuiCol_Border, IM_COL32(93, 104, 240, 255));
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
     }
-    PushStyleColor(ImGuiCol_FrameBg, GetColorU32(ImGuiCol_FrameBg));
 
-    // 5. Popup 창 스타일 및 배경 Alpha 페이드 인 적용
+    // 펼쳐지는 목록의 배경은 FrameBg를 사용하고 열림 투명도만 적용한다.
     PushStyleVar(ImGuiStyleVar_PopupRounding, 6.0f);
-    ImVec4 popup_bg = ImGui::ColorConvertU32ToFloat4(GetColorU32(ImGuiCol_ChildBg));
-    popup_bg.w *= anim_t; // 투명도 애니메이션 반영
-    PushStyleColor(ImGuiCol_PopupBg, ImGui::ColorConvertFloat4ToU32(popup_bg));
+    ImVec4 popup_bg = style.Colors[ImGuiCol_FrameBg];
+    popup_bg.w *= anim_t;
+    PushStyleColor(ImGuiCol_PopupBg, popup_bg);
 
     // 기본 화살표 버튼과 배경을 생략하고, 헤더와 같은 아래쪽 꺾쇠를 직접 그린다.
     // 팝업이 열리면 현재 창이 바뀌므로 부모 창의 DrawList를 사용한다.
     const ImRect combo_bb(ImVec2(combo_x, pos.y), ImVec2(combo_x + w, pos.y + GetFrameHeight()));
     const float arrow_width = GetFrameHeight();
     bool combo_started = BeginCombo("##combo", NULL, ImGuiComboFlags_NoArrowButton);
+
+    // BeginCombo에서 팝업 창을 만든 뒤에는 역순으로 스타일을 복구한다.
+    PopStyleColor(); // PopupBg
+    PopStyleVar(); // PopupRounding
+    if (is_open)
+    {
+        PopStyleVar(); // FrameBorderSize
+        PopStyleColor(); // Border
+    }
+    if (is_animating)
+        PopStyleVar(); // ScrollbarSize
+
     if (window->ClipRect.Overlaps(combo_bb))
     {
         // 긴 선택 텍스트가 꺾쇠 영역과 겹치지 않도록 미리보기 영역을 제한한다.
@@ -1101,22 +1114,9 @@ bool ImGui::_dropdown_(const char *label, int *current_item, const char *(*gette
         window->DrawList->AddPolyline(points, 3, GetColorU32(ImGuiCol_Text), 0, 2.0f);
     }
 
-    // 스타일 복구
-    PopStyleColor(1); // FrameBg 복구
-    if (is_open)
-    {
-        PopStyleVar(); // FrameBorderSize 복구
-        PopStyleColor(); // Border 복구
-    }
-    if (is_animating) {
-        PopStyleVar(); // ScrollbarSize 복구
-    }
-
     if (!combo_started)
     {
-        PopStyleColor(); // PopupBg 복구
-        PopStyleVar(); // PopupRounding 복구
-        ImGui::PopID(); // PushID 해제
+        ImGui::PopID();
         return false;
     }
 
@@ -1196,9 +1196,6 @@ bool ImGui::_dropdown_(const char *label, int *current_item, const char *(*gette
 
     PopStyleVar(); // Alpha 복구
     EndCombo();
-
-    PopStyleColor(); // PopupBg 복구
-    PopStyleVar(); // PopupRounding 복구
 
     ImGui::PopID(); // PushID 해제
 

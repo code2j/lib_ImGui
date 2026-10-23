@@ -22,8 +22,8 @@ namespace ImGui
         style.FrameBorderSize   = 1;                  // Frame 테두리 (Border) 두께
         style.TabBorderSize     = 0;                  // Tab 테두리 (Border) 두께
         style.WindowRounding    = 3;                  // Window 모서리 둥글기 (Rounding)
-        style.ChildRounding     = 4;                  // Child 창 모서리 둥글기 (Rounding)
-        style.FrameRounding     = 3;                  // Frame 모서리 둥글기 (Rounding)
+        style.ChildRounding     = 12;                  // Child 창 모서리 둥글기 (Rounding)
+        style.FrameRounding     = 7;                  // Frame 모서리 둥글기 (Rounding)
         style.PopupRounding     = 4;                  // Popup 모서리 둥글기 (Rounding)
         style.ScrollbarRounding = 9;                  // Scrollbar 모서리 둥글기 (Rounding)
         style.GrabRounding      = 3;                  // Grab(손잡이) 모서리 둥글기 (Rounding)
@@ -160,9 +160,9 @@ namespace ImGui
         if (ImGui::theme_id != 1) return;
         auto& colors = ImGui::GetStyle().Colors;
 
-        ImVec4 color_bg                 = ImColor(7, 7, 9);
-        ImVec4 color_surf               = ImColor(12, 12, 14);
-        ImVec4 color_surf_variant       = ImColor(25, 25, 25);
+        ImVec4 color_bg                 = ImColor(33, 33, 35);
+        ImVec4 color_surf               = ImColor(29, 29, 29);
+        ImVec4 color_surf_variant       = ImColor(44, 44, 44);
 
 
         ImVec4 color_primary            = ImColor(93, 105, 240);
@@ -179,7 +179,7 @@ namespace ImGui
 
 
         ImVec4 theme_tab_focused        = ImColor(18, 18, 20);
-        ImVec4 theme_tab_active         = ImColor(36, 36, 39);
+        ImVec4 theme_tab_active         = ImColor(93, 105, 240);
 
         ImVec4 color_border             = ImColor(44, 44, 47);
 
