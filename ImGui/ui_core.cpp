@@ -1,3 +1,4 @@
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "ui.hpp"
 #include "ui_font_icon.cpp"
 #include "ui_font_level2.cpp"
@@ -195,153 +196,118 @@ namespace ImGui
 {
     static void ShowMenu()
     {
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
-                                 ImGuiWindowFlags_NoDocking |
-                                 ImGuiWindowFlags_NoScrollWithMouse |
-                                 ImGuiWindowFlags_NoScrollbar;
+        const float scale = ui_content_scale;
+        const float header_height = 68.0f * scale;
+        const float button_size = 36.0f * scale;
+        const float gap = 6.0f * scale;
+        const float inset = 16.0f * scale;
+        const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
+                                       ImGuiWindowFlags_NoDocking |
+                                       ImGuiWindowFlags_NoScrollWithMouse |
+                                       ImGuiWindowFlags_NoScrollbar;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
-        ImGui::Begin("window", nullptr, flags);
-        ImGui::PopStyleVar();
-
-        // ---------------------
-        // 커스텀 타이틀바
-        // ---------------------
-        const float titlebar_height = 34.0f;
-        const float button_width = 45.0f;
-        ImVec2 windowPos = ImGui::GetWindowPos();
-        ImVec2 windowSize = ImGui::GetWindowSize();
-
-        //  타이틀 바 배경 그리기
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-        float windowRounding = ImGui::GetStyle().WindowRounding;
-
-        drawList->AddRectFilled(
-            windowPos,
-            ImVec2(windowPos.x + windowSize.x, windowPos.y + titlebar_height),
-            ImGui::GetColorU32(ImGuiCol_WindowBg),
-            windowRounding,
-            ImDrawFlags_RoundCornersTop
-        );
-
-        // 타이틀 바 드래그 이동 처리 (버튼 4개 크기만큼 제외)
-        ImGui::SetCursorPos(ImVec2(0, 0));
-        ImGui::InvisibleButton("##title_drag", ImVec2(ImMax(1.0f, windowSize.x - (button_width * 4)), titlebar_height));
-        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-        {
-            ImVec2 delta = ImGui::GetIO().MouseDelta;
-            ImGui::SetWindowPos(ImVec2(windowPos.x + delta.x, windowPos.y + delta.y));
+        ImGui::SetNextWindowSizeConstraints(ImVec2(380, 200) * scale, ImVec2(FLT_MAX, FLT_MAX));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8) * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f * scale);
+        const bool visible = ImGui::Begin("window", nullptr, flags);
+        ImGui::PopStyleVar(2);
+        if (!visible) {
+            ImGui::End();
+            return;
         }
 
-        // 타이틀 텍스트 출력
-        const char* titleText = WINDOW_TITLE.c_str();
-        ImVec2 textSize = ImGui::CalcTextSize(titleText);
+        const ImVec2 pos = ImGui::GetWindowPos();
+        const ImVec2 size = ImGui::GetWindowSize();
+        const float actions_x = size.x - inset - button_size * 4 - gap * 3;
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        draw->AddRectFilled(pos, pos + ImVec2(size.x, header_height),
+                            ImGui::GetColorU32(ImGuiCol_ChildBg), 12.0f * scale,
+                            ImDrawFlags_RoundCornersTop);
+        draw->AddLine(pos + ImVec2(0, header_height), pos + ImVec2(size.x, header_height),
+                      ImGui::GetColorU32(ImGuiCol_Border));
 
-        float textPosX = (windowSize.x - textSize.x) * 0.5f;
-        float textPosY = (titlebar_height - textSize.y) * 0.3f;
+        // Keep the whole identity area draggable, excluding the window actions.
+        ImGui::SetCursorPos(ImVec2(0, 0));
+        ImGui::InvisibleButton("##title_drag", ImVec2(actions_x - gap, header_height));
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            ImGui::SetWindowPos(pos + ImGui::GetIO().MouseDelta);
 
-        ImGui::SetCursorPos(ImVec2(textPosX, textPosY));
-        ImGui::Text("%s", titleText);
+        const ImVec2 badge = pos + ImVec2(inset, 16.0f * scale);
+        draw->AddRectFilled(badge, badge + ImVec2(button_size, button_size),
+                            ImGui::GetColorU32(ImGuiCol_Button), 10.0f * scale);
+        const ImVec2 icon_size = ImGui::CalcTextSize(ICON_MD_WIDGETS);
+        draw->AddText(badge + (ImVec2(button_size, button_size) - icon_size) * 0.5f,
+                      IM_COL32(255, 255, 255, 255), ICON_MD_WIDGETS);
+        const float text_x = inset + button_size + 12.0f * scale;
+        draw->PushClipRect(pos + ImVec2(text_x, 0), pos + ImVec2(actions_x - gap, header_height), true);
+        draw->AddText(pos + ImVec2(text_x, 10.0f * scale),
+                      ImGui::GetColorU32(ImGuiCol_Text), WINDOW_TITLE.c_str());
+        draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.72f,
+                      pos + ImVec2(text_x, 39.0f * scale),
+                      ImGui::GetColorU32(ImGuiCol_TextDisabled), "WORKSPACE");
+        draw->PopClipRect();
 
+        // Local styling follows the active theme without changing its accent palette.
+        auto action = [&](int index, const char* icon, const char* tooltip,
+                          bool selected = false, bool destructive = false) {
+            ImGui::SetCursorPos(ImVec2(actions_x + index * (button_size + gap), 16.0f * scale));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 9.0f * scale);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+            ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImGui::GetStyleColorVec4(ImGuiCol_Button) : ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, destructive ? ImVec4(ImColor(181, 65, 66)) : ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, destructive ? ImVec4(ImColor(145, 51, 48)) : ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
+            ImGui::PushStyleColor(ImGuiCol_Text, selected ? ImVec4(1, 1, 1, 1) : ImGui::GetStyleColorVec4(ImGuiCol_Text));
+            const bool pressed = ImGui::IconButton(icon, ImVec2(button_size, button_size), ImGuiButtonFlags_None);
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                ImGui::SetTooltip("%s", tooltip);
+            ImGui::PopStyleColor(4);
+            ImGui::PopStyleVar(3);
+            return pressed;
+        };
 
-        // 핀 고정 버튼 (우측에서 4번째)
-        ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 4), 0));
-        // Read the accent colors before overriding the button palette.
-        const ImVec4 pin_bg = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-        const ImVec4 pin_hovered = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
-        const ImVec4 pin_active = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
-        ImGui::PushStyleColor(ImGuiCol_Button, window_pinned ? pin_bg : ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, window_pinned ? pin_hovered : ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, window_pinned ? pin_active : ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
-        ImGui::PushStyleColor(ImGuiCol_Text, window_pinned ? ImVec4(1, 1, 1, 1) : ImGui::GetStyleColorVec4(ImGuiCol_Text));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        if (ImGui::IconButton(ICON_MD_KEEP "##window_pin", ImVec2(button_width, titlebar_height), false)) {
+        if (action(0, ICON_MD_KEEP "##window_pin", window_pinned ? "고정 해제" : "항상 위에 고정", window_pinned)) {
             window_pinned = !window_pinned;
             update_window_stacking();
         }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", window_pinned ? "고정 해제 " : "항상 위에 고정 ");
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor(4);
-
-        // 1. 설정 버튼 (우측에서 3번째)
-        ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 3), 0));
-
-        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        if (ImGui::IconButton(ICON_MD_SETTINGS "##window_setting", ImVec2(button_width, titlebar_height), false))
-        {
+        if (action(1, ICON_MD_SETTINGS "##window_setting", "워크스페이스 설정", ImGui::IsPopupOpen("SettingsPopup")))
             ImGui::OpenPopup("SettingsPopup");
-        }
-        ImGui::PopStyleVar(1);
-        ImGui::PopStyleColor(3);
 
+        ImGui::SetNextWindowSizeConstraints(ImVec2(280.0f * scale, 0), ImVec2(FLT_MAX, FLT_MAX));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16) * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 12.0f * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10) * scale);
         if (ImGui::BeginPopup("SettingsPopup")) {
-
-            bool config_changed = ImGui::MenuItem("3D Viewport", "", &ImGui::show_3d_viewport);
-            config_changed |= ImGui::MenuItem("Log", "", &ImGui::show_log_window);
-            ImGui::MenuItem("Style Editor", "", &ImGui::show_style_edit);
-            config_changed |= ImGui::MenuItem("System HUD", "", &ImGui::show_system_hud);
-
-            if (ImGui::BeginMenu("Theme"))
-            {
-                if (ImGui::ThemeSelector(&ImGui::theme_id)) {
-                    ImGui::flag_change_thema = true;
-                    config_changed = true;
-                }
-                ImGui::EndMenu();
+            ImGui::TextUnformatted("워크스페이스 설정");
+            ImGui::TextDisabled("필요한 패널과 화면 스타일을 선택하세요.");
+            ImGui::Spacing();
+            ImGui::SeparatorText("패널 표시");
+            bool config_changed = ImGui::MenuItem(ICON_MD_DEPLOYED_CODE "  3D Viewport", nullptr, &ImGui::show_3d_viewport);
+            config_changed |= ImGui::MenuItem(ICON_MD_SUBJECT "  Log", nullptr, &ImGui::show_log_window);
+            ImGui::MenuItem(ICON_MD_TUNE "  Style Editor", nullptr, &ImGui::show_style_edit);
+            config_changed |= ImGui::MenuItem("System HUD", nullptr, &ImGui::show_system_hud);
+            ImGui::Spacing();
+            ImGui::SeparatorText("화면 테마");
+            if (ImGui::ThemeSelector(&ImGui::theme_id)) {
+                ImGui::flag_change_thema = true;
+                config_changed = true;
             }
-
             if (config_changed && ImGui::GetIO().IniFilename != nullptr)
                 ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
             ImGui::EndPopup();
         }
+        ImGui::PopStyleVar(3);
 
-
-        // 2. 최소화 버튼 (우측에서 2번째)
-        ImGui::SetCursorPos(ImVec2(windowSize.x - (button_width * 2), 0));
-
-        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-
-        // 머터리얼 아이콘에서 일반적으로 최소화를 나타내는 마이너스 기호(REMOVE) 사용
-        if (ImGui::IconButton(ICON_MD_REMOVE "##window_minimaze", ImVec2(button_width, titlebar_height), false))
-        {
+        if (action(2, ICON_MD_REMOVE "##window_minimaze", "최소화"))
             MinimizeWindow();
-        }
-
-        ImGui::PopStyleVar(1);
-        ImGui::PopStyleColor(3);
-
-
-        // 3. 닫기 버튼 (가장 우측)
-        ImGui::SetCursorPos(ImVec2(windowSize.x - button_width, 0));
-
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(181, 65, 66, 255));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(145, 51, 48, 255));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-
-        if (ImGui::IconButton(ICON_MD_CLOSE, ImVec2(button_width, titlebar_height), false))
-        {
+        if (action(3, ICON_MD_CLOSE "##window_close", "닫기", false, true))
             ImGui::ShouldClose(true);
-        }
 
-        ImGui::PopStyleVar(1);
-        ImGui::PopStyleColor(3);
-        // --- 타이틀 바 끝 ---
-
-        // 영역을 DockSpace로 설정
-        ImGui::SetCursorPosY(titlebar_height);
+        ImGui::SetCursorPos(ImVec2(8.0f * scale, header_height + 8.0f * scale));
         ImGuiID dockspace_id = ImGui::GetID("MyInternalDockSpace");
-        ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, IM_COL32(10, 10, 10, 0));
-        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
-        ImGui::PopStyleColor(1);
-
+        ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, ImVec4(0, 0, 0, 0));
+        ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
+        ImGui::PopStyleColor();
         ImGui::End();
     }
 
