@@ -160,9 +160,9 @@ namespace ImGui
         if (ImGui::theme_id != 1) return;
         auto& colors = ImGui::GetStyle().Colors;
 
-        ImVec4 color_bg                 = ImColor(33, 33, 35);
-        ImVec4 color_surf               = ImColor(29, 29, 29);
-        ImVec4 color_surf_variant       = ImColor(44, 44, 44);
+        ImVec4 color_bg                 = ImColor(24, 27, 34);
+        ImVec4 color_surf               = ImColor(29, 33, 41);
+        ImVec4 color_surf_variant       = ImColor(36, 41, 51);
 
 
         ImVec4 color_primary            = ImColor(93, 105, 240);
@@ -170,22 +170,22 @@ namespace ImGui
         ImVec4 color_primary_active     = ImColor(63, 74, 162);
 
 
-        ImVec4 color_red                = ImColor(181, 65, 60);
-        ImVec4 color_green              = ImColor(87, 242, 135);
+        ImVec4 color_frame_hover        = ImColor(46, 52, 64);
+        ImVec4 color_frame_active       = ImColor(55, 62, 77);
 
-        ImVec4 color_text               = ImColor(228, 228, 230);
-        ImVec4 color_text_disabled      = ImColor(128, 133, 138);
+        ImVec4 color_text               = ImColor(225, 229, 237);
+        ImVec4 color_text_disabled      = ImColor(139, 148, 165);
         ImVec4 color_transparent        = ImColor(0, 0, 0, 0);
 
 
-        ImVec4 theme_tab_focused        = ImColor(18, 18, 20);
+        ImVec4 theme_tab_focused        = ImColor(36, 41, 51);
         ImVec4 theme_tab_active         = ImColor(93, 105, 240);
 
-        ImVec4 color_border             = ImColor(44, 44, 47);
+        ImVec4 color_border             = ImColor(57, 64, 78);
 
-        ImVec4 color_scrollbar          = ImColor(92, 93, 103);
-        ImVec4 color_scrollbar_hover    = ImColor(71, 77, 82);
-        ImVec4 color_scrollbar_active   = ImColor(82, 87, 92);
+        ImVec4 color_scrollbar          = ImColor(69, 78, 95);
+        ImVec4 color_scrollbar_hover    = ImColor(90, 101, 121);
+        ImVec4 color_scrollbar_active   = ImColor(113, 125, 147);
 
 
         // ---------------------------------------------------------------
@@ -206,11 +206,11 @@ namespace ImGui
         colors[ImGuiCol_BorderShadow]          = color_transparent;
         // [Frame]
         colors[ImGuiCol_FrameBg]               = color_surf_variant;
-        colors[ImGuiCol_FrameBgHovered]        = color_transparent;
-        colors[ImGuiCol_FrameBgActive]         = color_transparent;
+        colors[ImGuiCol_FrameBgHovered]        = color_frame_hover;
+        colors[ImGuiCol_FrameBgActive]         = color_frame_active;
         // [Title]
         colors[ImGuiCol_TitleBg]               = color_bg;
-        colors[ImGuiCol_TitleBgActive]         = color_bg;
+        colors[ImGuiCol_TitleBgActive]         = color_surf;
         colors[ImGuiCol_TitleBgCollapsed]      = color_bg;
         // [Scrollbar]
         colors[ImGuiCol_ScrollbarBg]           = color_transparent;
@@ -231,13 +231,13 @@ namespace ImGui
         colors[ImGuiCol_HeaderHovered]         = color_primary_hover;
         colors[ImGuiCol_HeaderActive]          = color_primary_active;
         // [Separator]
-        colors[ImGuiCol_Separator]             = ImVec4(0.28, 0.29, 0.30, 1.00);
+        colors[ImGuiCol_Separator]             = color_border;
         colors[ImGuiCol_SeparatorHovered]      = color_primary_hover;
         colors[ImGuiCol_SeparatorActive]       = color_primary_active;
         // [Resize Grip]
         colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36, 0.46, 0.56, 0.00);
-        colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.40, 0.50, 0.60, 1.00);
-        colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00);
+        colors[ImGuiCol_ResizeGripHovered]     = color_scrollbar_hover;
+        colors[ImGuiCol_ResizeGripActive]      = color_scrollbar_active;
         // [Tab]
         colors[ImGuiCol_Tab]                   = color_bg;
         colors[ImGuiCol_TabHovered]            = color_primary_hover;
@@ -251,17 +251,17 @@ namespace ImGui
         colors[ImGuiCol_PlotHistogram]         = color_primary;
         colors[ImGuiCol_PlotHistogramHovered]  = color_primary_hover;
         // [Table]
-        colors[ImGuiCol_TableHeaderBg]         = ImColor(24, 24, 26);
+        colors[ImGuiCol_TableHeaderBg]         = ImColor(34, 39, 49);
         colors[ImGuiCol_TableBorderStrong]     = color_border;
-        colors[ImGuiCol_TableBorderLight]      = ImColor(32, 32, 35);
+        colors[ImGuiCol_TableBorderLight]      = ImColor(43, 49, 61);
         colors[ImGuiCol_TableRowBg]            = color_transparent;
-        colors[ImGuiCol_TableRowBgAlt]         = ImColor(16, 16, 18);
+        colors[ImGuiCol_TableRowBgAlt]         = ImColor(255, 255, 255, 7);
         // [Nav]
         colors[ImGuiCol_NavCursor];
-        colors[ImGuiCol_NavHighlight]          = ImVec4(0.46, 0.56, 0.66, 1.00);
-        colors[ImGuiCol_NavWindowingHighlight] = color_green;
-        colors[ImGuiCol_NavWindowingDimBg]     = color_red;
-        colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80, 0.80, 0.80, 0.35);
+        colors[ImGuiCol_NavHighlight]          = ImColor(166, 180, 209);
+        colors[ImGuiCol_NavWindowingHighlight] = ImColor(206, 215, 234, 179);
+        colors[ImGuiCol_NavWindowingDimBg]     = ImColor(10, 13, 20, 153);
+        colors[ImGuiCol_ModalWindowDimBg]      = ImColor(10, 13, 20, 166);
         // [Docking]
         colors[ImGuiCol_DockingPreview]        = color_primary_active;
         colors[ImGuiCol_DockingEmptyBg]        = color_primary_hover;
