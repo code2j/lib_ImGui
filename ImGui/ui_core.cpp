@@ -355,8 +355,10 @@ namespace ImGui
         // ---------------------------------------------------------------
         // ImGui & raylib 초기화
         // ---------------------------------------------------------------
-        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT);
+        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT | FLAG_WINDOW_HIDDEN);
         InitWindow(width, height, title);
+        // Set the initial maximized state before mapping the X11 window.
+        MaximizeWindow();
         window_pinned = false;
         previous_window_focus = -1;
         previous_active_window = None;
@@ -428,7 +430,7 @@ namespace ImGui
         update_content_scale(window);
 
         view_texture = LoadRenderTexture((int)WINDOW_WIDTH, (int)WINDOW_HEIGHT);
-        MaximizeWindow();
+        ClearWindowState(FLAG_WINDOW_HIDDEN);
     }
 
     void Destroy()
