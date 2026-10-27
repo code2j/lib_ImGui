@@ -20,6 +20,19 @@ namespace
     int previous_window_focus = -1;
     Window previous_active_window = None;
     std::string config_path;
+    float ui_content_scale = 1.0f;
+
+    void update_content_scale(GLFWwindow* window)
+    {
+        const float scale = ImGui_ImplGlfw_GetContentScaleForWindow(window);
+        if (!std::isfinite(scale) || scale <= 0.0f || std::fabs(scale - ui_content_scale) < 0.001f)
+            return;
+
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.ScaleAllSizes(scale / ui_content_scale);
+        style.FontScaleDpi *= scale / ui_content_scale;
+        ui_content_scale = scale;
+    }
 
     void update_window_stacking()
     {
@@ -411,6 +424,8 @@ namespace ImGui
         GLFWwindow* window = glfwGetCurrentContext();
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init("#version 130");
+        ui_content_scale = 1.0f;
+        update_content_scale(window);
 
         view_texture = LoadRenderTexture((int)WINDOW_WIDTH, (int)WINDOW_HEIGHT);
         MaximizeWindow();
@@ -441,6 +456,7 @@ namespace ImGui
         // -----------------------
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
+        update_content_scale(glfwGetCurrentContext());
         update_window_stacking();
 
         // -----------------------
