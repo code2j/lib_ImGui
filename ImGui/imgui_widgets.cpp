@@ -10048,7 +10048,7 @@ bool    ImGui::BeginTabBarEx(ImGuiTabBar* tab_bar, const ImRect& tab_bar_bb, ImG
 
     // Draw separator
     // (it would be misleading to draw this in EndTabBar() suggesting that it may be drawn over tabs, as tab bar are appendable)
-    const ImU32 col = GetColorU32((flags & ImGuiTabBarFlags_IsFocused) ? ImGuiCol_TabSelected : ImGuiCol_TabDimmedSelected);
+    const ImU32 col = GetColorU32((flags & ImGuiTabBarFlags_DockNode) ? ImGuiCol_Border : (flags & ImGuiTabBarFlags_IsFocused) ? ImGuiCol_TabSelected : ImGuiCol_TabDimmedSelected);
     if (g.Style.TabBarBorderSize > 0.0f)
     {
         const float y = tab_bar->BarRect.Max.y;
@@ -11060,8 +11060,25 @@ bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, 
     {
         ImDrawList* display_draw_list = window->DrawList;
         const ImU32 tab_col = GetColorU32((held || hovered) ? ImGuiCol_TabHovered : tab_contents_visible ? (tab_bar_focused ? ImGuiCol_TabSelected : ImGuiCol_TabDimmedSelected) : (tab_bar_focused ? ImGuiCol_Tab : ImGuiCol_TabDimmed));
-        TabItemBackground(display_draw_list, bb, flags, tab_col);
-        if (tab_contents_visible && (tab_bar->Flags & ImGuiTabBarFlags_DrawSelectedOverline) && style.TabBarOverlineSize > 0.0f)
+        if (docked_window)
+        {
+            // Keep the hit rectangle intact while giving dock tabs a compact, inset surface.
+            const float inset_x = ImMin(2.0f, bb.GetWidth() * 0.1f);
+            const float inset_y = ImMin(3.0f, bb.GetHeight() * 0.15f);
+            ImVec2 tab_min(bb.Min.x + inset_x, bb.Min.y + inset_y);
+            ImVec2 tab_max(bb.Max.x - inset_x, bb.Max.y - inset_y);
+            if (tab_contents_visible || hovered || held)
+                display_draw_list->AddRectFilled(tab_min, tab_max, tab_col, ImMin(6.0f, (tab_max.y - tab_min.y) * 0.5f));
+            if (tab_contents_visible && tab_max.x > tab_min.x)
+            {
+                const float accent_inset = ImMin(8.0f, (tab_max.x - tab_min.x) * 0.25f);
+                const ImU32 accent = GetColorU32(tab_bar_focused ? ImGuiCol_TabSelectedOverline : ImGuiCol_TabDimmedSelectedOverline);
+                display_draw_list->AddRectFilled(ImVec2(tab_min.x + accent_inset, bb.Max.y - 2.0f), ImVec2(tab_max.x - accent_inset, bb.Max.y), accent, 1.0f);
+            }
+        }
+        else
+            TabItemBackground(display_draw_list, bb, flags, tab_col);
+        if (!docked_window && tab_contents_visible && (tab_bar->Flags & ImGuiTabBarFlags_DrawSelectedOverline) && style.TabBarOverlineSize > 0.0f)
         {
             // Might be moved to TabItemBackground() ?
             ImVec2 tl = bb.GetTL() + ImVec2(0, style.TabBarOverlineSize * 0.5f);
