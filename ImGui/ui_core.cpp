@@ -381,9 +381,19 @@ namespace ImGui
             const std::string id = "SidebarDockSpace:" + tab.label;
             all_dockspaces.push_back(ImGui::GetID(id.c_str()));
         }
+        const ImVec2 dockspace_pos = ImGui::GetCursorScreenPos();
         for (int i = 0; i < page_count; ++i)
-            if (i != selected_page)
+            if (i != selected_page) {
+                ImGuiDockNode* node = ImGui::DockBuilderGetNode(all_dockspaces[i]);
+                if (!node || !node->HostWindow) {
+                    // A keep-alive-only dockspace cannot create its host on startup.
+                    // Create it once so restored windows stay hidden on inactive pages.
+                    ImGui::SetCursorScreenPos(dockspace_pos);
+                    ImGui::DockSpace(all_dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_None);
+                }
                 ImGui::DockSpace(all_dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_KeepAliveOnly);
+            }
+        ImGui::SetCursorScreenPos(dockspace_pos);
         ImGui::DockSpace(all_dockspaces[selected_page], ImVec2(0, 0), ImGuiDockNodeFlags_None);
         ImGui::PopStyleColor();
         ImGui::End();
