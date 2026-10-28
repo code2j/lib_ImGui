@@ -30,7 +30,7 @@ namespace ImGui
         style.LogSliderDeadzone = 4;                  // Logarithmic Slider의 데드존(Deadzone) 크기
         style.TabRounding       = 6;                  // Tab 모서리 둥글기 (Rounding)
         style.TabBarBorderSize  = 0;
-        style.WindowMenuButtonPosition = ImGuiDir_None; // 탭 최소화 버튼 제거
+        // style.WindowMenuButtonPosition = ImGuiDir_None; // 탭 최소화 버튼 제거
 
 
         // ---------------------------------------------------------------
