@@ -196,6 +196,7 @@ namespace ImGui
 {
     static void ShowMenu()
     {
+        // 화면 배율에 맞춰 상단 헤더와 버튼의 크기 및 간격을 정한다.
         const float scale = ui_content_scale;
         const float header_height = 68.0f * scale;
         const float button_size = 36.0f * scale;
@@ -206,6 +207,7 @@ namespace ImGui
                                        ImGuiWindowFlags_NoScrollWithMouse |
                                        ImGuiWindowFlags_NoScrollbar;
 
+        // 기본 윈도우
         ImGui::SetNextWindowSizeConstraints(ImVec2(380, 200) * scale, ImVec2(FLT_MAX, FLT_MAX));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8) * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f * scale);
@@ -216,6 +218,7 @@ namespace ImGui
             return;
         }
 
+        // 창 상단에 둥근 헤더 배경과 본문을 구분하는 선을 그린다.
         const ImVec2 pos = ImGui::GetWindowPos();
         const ImVec2 size = ImGui::GetWindowSize();
         const float actions_x = size.x - inset - button_size * 4 - gap * 3;
@@ -226,30 +229,26 @@ namespace ImGui
         draw->AddLine(pos + ImVec2(0, header_height), pos + ImVec2(size.x, header_height),
                       ImGui::GetColorU32(ImGuiCol_Border));
 
-        // Keep the whole identity area draggable, excluding the window actions.
+        // 해더 영역 드래깅
         ImGui::SetCursorPos(ImVec2(0, 0));
         ImGui::InvisibleButton("##title_drag", ImVec2(actions_x - gap, header_height));
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
             ImGui::SetWindowPos(pos + ImGui::GetIO().MouseDelta);
 
+        // 헤더 왼쪽에 위젯 아이콘 배지와 창 제목, WORKSPACE 부제를 그린다.
         const ImVec2 badge = pos + ImVec2(inset, 16.0f * scale);
-        draw->AddRectFilled(badge, badge + ImVec2(button_size, button_size),
-                            ImGui::GetColorU32(ImGuiCol_Button), 10.0f * scale);
+        draw->AddRectFilled(badge, badge + ImVec2(button_size, button_size), ImGui::GetColorU32(ImGuiCol_Button), 10.0f * scale);
         const ImVec2 icon_size = ImGui::CalcTextSize(ICON_MD_WIDGETS);
-        draw->AddText(badge + (ImVec2(button_size, button_size) - icon_size) * 0.5f,
-                      IM_COL32(255, 255, 255, 255), ICON_MD_WIDGETS);
+        draw->AddText(badge + (ImVec2(button_size, button_size) - icon_size) * 0.5f, IM_COL32(255, 255, 255, 255), ICON_MD_WIDGETS);
         const float text_x = inset + button_size + 12.0f * scale;
         draw->PushClipRect(pos + ImVec2(text_x, 0), pos + ImVec2(actions_x - gap, header_height), true);
-        draw->AddText(pos + ImVec2(text_x, 10.0f * scale),
-                      ImGui::GetColorU32(ImGuiCol_Text), WINDOW_TITLE.c_str());
-        draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.72f,
-                      pos + ImVec2(text_x, 39.0f * scale),
-                      ImGui::GetColorU32(ImGuiCol_TextDisabled), "WORKSPACE");
+        draw->AddText(pos + ImVec2(text_x, 10.0f * scale), ImGui::GetColorU32(ImGuiCol_Text), WINDOW_TITLE.c_str());
+        draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.72f, pos + ImVec2(text_x, 39.0f * scale), ImGui::GetColorU32(ImGuiCol_TextDisabled), "WORKSPACE");
         draw->PopClipRect();
 
-        // Local styling follows the active theme without changing its accent palette.
-        auto action = [&](int index, const char* icon, const char* tooltip,
-                          bool selected = false, bool destructive = false) {
+        // 공통 버튼 스타일
+        auto action = [&](int index, const char* icon, const char* tooltip, bool selected = false, bool destructive = false)
+        {
             ImGui::SetCursorPos(ImVec2(actions_x + index * (button_size + gap), 16.0f * scale));
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 9.0f * scale);
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -266,13 +265,17 @@ namespace ImGui
             return pressed;
         };
 
+        // 고정 핀 버튼
         if (action(0, ICON_MD_KEEP "##window_pin", window_pinned ? "고정 해제" : "항상 위에 고정", window_pinned)) {
             window_pinned = !window_pinned;
             update_window_stacking();
         }
+
+        // 설정 버튼
         if (action(1, ICON_MD_SETTINGS "##window_setting", "워크스페이스 설정", ImGui::IsPopupOpen("SettingsPopup")))
             ImGui::OpenPopup("SettingsPopup");
 
+        // 설정 팝업
         ImGui::SetNextWindowSizeConstraints(ImVec2(280.0f * scale, 0), ImVec2(FLT_MAX, FLT_MAX));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16) * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 12.0f * scale);
@@ -292,17 +295,23 @@ namespace ImGui
                 ImGui::flag_change_thema = true;
                 config_changed = true;
             }
+
+            // 설정 저장
             if (config_changed && ImGui::GetIO().IniFilename != nullptr)
                 ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
             ImGui::EndPopup();
         }
         ImGui::PopStyleVar(3);
 
+        // 최소화 버튼
         if (action(2, ICON_MD_REMOVE "##window_minimaze", "최소화"))
             MinimizeWindow();
+
+        // 닫기 버튼
         if (action(3, ICON_MD_CLOSE "##window_close", "닫기", false, true))
             ImGui::ShouldClose(true);
 
+        // 도킹 영역
         ImGui::SetCursorPos(ImVec2(8.0f * scale, header_height + 8.0f * scale));
         ImGuiID dockspace_id = ImGui::GetID("MyInternalDockSpace");
         ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, ImVec4(0, 0, 0, 0));
