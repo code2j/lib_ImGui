@@ -19659,9 +19659,11 @@ static void ImGui::DockNodeUpdate(ImGuiDockNode* node)
     if (node->IsRootNode() && host_window)
     {
         DockNodeTreeUpdatePosSize(node, host_window->Pos, host_window->Size);
-        PushStyleColor(ImGuiCol_Separator, g.Style.Colors[ImGuiCol_Border]);
-        PushStyleColor(ImGuiCol_SeparatorActive, g.Style.Colors[ImGuiCol_ResizeGripActive]);
-        PushStyleColor(ImGuiCol_SeparatorHovered, g.Style.Colors[ImGuiCol_ResizeGripHovered]);
+        // 내가 수정한 코드 도킹 세퍼레이터를 안보이게 함
+        PushStyleColor(ImGuiCol_Separator, ImVec4(0, 0, 0, 0));
+        PushStyleColor(ImGuiCol_SeparatorActive, ImVec4(0, 0, 0, 0));
+        PushStyleColor(ImGuiCol_SeparatorHovered, ImVec4(0, 0, 0, 0));
+        // End 내가 수정한 코드 도킹 세퍼레이터를 안보이게 함
         DockNodeTreeUpdateSplitter(node);
         PopStyleColor(3);
     }
@@ -20794,8 +20796,8 @@ void ImGui::DockNodeTreeUpdateSplitter(ImGuiDockNode* node)
             float cur_size_1 = child_1->Size[axis];
             float min_size_0 = resize_limits[0] - child_0->Pos[axis];
             float min_size_1 = child_1->Pos[axis] + child_1->Size[axis] - resize_limits[1];
-            ImU32 bg_col = GetColorU32(ImGuiCol_WindowBg);
-            if (SplitterBehavior(bb, GetID("##Splitter"), axis, &cur_size_0, &cur_size_1, min_size_0, min_size_1, g.WindowsBorderHoverPadding, WINDOWS_RESIZE_FROM_EDGES_FEEDBACK_TIMER, bg_col))
+            // 내가 수정한 코드 마지막 매개변수를 0으로 함
+            if (SplitterBehavior(bb, GetID("##Splitter"), axis, &cur_size_0, &cur_size_1, min_size_0, min_size_1, g.WindowsBorderHoverPadding, WINDOWS_RESIZE_FROM_EDGES_FEEDBACK_TIMER, 0))
             {
                 if (touching_nodes[0].Size > 0 && touching_nodes[1].Size > 0)
                 {
