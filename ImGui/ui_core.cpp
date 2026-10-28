@@ -323,23 +323,31 @@ namespace ImGui
         ImGui::Dummy(ImVec2(0, 8.0f * scale));
         static int selected_page = 0;
         const char* pages[] = { ICON_MD_WIDGETS "  Overview", ICON_MD_DEPLOYED_CODE "  Workspace", ICON_MD_SUBJECT "  Activity" };
+        const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+        const ImVec4 subtle_accent = ImVec4(accent.x, accent.y, accent.z, 0.28f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.08f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
         for (int i = 0; i < IM_ARRAYSIZE(pages); ++i) {
             const bool selected = selected_page == i;
-            ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImGui::GetStyleColorVec4(ImGuiCol_Button) : ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_Button, selected ? subtle_accent : ImVec4(0, 0, 0, 0));
+            if (selected)
+                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
             ImGui::PushID(i);
             if (ImGui::Button(pages[i], ImVec2(-FLT_MIN, 42.0f * scale))) selected_page = i;
             ImGui::PopID();
+            if (selected) ImGui::PopStyleColor();
             ImGui::PopStyleColor();
             if (selected) {
                 const ImVec2 min = ImGui::GetItemRectMin();
                 const ImVec2 max = ImGui::GetItemRectMax();
                 ImGui::GetWindowDrawList()->AddRectFilled(
-                    min + ImVec2(0, 9.0f * scale), ImVec2(min.x + 3.0f * scale, max.y - 9.0f * scale),
-                    ImGui::GetColorU32(ImGuiCol_Text), 2.0f * scale);
+                    min + ImVec2(2.0f * scale, 10.0f * scale), ImVec2(min.x + 5.0f * scale, max.y - 10.0f * scale),
+                    ImGui::GetColorU32(accent), 2.0f * scale);
             }
         }
+        ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
         ImGui::EndChild();
         ImGui::PopStyleColor();
