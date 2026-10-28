@@ -334,21 +334,21 @@ namespace ImGui
         ImGui::TextDisabled("NAVIGATION");
         ImGui::Dummy(ImVec2(0, 8.0f * scale));
         static int selected_page = 0;
-        const char* pages[] = { ICON_MD_WIDGETS "  Overview", ICON_MD_DEPLOYED_CODE "  Workspace", ICON_MD_SUBJECT "  Activity" };
         const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_Button);
         const ImVec4 subtle_accent = ImVec4(accent.x, accent.y, accent.z, 0.28f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.08f, 0.5f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
-        const int page_count = IM_ARRAYSIZE(pages) + (int)sidebar_tabs.size();
+        const int page_count = (int)sidebar_tabs.size();
+        if (selected_page >= page_count) selected_page = 0;
         for (int i = 0; i < page_count; ++i) {
             const bool selected = selected_page == i;
             ImGui::PushStyleColor(ImGuiCol_Button, selected ? subtle_accent : ImVec4(0, 0, 0, 0));
             if (selected)
                 ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
             ImGui::PushID(i);
-            const char* label = i < IM_ARRAYSIZE(pages) ? pages[i] : sidebar_tabs[i - IM_ARRAYSIZE(pages)].label.c_str();
+            const char* label = sidebar_tabs[i].label.c_str();
             if (ImGui::Button(label, ImVec2(-FLT_MIN, 42.0f * scale))) selected_page = i;
             ImGui::PopID();
             if (selected) ImGui::PopStyleColor();
@@ -371,12 +371,10 @@ namespace ImGui
         ImGui::PopStyleVar(3);
 
         ImGui::SetCursorPos(ImVec2(16.0f * scale + sidebar_width, body_y));
-        // 기존 도킹 레이아웃은 첫 화면에 유지하고, 나머지 화면은 독립된 레이아웃을 사용한다.
-        ImGuiID dockspaces[] = { ImGui::GetID("MyInternalDockSpace"),
-                                 ImGui::GetID("WorkspaceDockSpace"),
-                                 ImGui::GetID("ActivityDockSpace") };
+        // 등록된 탭마다 독립된 도킹 레이아웃을 사용한다.
         ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, ImVec4(0, 0, 0, 0));
-        std::vector<ImGuiID> all_dockspaces(dockspaces, dockspaces + IM_ARRAYSIZE(dockspaces));
+        std::vector<ImGuiID> all_dockspaces;
+        all_dockspaces.reserve(sidebar_tabs.size());
         for (const auto& tab : sidebar_tabs) {
             const std::string id = "SidebarDockSpace:" + tab.label;
             all_dockspaces.push_back(ImGui::GetID(id.c_str()));
@@ -394,11 +392,12 @@ namespace ImGui
                 ImGui::DockSpace(all_dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_KeepAliveOnly);
             }
         ImGui::SetCursorScreenPos(dockspace_pos);
-        ImGui::DockSpace(all_dockspaces[selected_page], ImVec2(0, 0), ImGuiDockNodeFlags_None);
+        if (page_count > 0)
+            ImGui::DockSpace(all_dockspaces[selected_page], ImVec2(0, 0), ImGuiDockNodeFlags_None);
         ImGui::PopStyleColor();
         ImGui::End();
-        if (selected_page >= IM_ARRAYSIZE(pages)) {
-            auto draw_tab = sidebar_tabs[selected_page - IM_ARRAYSIZE(pages)].draw;
+        if (page_count > 0) {
+            auto draw_tab = sidebar_tabs[selected_page].draw;
             if (draw_tab) draw_tab();
         }
     }

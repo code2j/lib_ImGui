@@ -14,6 +14,8 @@ int main() {
 
     // 좌측 메뉴에 빈 도킹 영역을 추가한다.
     ImGui::AddTab(ICON_MD_TUNE "  사용자 패널");
+    ImGui::AddTab(ICON_MD_TUNE "  사용자 패널1");
+
 
 
 
