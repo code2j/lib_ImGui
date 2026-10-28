@@ -281,8 +281,6 @@ namespace ImGui
         ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 12.0f * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10) * scale);
         if (ImGui::BeginPopup("SettingsPopup")) {
-            ImGui::TextUnformatted("워크스페이스 설정");
-            ImGui::TextDisabled("필요한 패널과 화면 스타일을 선택하세요.");
             ImGui::Spacing();
             ImGui::SeparatorText("패널 표시");
             bool config_changed = ImGui::MenuItem(ICON_MD_DEPLOYED_CODE "  3D Viewport", nullptr, &ImGui::show_3d_viewport);
