@@ -309,11 +309,52 @@ namespace ImGui
         if (action(3, ICON_MD_CLOSE "##window_close", "닫기", false, true))
             ImGui::ShouldClose(true);
 
-        // 도킹 영역
-        ImGui::SetCursorPos(ImVec2(8.0f * scale, header_height + 8.0f * scale));
-        ImGuiID dockspace_id = ImGui::GetID("MyInternalDockSpace");
+        // 좌측 패널과 도킹 영역을 나란히 배치한다.
+        const float body_y = header_height + 8.0f * scale;
+        const float sidebar_width = ImMin(220.0f * scale, size.x * 0.32f);
+        ImGui::SetCursorPos(ImVec2(8.0f * scale, body_y));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 16) * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 6) * scale);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_ChildBg));
+        ImGui::BeginChild("##sidebar", ImVec2(sidebar_width, 0), ImGuiChildFlags_AlwaysUseWindowPadding);
+        ImGui::TextUnformatted("Workspace");
+        ImGui::TextDisabled("NAVIGATION");
+        ImGui::Dummy(ImVec2(0, 8.0f * scale));
+        static int selected_page = 0;
+        const char* pages[] = { ICON_MD_WIDGETS "  Overview", ICON_MD_DEPLOYED_CODE "  Workspace", ICON_MD_SUBJECT "  Activity" };
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.08f, 0.5f));
+        for (int i = 0; i < IM_ARRAYSIZE(pages); ++i) {
+            const bool selected = selected_page == i;
+            ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImGui::GetStyleColorVec4(ImGuiCol_Button) : ImVec4(0, 0, 0, 0));
+            ImGui::PushID(i);
+            if (ImGui::Button(pages[i], ImVec2(-FLT_MIN, 42.0f * scale))) selected_page = i;
+            ImGui::PopID();
+            ImGui::PopStyleColor();
+            if (selected) {
+                const ImVec2 min = ImGui::GetItemRectMin();
+                const ImVec2 max = ImGui::GetItemRectMax();
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    min + ImVec2(0, 9.0f * scale), ImVec2(min.x + 3.0f * scale, max.y - 9.0f * scale),
+                    ImGui::GetColorU32(ImGuiCol_Text), 2.0f * scale);
+            }
+        }
+        ImGui::PopStyleVar(2);
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
+
+        ImGui::SetCursorPos(ImVec2(16.0f * scale + sidebar_width, body_y));
+        // 기존 도킹 레이아웃은 첫 화면에 유지하고, 나머지 화면은 독립된 레이아웃을 사용한다.
+        ImGuiID dockspaces[] = { ImGui::GetID("MyInternalDockSpace"),
+                                 ImGui::GetID("WorkspaceDockSpace"),
+                                 ImGui::GetID("ActivityDockSpace") };
         ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, ImVec4(0, 0, 0, 0));
-        ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
+        for (int i = 0; i < IM_ARRAYSIZE(dockspaces); ++i)
+            if (i != selected_page)
+                ImGui::DockSpace(dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_KeepAliveOnly);
+        ImGui::DockSpace(dockspaces[selected_page], ImVec2(0, 0), ImGuiDockNodeFlags_None);
         ImGui::PopStyleColor();
         ImGui::End();
     }
