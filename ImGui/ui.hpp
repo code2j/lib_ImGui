@@ -78,8 +78,9 @@ namespace ImGui
     bool ShouldClose(bool force_close = false);
     bool Context(std::function<void()> func);
     void LoadConfig(const char* path);
-    // Register once before the frame loop. The selected page is drawn each frame.
-    void AddTab(const char* label, std::function<void()> draw);
+    // 프레임 루프 전에 등록한다. 선택 시 콜백에서 필요한 창을 그린다.
+    // 같은 label을 다시 등록하면 콜백을 교체한다.
+    void AddTab(const char* label, std::function<void()> draw = {});
 
     // 뷰포트 마우스 및 상태 유틸리티
     Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치

@@ -12,6 +12,11 @@ int main() {
     ImGui::Init("테스트 프로그램", 1280, 720);
     ImGui::LoadConfig("../imgui.ini");
 
+    // 좌측 메뉴에 빈 도킹 영역을 추가한다.
+    ImGui::AddTab(ICON_MD_TUNE "  사용자 패널");
+
+
+
     bool is_loading = true;
     ImGui::Texture texture1 = ImGui::load_texture(IMGUI_ROOT "/image.png");
 
@@ -19,6 +24,12 @@ int main() {
     while (!ImGui::ShouldClose()) {
     ImGui::Context([&]()
     {
+
+        ImGui::Begin("aaa");
+        ImGui::BeginChild("123");
+        ImGui::Text("dasdad");
+        ImGui::EndChild();
+        ImGui::End();
 
 
         // ----------------------

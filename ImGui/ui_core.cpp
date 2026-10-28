@@ -13,6 +13,7 @@
 #include <GLFW/glfw3native.h>
 #include <cmath>
 #include <csignal>
+#include <vector>
 namespace fs = std::filesystem;
 
 namespace
@@ -22,6 +23,8 @@ namespace
     Window previous_active_window = None;
     std::string config_path;
     float ui_content_scale = 1.0f;
+    struct SidebarTab { std::string label; std::function<void()> draw; };
+    std::vector<SidebarTab> sidebar_tabs;
 
     void update_content_scale(GLFWwindow* window)
     {
@@ -194,6 +197,15 @@ static void sigint_handler(int signum)
 
 namespace ImGui
 {
+    void AddTab(const char* label, std::function<void()> draw)
+    {
+        if (!label || !*label) return;
+        for (auto& tab : sidebar_tabs) {
+            if (tab.label == label) { tab.draw = std::move(draw); return; }
+        }
+        sidebar_tabs.push_back({label, std::move(draw)});
+    }
+
     static void ShowMenu()
     {
         // 화면 배율에 맞춰 상단 헤더와 버튼의 크기 및 간격을 정한다.
@@ -329,22 +341,27 @@ namespace ImGui
         ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.08f, 0.5f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
-        for (int i = 0; i < IM_ARRAYSIZE(pages); ++i) {
+        const int page_count = IM_ARRAYSIZE(pages) + (int)sidebar_tabs.size();
+        for (int i = 0; i < page_count; ++i) {
             const bool selected = selected_page == i;
             ImGui::PushStyleColor(ImGuiCol_Button, selected ? subtle_accent : ImVec4(0, 0, 0, 0));
             if (selected)
                 ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
             ImGui::PushID(i);
-            if (ImGui::Button(pages[i], ImVec2(-FLT_MIN, 42.0f * scale))) selected_page = i;
+            const char* label = i < IM_ARRAYSIZE(pages) ? pages[i] : sidebar_tabs[i - IM_ARRAYSIZE(pages)].label.c_str();
+            if (ImGui::Button(label, ImVec2(-FLT_MIN, 42.0f * scale))) selected_page = i;
             ImGui::PopID();
             if (selected) ImGui::PopStyleColor();
             ImGui::PopStyleColor();
             if (selected) {
                 const ImVec2 min = ImGui::GetItemRectMin();
                 const ImVec2 max = ImGui::GetItemRectMax();
-                ImGui::GetWindowDrawList()->AddRectFilled(
-                    min + ImVec2(2.0f * scale, 10.0f * scale), ImVec2(min.x + 5.0f * scale, max.y - 10.0f * scale),
-                    ImGui::GetColorU32(accent), 2.0f * scale);
+                ImDrawList* sidebar_draw = ImGui::GetWindowDrawList();
+                const float width = 4.0f * scale;
+                const float inset = 7.0f * scale;
+                sidebar_draw->AddRectFilled(min + ImVec2(0, inset),
+                                            ImVec2(min.x + width, max.y - inset),
+                                            ImGui::GetColorU32(accent), width * 0.5f);
             }
         }
         ImGui::PopStyleColor(2);
@@ -359,12 +376,21 @@ namespace ImGui
                                  ImGui::GetID("WorkspaceDockSpace"),
                                  ImGui::GetID("ActivityDockSpace") };
         ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, ImVec4(0, 0, 0, 0));
-        for (int i = 0; i < IM_ARRAYSIZE(dockspaces); ++i)
+        std::vector<ImGuiID> all_dockspaces(dockspaces, dockspaces + IM_ARRAYSIZE(dockspaces));
+        for (const auto& tab : sidebar_tabs) {
+            const std::string id = "SidebarDockSpace:" + tab.label;
+            all_dockspaces.push_back(ImGui::GetID(id.c_str()));
+        }
+        for (int i = 0; i < page_count; ++i)
             if (i != selected_page)
-                ImGui::DockSpace(dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_KeepAliveOnly);
-        ImGui::DockSpace(dockspaces[selected_page], ImVec2(0, 0), ImGuiDockNodeFlags_None);
+                ImGui::DockSpace(all_dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_KeepAliveOnly);
+        ImGui::DockSpace(all_dockspaces[selected_page], ImVec2(0, 0), ImGuiDockNodeFlags_None);
         ImGui::PopStyleColor();
         ImGui::End();
+        if (selected_page >= IM_ARRAYSIZE(pages)) {
+            auto draw_tab = sidebar_tabs[selected_page - IM_ARRAYSIZE(pages)].draw;
+            if (draw_tab) draw_tab();
+        }
     }
 
     void Init(const char* title, int width, int height)
@@ -457,6 +483,7 @@ namespace ImGui
 
     void Destroy()
     {
+        sidebar_tabs.clear();
         destroy_textures();
         UnloadRenderTexture(::view_texture);
         ImGui_ImplOpenGL3_Shutdown();
