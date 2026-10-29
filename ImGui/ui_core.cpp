@@ -324,15 +324,15 @@ namespace ImGui
         // 좌측 패널과 도킹 영역을 나란히 배치한다.
         const float body_y = header_height + 8.0f * scale;
         const float sidebar_width = ImMin(220.0f * scale, size.x * 0.32f);
-        ImGui::SetCursorPos(ImVec2(8.0f * scale, body_y));
+        ImGui::SetCursorPos(ImVec2(8.0f * scale, body_y + 8.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8) * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 6) * scale);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_ChildBg));
         ImGui::BeginChild("##sidebar", ImVec2(sidebar_width, 0), ImGuiChildFlags_AlwaysUseWindowPadding);
-        ImGui::TextUnformatted("Workspace");
-        ImGui::TextDisabled("NAVIGATION");
-        ImGui::Dummy(ImVec2(0, 8.0f * scale));
+        // ImGui::TextUnformatted("Workspace");
+        // ImGui::TextDisabled("NAVIGATION");
+        ImGui::Dummy(ImVec2(0, 0.0f * scale));
         static int selected_page = 0;
         const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_Button);
         const ImVec4 subtle_accent = ImVec4(accent.x, accent.y, accent.z, 0.28f);

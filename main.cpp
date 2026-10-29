@@ -26,6 +26,7 @@ int main() {
     while (!ImGui::ShouldClose()) {
     ImGui::Context([&]()
     {
+        // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
 
         ImGui::Begin("aaa");
         ImGui::BeginChild("123", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding);
@@ -36,6 +37,7 @@ int main() {
 
         ImGui::EndChild();
         ImGui::End();
+        // ImGui::PopStyleVar();
 
 
         // ----------------------
