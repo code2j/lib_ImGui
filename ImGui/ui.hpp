@@ -80,7 +80,9 @@ namespace ImGui
     void LoadConfig(const char* path);
     // 프레임 루프 전에 등록한다. 선택 시 콜백에서 필요한 창을 그린다.
     // 같은 label을 다시 등록하면 콜백을 교체한다.
-    void AddTab(const char* label, std::function<void()> draw = {});
+    // sidebar_content가 있으면 탭을 눌렀을 때 좌측에서 내용을 펼친다.
+    void AddTab(const char* label, std::function<void()> draw = {},
+                std::function<void()> sidebar_content = {});
 
     // 뷰포트 마우스 및 상태 유틸리티
     Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치

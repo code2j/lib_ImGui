@@ -23,7 +23,12 @@ namespace
     Window previous_active_window = None;
     std::string config_path;
     float ui_content_scale = 1.0f;
-    struct SidebarTab { std::string label; std::function<void()> draw; };
+    struct SidebarTab {
+        std::string label;
+        std::function<void()> draw, sidebar_content;
+        float expanded = 0.0f, content_height = 0.0f;
+        bool open = false;
+    };
     std::vector<SidebarTab> sidebar_tabs;
 
     void update_content_scale(GLFWwindow* window)
@@ -197,13 +202,17 @@ static void sigint_handler(int signum)
 
 namespace ImGui
 {
-    void AddTab(const char* label, std::function<void()> draw)
+    void AddTab(const char* label, std::function<void()> draw, std::function<void()> sidebar_content)
     {
         if (!label || !*label) return;
         for (auto& tab : sidebar_tabs) {
-            if (tab.label == label) { tab.draw = std::move(draw); return; }
+            if (tab.label == label) {
+                tab.draw = std::move(draw);
+                tab.sidebar_content = std::move(sidebar_content);
+                return;
+            }
         }
-        sidebar_tabs.push_back({label, std::move(draw)});
+        sidebar_tabs.push_back({label, std::move(draw), std::move(sidebar_content)});
     }
 
     static void ShowMenu()
@@ -342,31 +351,59 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
         const int page_count = (int)sidebar_tabs.size();
         if (selected_page >= page_count) selected_page = 0;
-        static float indicator_page = 0.0f;
-        ImVec2 first_button_min;
+        static float indicator_y = 0.0f;
+        static bool indicator_initialized = false;
+        float target_y = 0.0f, indicator_x = 0.0f;
+        const float sidebar_origin_y = ImGui::GetWindowPos().y - ImGui::GetScrollY();
         for (int i = 0; i < page_count; ++i) {
+            auto& tab = sidebar_tabs[i];
             const bool selected = selected_page == i;
             ImGui::PushStyleColor(ImGuiCol_Button, selected ? subtle_accent : ImVec4(0, 0, 0, 0));
             if (selected)
                 ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
             ImGui::PushID(i);
             const char* label = sidebar_tabs[i].label.c_str();
-            if (ImGui::Button(label, ImVec2(-FLT_MIN, 42.0f * scale))) selected_page = i;
-            if (i == 0) first_button_min = ImGui::GetItemRectMin();
+            if (ImGui::Button(label, ImVec2(-FLT_MIN, 42.0f * scale))) {
+                selected_page = i;
+                if (tab.sidebar_content) tab.open = !tab.open;
+            }
+            const ImVec2 button_min = ImGui::GetItemRectMin();
+            if (selected_page == i) {
+                target_y = button_min.y - sidebar_origin_y;
+                indicator_x = button_min.x;
+            }
             ImGui::PopID();
             if (selected) ImGui::PopStyleColor();
             ImGui::PopStyleColor();
+            if (tab.sidebar_content) {
+                const bool measuring = tab.open && tab.content_height == 0.0f;
+                if (!measuring) {
+                    const float speed = ImGui::GetIO().DeltaTime * 7.0f;
+                    tab.expanded = ImClamp(tab.expanded + (tab.open ? speed : -speed), 0.0f, 1.0f);
+                }
+                if (tab.expanded > 0.0f || measuring) {
+                    ImGui::PushID(i);
+                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, measuring ? 0.0f : tab.expanded);
+                    ImGui::BeginChild("##sidebar_content", ImVec2(0, ImMax(0.01f, tab.content_height * tab.expanded)), 0,
+                                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                    const float start_y = ImGui::GetCursorScreenPos().y;
+                    tab.sidebar_content();
+                    tab.content_height = ImMax(1.0f, ImGui::GetCursorScreenPos().y - start_y);
+                    ImGui::EndChild();
+                    ImGui::PopStyleVar();
+                    ImGui::PopID();
+                }
+            }
         }
         if (page_count > 0) {
-            // 페이지 인덱스 기준으로 보간하면 창 이동과 화면 배율 변경에도 위치가 유지된다.
-            indicator_page += (selected_page - indicator_page) *
-                              (1.0f - std::exp(-12.0f * ImGui::GetIO().DeltaTime));
+            if (!indicator_initialized) { indicator_y = target_y; indicator_initialized = true; }
+            indicator_y += (target_y - indicator_y) * (1.0f - std::exp(-12.0f * ImGui::GetIO().DeltaTime));
             const float width = 4.0f * scale;
             const float inset = 7.0f * scale;
-            const float y = first_button_min.y + indicator_page * 48.0f * scale;
+            const float y = sidebar_origin_y + indicator_y;
             ImGui::GetWindowDrawList()->AddRectFilled(
-                ImVec2(first_button_min.x, y + inset),
-                ImVec2(first_button_min.x + width, y + 42.0f * scale - inset),
+                ImVec2(indicator_x, y + inset),
+                ImVec2(indicator_x + width, y + 42.0f * scale - inset),
                 ImGui::GetColorU32(accent), width * 0.5f);
         }
         ImGui::PopStyleColor(2);

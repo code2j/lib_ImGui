@@ -14,10 +14,31 @@ int main() {
 
     // 좌측 메뉴에 빈 도킹 영역을 추가한다.
     ImGui::AddTab(ICON_MD_TUNE "  사용자 패널");
-    ImGui::AddTab(ICON_MD_TUNE "  사용자 패널1");
+    ImGui::AddTab("설정", {}, [] {
+        ImGui::TextUnformatted("하위 내용");
+        ImGui::Button("버튼");
+    });
+    ImGui::AddTab(ICON_MD_TUNE "  사용자 패널1", {}, []{
+        static bool is_c = false;
+        if (ImGui::Check("체크박스", &is_c)) {
+            if (is_c)
+                ImGui::NotifyInfo("체크박스 선택됨");
+            else
+                ImGui::NotifyInfo("체크박스 해제됨");
+        }
+
+        static int radio_idx = 0;
+        if (ImGui::Radio("라디오 1", &radio_idx, 0))
+            ImGui::NotifyInfo("라디오 1 선택됨");
+        if (ImGui::Radio("라디오 2", &radio_idx, 1))
+            ImGui::NotifyInfo("라디오 2 선택됨");
+
+
+    });
     ImGui::AddTab(ICON_MD_TUNE "  사용자 패널2");
     ImGui::AddTab(ICON_MD_TUNE "  사용자 패널3");
     ImGui::AddTab(ICON_MD_TUNE "  사용자 패널4");
+
 
 
 
