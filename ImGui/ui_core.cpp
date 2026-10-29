@@ -342,6 +342,8 @@ namespace ImGui
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
         const int page_count = (int)sidebar_tabs.size();
         if (selected_page >= page_count) selected_page = 0;
+        static float indicator_page = 0.0f;
+        ImVec2 first_button_min;
         for (int i = 0; i < page_count; ++i) {
             const bool selected = selected_page == i;
             ImGui::PushStyleColor(ImGuiCol_Button, selected ? subtle_accent : ImVec4(0, 0, 0, 0));
@@ -350,19 +352,22 @@ namespace ImGui
             ImGui::PushID(i);
             const char* label = sidebar_tabs[i].label.c_str();
             if (ImGui::Button(label, ImVec2(-FLT_MIN, 42.0f * scale))) selected_page = i;
+            if (i == 0) first_button_min = ImGui::GetItemRectMin();
             ImGui::PopID();
             if (selected) ImGui::PopStyleColor();
             ImGui::PopStyleColor();
-            if (selected) {
-                const ImVec2 min = ImGui::GetItemRectMin();
-                const ImVec2 max = ImGui::GetItemRectMax();
-                ImDrawList* sidebar_draw = ImGui::GetWindowDrawList();
-                const float width = 4.0f * scale;
-                const float inset = 7.0f * scale;
-                sidebar_draw->AddRectFilled(min + ImVec2(0, inset),
-                                            ImVec2(min.x + width, max.y - inset),
-                                            ImGui::GetColorU32(accent), width * 0.5f);
-            }
+        }
+        if (page_count > 0) {
+            // 페이지 인덱스 기준으로 보간하면 창 이동과 화면 배율 변경에도 위치가 유지된다.
+            indicator_page += (selected_page - indicator_page) *
+                              (1.0f - std::exp(-12.0f * ImGui::GetIO().DeltaTime));
+            const float width = 4.0f * scale;
+            const float inset = 7.0f * scale;
+            const float y = first_button_min.y + indicator_page * 48.0f * scale;
+            ImGui::GetWindowDrawList()->AddRectFilled(
+                ImVec2(first_button_min.x, y + inset),
+                ImVec2(first_button_min.x + width, y + 42.0f * scale - inset),
+                ImGui::GetColorU32(accent), width * 0.5f);
         }
         ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
