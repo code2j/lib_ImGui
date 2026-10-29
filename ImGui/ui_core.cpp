@@ -163,7 +163,6 @@ namespace
     // 뷰포트 상태
     // ==================================================
     RenderTexture2D view_texture; // 렌더링된 이미지가 저장되는 텍스처
-    Texture2D title_logo = {};
     Vector2 viewport_mouse_pos = { 0.0, 0.0 };
     bool is_viewport_hovered   = false;
 
@@ -222,7 +221,6 @@ namespace ImGui
         const float scale = ui_content_scale;
         const float header_height = 68.0f * scale;
         const float button_size = 36.0f * scale;
-        const float logo_width = 80.0f * scale;
         const float gap = 6.0f * scale;
         const float inset = 16.0f * scale;
         const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
@@ -258,23 +256,15 @@ namespace ImGui
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
             ImGui::SetWindowPos(pos + ImGui::GetIO().MouseDelta);
 
-        // 헤더 왼쪽에 로고와 창 제목, WORKSPACE 부제를 그린다.
-        const ImVec2 badge = pos + ImVec2(inset, 0);
-        if (title_logo.id != 0) {
-            const float ratio = (float)title_logo.width / (float)title_logo.height;
-            const float logo_height = ImMin(header_height - 16.0f * scale, logo_width / ratio);
-            const ImVec2 logo_size(logo_height * ratio, logo_height);
-            const ImVec2 logo_pos = badge + (ImVec2(logo_width, header_height) - logo_size) * 0.5f;
-            draw->AddImage((ImTextureID)(intptr_t)title_logo.id, logo_pos, logo_pos + logo_size);
-        }
-        const float text_x = inset + logo_width + 12.0f * scale;
-        const float title_size = ImGui::GetFontSize();
-        const float subtitle_size = title_size * 0.72f;
-        const float text_gap = 4.0f * scale;
-        const float text_y = (header_height - title_size - text_gap - subtitle_size) * 0.5f;
+        // 헤더 왼쪽에 위젯 아이콘 배지와 창 제목, WORKSPACE 부제를 그린다.
+        const ImVec2 badge = pos + ImVec2(inset, 16.0f * scale);
+        draw->AddRectFilled(badge, badge + ImVec2(button_size, button_size), ImGui::GetColorU32(ImGuiCol_Button), 10.0f * scale);
+        const ImVec2 icon_size = ImGui::CalcTextSize(ICON_MD_WIDGETS);
+        draw->AddText(badge + (ImVec2(button_size, button_size) - icon_size) * 0.5f, IM_COL32(255, 255, 255, 255), ICON_MD_WIDGETS);
+        const float text_x = inset + button_size + 12.0f * scale;
         draw->PushClipRect(pos + ImVec2(text_x, 0), pos + ImVec2(actions_x - gap, header_height), true);
-        draw->AddText(pos + ImVec2(text_x, text_y), ImGui::GetColorU32(ImGuiCol_Text), WINDOW_TITLE.c_str());
-        draw->AddText(ImGui::GetFont(), subtitle_size, pos + ImVec2(text_x, text_y + title_size + text_gap), ImGui::GetColorU32(ImGuiCol_TextDisabled), "WORKSPACE");
+        draw->AddText(pos + ImVec2(text_x, 10.0f * scale), ImGui::GetColorU32(ImGuiCol_Text), WINDOW_TITLE.c_str());
+        draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.72f, pos + ImVec2(text_x, 39.0f * scale), ImGui::GetColorU32(ImGuiCol_TextDisabled), "WORKSPACE");
         draw->PopClipRect();
 
         // 공통 버튼 스타일
@@ -487,7 +477,6 @@ namespace ImGui
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // 키보드 네비게이션 활성화
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // 도킹 활성화
-        io.ConfigWindowsMoveFromTitleBarOnly = true;          // 타이틀바만 드래그 허용
 
 
         ImFontConfig icon_config;
@@ -541,13 +530,6 @@ namespace ImGui
         update_content_scale(window);
 
         view_texture = LoadRenderTexture((int)WINDOW_WIDTH, (int)WINDOW_HEIGHT);
-        const fs::path logo_path = fs::path(__FILE__).parent_path() / "uon_logo.png";
-        ::Image logo_image = LoadImage(logo_path.string().c_str());
-        if (logo_image.data) {
-            ImageAlphaCrop(&logo_image, 0.01f);
-            title_logo = LoadTextureFromImage(logo_image);
-            UnloadImage(logo_image);
-        }
         ClearWindowState(FLAG_WINDOW_HIDDEN);
     }
 
@@ -556,8 +538,6 @@ namespace ImGui
         sidebar_tabs.clear();
         destroy_textures();
         UnloadRenderTexture(::view_texture);
-        if (title_logo.id != 0) UnloadTexture(title_logo);
-        title_logo = {};
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImPlot::DestroyContext();
