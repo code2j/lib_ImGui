@@ -53,7 +53,7 @@ namespace ImGui
     // Widget: Drag
     // ====================================================
     bool _drag_(const char* label, ImGuiDataType data_type, void* p_data, float v_speed, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags);
-    bool Drag(const char* label, int*    v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
+    bool Drag(const char* label, int*    v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%d", ImGuiSliderFlags flags = 0);
     bool Drag(const char* label, float*  v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
     bool Drag(const char* label, double* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
 

@@ -870,12 +870,14 @@ bool ImGui::Drag(const char *label, float *v, float v_speed, float v_min, float 
 
 bool ImGui::Drag(const char *label, double *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
 {
-    return _drag_(label, ImGuiDataType_Double, v, v_speed, &v_min, &v_max, format, flags);
+    const double min = v_min, max = v_max;
+    return _drag_(label, ImGuiDataType_Double, v, v_speed, &min, &max, format, flags);
 }
 
 bool ImGui::Drag(const char *label, int *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags)
 {
-    return _drag_(label, ImGuiDataType_S32, v, v_speed, &v_min, &v_max, format, flags);
+    const int min = static_cast<int>(v_min), max = static_cast<int>(v_max);
+    return _drag_(label, ImGuiDataType_S32, v, v_speed, &min, &max, format, flags);
 }
 
 namespace ImGui
