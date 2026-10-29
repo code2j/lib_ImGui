@@ -28,8 +28,12 @@ int main() {
     {
 
         ImGui::Begin("aaa");
-        ImGui::BeginChild("123");
+        ImGui::BeginChild("123", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding);
+
+        static int cnt = 0;
+        ImGui::SliderInt("slider", &cnt, 0, 100);
         ImGui::Text("dasdad");
+
         ImGui::EndChild();
         ImGui::End();
 

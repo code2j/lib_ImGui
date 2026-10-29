@@ -326,7 +326,7 @@ namespace ImGui
         const float sidebar_width = ImMin(220.0f * scale, size.x * 0.32f);
         ImGui::SetCursorPos(ImVec2(8.0f * scale, body_y));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f * scale);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 16) * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8) * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 6) * scale);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_ChildBg));
         ImGui::BeginChild("##sidebar", ImVec2(sidebar_width, 0), ImGuiChildFlags_AlwaysUseWindowPadding);
