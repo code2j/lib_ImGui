@@ -210,7 +210,7 @@ namespace ImGui
         colors[ImGuiCol_FrameBgActive]         = color_frame_active;
         // [Title]
         colors[ImGuiCol_TitleBg]               = color_bg;
-        colors[ImGuiCol_TitleBgActive]         = ImColor(0, 0, 0, 0);
+        colors[ImGuiCol_TitleBgActive]         = color_bg;
         colors[ImGuiCol_TitleBgCollapsed]      = color_bg;
         // [Scrollbar]
         colors[ImGuiCol_ScrollbarBg]           = color_transparent;
