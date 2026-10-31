@@ -14,7 +14,7 @@ namespace ImGui
         style.ItemInnerSpacing  = ImVec2(6.00, 6.00); // Item 내부 요소 간의 간격 (Inner Spacing)
         style.TouchExtraPadding = ImVec2(0.00, 0.00); // 터치 조작을 위한 추가 여백 (Padding)
         style.IndentSpacing     = 25;                 // 들여쓰기 (Indent) 간격
-        style.ScrollbarSize     = 1;                 // Scrollbar 두께/크기
+        style.ScrollbarSize     = 0;                 // Scrollbar 두께/크기
         style.GrabMinSize       = 10;                 // 슬라이더 등 Grab(손잡이)의 최소 크기
         style.WindowBorderSize  = 0;                  // Window 테두리 (Border) 두께
         style.ChildBorderSize   = 1;                  // Child 창 테두리 (Border) 두께
