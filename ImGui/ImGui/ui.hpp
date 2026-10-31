@@ -28,12 +28,8 @@
 #include "ui_style.h"
 
 
-
 namespace ImGui
 {
-    // inline ImVec2 GLOBAL_MOUSE_POS;       // 전역 마우스 좌표
-
-
     // ==================================================
     // 상태 플래그
     // ==================================================
@@ -42,12 +38,8 @@ namespace ImGui
     inline bool show_log_window    = false; // 로거 표시 여부
     inline bool show_style_edit    = false; // 컬러 에디터 표시 여부
     inline bool show_system_hud    = false; // hud 표시 여부
-
     inline int  theme_id           = 1;     // 0: white, 1: dark
-
-    inline bool flag_change_thema  = false;
-    inline bool flag_show_menu     = false;
-
+    inline bool flag_change_thema  = false; // 테마 변경 여부
 
 
     // ==================================================
@@ -56,33 +48,13 @@ namespace ImGui
     inline ImFont* LOGGER_FONT      = nullptr;
 
 
-
     // ==================================================
-    // 3d 카메라 정의
+    // 기본 함수 정의
     // ==================================================
-    inline Camera camera = {
-        { 1.0, 0.5, 2.0 },       // position
-        { 0.0, 0.0, 0.0 },       // target
-        { 0.0, 1.0, 0.0 },       // up
-        45.0f,                   // fovy
-        CAMERA_PERSPECTIVE       // projection
-    };
-}
-
-
-
-namespace ImGui
-{
     void Init(const char* title, int width = 1280, int height = 720);
     void Destroy();
     bool ShouldClose(bool force_close = false);
     bool Context(std::function<void()> func);
     void LoadConfig(const char* path);
     void AddTab(const char* label, std::function<void()> draw = {}, std::function<void()> sidebar_content = {});
-
-    // 뷰포트 마우스 및 상태 유틸리티
-    // Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
-    // bool    is_viewport_hovered();
 }
-
-
