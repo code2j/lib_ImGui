@@ -313,7 +313,7 @@ namespace ImGui
     void Destroy()
     {
         SIDETAP_BAR.clear();
-        destroy_textures();
+        DestroyAllTextures();
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImPlot::DestroyContext();

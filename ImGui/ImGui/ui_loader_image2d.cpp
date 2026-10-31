@@ -24,7 +24,7 @@ namespace ImGui
         return ptr;
     }
 
-    void destroy_textures()
+    void DestroyAllTextures()
     {
         for (const auto& texture : LOADED_TEXTURES) {
             if (texture->id != 0) {
