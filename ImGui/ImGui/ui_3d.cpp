@@ -39,7 +39,6 @@ namespace ImGui
             view_texture = LoadRenderTexture((int)WIDTH_3D, (int)HEIGHT_3D);
 
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
         ImGui::Begin(title);
         ImGui::BeginChild("##3D Window", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding);
@@ -99,8 +98,6 @@ namespace ImGui
             }
         }
 
-
-        ImGui::PopStyleVar();
 
 
         // 렌더링
