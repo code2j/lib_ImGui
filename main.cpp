@@ -1,5 +1,13 @@
 #include "ui.hpp"
 #include <iostream>
+#include <chrono>
+#include <mutex>
+#include <thread>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/image_encodings.hpp>
+#include <limits>
+#include <vector>
 
 #include <fstream>
 #include <string>
@@ -8,7 +16,35 @@
 Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
-int main() {
+int main(int argc, char **argv) {
+    // ros2 초기화 & 노드 생성
+    rclcpp::init(argc, argv);
+    auto node = rclcpp::Node::make_shared("imgui_camera_viewer");
+    sensor_msgs::msg::Image::ConstSharedPtr latest_image;
+    std::mutex image_mutex;
+    auto subscription = node->create_subscription<sensor_msgs::msg::Image>(
+        "/camera/color/image_raw",                       // topic name
+        rclcpp::SensorDataQoS(),                         // qos
+        [&](sensor_msgs::msg::Image::ConstSharedPtr msg) // callback
+        {
+            std::lock_guard lock(image_mutex);
+            latest_image = std::move(msg);
+        }
+    );
+
+    // ros2 스래드
+    std::jthread ros_thread([&](std::stop_token stop)
+    {
+        rclcpp::executors::SingleThreadedExecutor executor;
+        executor.add_node(node);
+        while (!stop.stop_requested() && rclcpp::ok()) {
+            executor.spin_once(std::chrono::milliseconds(50));
+        }
+    });
+
+    Texture2D camera_texture{};
+
+    // ImGui 초기화
     ImGui::Init("테스트 프로그램", 1280, 720);
     ImGui::LoadConfig("../imgui.ini");
 
@@ -48,9 +84,68 @@ int main() {
     ImGui::Image2D texture1 = ImGui::LoadImage(IMGUI_ROOT "/image.png");
 
 
-    while (!ImGui::ShouldClose()) {
+    while (rclcpp::ok() && !ImGui::ShouldClose()) {
+
+    sensor_msgs::msg::Image::ConstSharedPtr image_msg;
+    {
+        std::lock_guard lock(image_mutex);
+        image_msg = std::move(latest_image);
+    }
+    if (image_msg) {
+        namespace enc = sensor_msgs::image_encodings;
+        const auto &encoding = image_msg->encoding;
+        const bool mono = encoding == enc::MONO8;
+        const bool bgr = encoding == enc::BGR8 || encoding == enc::BGRA8;
+        const bool supported = mono || bgr || encoding == enc::RGB8 || encoding == enc::RGBA8;
+        const size_t channels = mono ? 1 : (encoding == enc::BGRA8 || encoding == enc::RGBA8 ? 4 : 3);
+        const size_t width = image_msg->width;
+        const size_t height = image_msg->height;
+        const size_t step = image_msg->step;
+        if (!supported || width == 0 || height == 0 ||
+            width > static_cast<size_t>(std::numeric_limits<int>::max()) ||
+            height > static_cast<size_t>(std::numeric_limits<int>::max()) ||
+            width > std::numeric_limits<size_t>::max() / 4 / height ||
+            width > step / channels || height > image_msg->data.size() / step) {
+            RCLCPP_WARN_THROTTLE(node->get_logger(), *node->get_clock(), 5000,
+                "Unsupported or invalid image: %s", encoding.c_str());
+        } else {
+            std::vector<unsigned char> rgba(width * height * 4);
+            for (size_t y = 0; y < height; ++y) {
+                const auto *src = image_msg->data.data() + y * step;
+                auto *dst = rgba.data() + y * width * 4;
+                for (size_t x = 0; x < width; ++x, src += channels, dst += 4) {
+                    dst[0] = src[mono ? 0 : (bgr ? 2 : 0)];
+                    dst[1] = src[mono ? 0 : 1];
+                    dst[2] = src[mono ? 0 : (bgr ? 0 : 2)];
+                    dst[3] = channels == 4 ? src[3] : 255;
+                }
+            }
+            const int w = static_cast<int>(width), h = static_cast<int>(height);
+            if (camera_texture.id && (camera_texture.width != w || camera_texture.height != h)) {
+                UnloadTexture(camera_texture);
+                camera_texture = {};
+            }
+            if (!camera_texture.id) {
+                Image frame{rgba.data(), w, h, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+                camera_texture = LoadTextureFromImage(frame);
+            } else {
+                UpdateTexture(camera_texture, rgba.data());
+            }
+        }
+    }
+
+
     ImGui::Context([&]()
     {
+
+        ImGui::Begin("Camera");
+        if (camera_texture.id) {
+            float width = ImGui::GetContentRegionAvail().x;
+            ImGui::Image(camera_texture.id, ImVec2(width, width * camera_texture.height / camera_texture.width));
+        } else {
+            ImGui::TextUnformatted("Waiting for /camera/color/image_raw");
+        }
+        ImGui::End();
 
         ImGui::Begin("aaa");
         ImGui::BeginChild("123", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding);
@@ -326,7 +421,11 @@ int main() {
 
 
 
+    if (camera_texture.id) UnloadTexture(camera_texture);
     ImGui::Destroy();
+    ros_thread.request_stop();
+    ros_thread.join();
+    rclcpp::shutdown();
     return 0;
 }
 
