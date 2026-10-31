@@ -3,5 +3,5 @@
 
 namespace ImGui
 {
-    void draw_system_hud(bool open);
+    void ShowSystemHud(bool open);
 }

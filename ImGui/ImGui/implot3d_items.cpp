@@ -86,9 +86,9 @@ IMPLOT3D_INLINE void GetLineRenderProps(const ImDrawList3D& draw_list_3d, float&
                     ImPlot3D::ImHasFlag(draw_list_3d._Flags, ImDrawListFlags_AntiAliasedLinesUseTex);
     if (aa) {
         ImVec4 tex_uvs = draw_list_3d._SharedData->TexUvLines[(int)(half_weight * 2)];
-        tex_uv0 = ImVec2(tex_uvs.x, tex_uvs.y);
-        tex_uv1 = ImVec2(tex_uvs.z, tex_uvs.w);
-        half_weight += 1;
+        tex_uv0 = ImVec2(tex_uvs.x, tex_uvs.z);
+        tex_uv1 = ImVec2(tex_uvs.y, tex_uvs.z);
+        half_weight += half_weight * 2.0f * tex_uvs.w * 0.5f;
     } else {
         tex_uv0 = tex_uv1 = draw_list_3d._SharedData->TexUvWhitePixel;
     }

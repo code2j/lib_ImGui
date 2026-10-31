@@ -1,5 +1,5 @@
 #include "ui_notify.h"
-#include "ui_icon.h"
+#include "ui_font_icon.h"
 #include "imgui_internal.h"
 #include <vector>
 #include <string>
@@ -189,7 +189,7 @@ namespace ImGui
     // ==============================================================================
     // 렌더링 로직
     // ==============================================================================
-    void RenderNotifications()
+    void ShowNotifications()
     {
         const auto viewport = ImGui::GetMainViewport();
         const auto vp_pos = viewport->WorkPos;

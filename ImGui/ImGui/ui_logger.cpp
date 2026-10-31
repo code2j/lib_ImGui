@@ -1,5 +1,5 @@
 #include "ui_logger.h"
-#include "ui_icon.h"
+#include "ui_font_icon.h"
 #include "ui.hpp"
 #include <iostream>
 
@@ -79,8 +79,11 @@ void ImGui::ClearLogger()
     GetLogger().buf.clear();
 }
 
-void ImGui::ShowLogger(const char *title)
+void ImGui::ShowLogger(const char *title, bool open)
 {
+    if (!open)
+        return;
+
     LoggerStream& logger = GetLogger();
     const ImVec2 BUTTON_SIZE = ImVec2(35, 35);
 

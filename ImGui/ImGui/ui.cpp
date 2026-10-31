@@ -3,6 +3,7 @@
 #include "ui_font_icon.cpp"
 #include "ui_font_level2.cpp"
 #include "ui_font_d2coding.cpp"
+#include "ui_3d.h"
 
 #include <filesystem>
 #include <fstream>
@@ -18,30 +19,15 @@ namespace fs = std::filesystem;
 
 namespace
 {
-    bool window_pinned = false;
-    int previous_window_focus = -1;
-    Window previous_active_window = None;
     std::string config_path;
-    float ui_content_scale = 1.0f;
-    struct SidebarTab {
-        std::string label;
-        std::function<void()> draw, sidebar_content;
-        float expanded = 0.0f, content_height = 0.0f;
-        bool open = false;
-    };
-    std::vector<SidebarTab> sidebar_tabs;
 
-    void update_content_scale(GLFWwindow* window)
-    {
-        const float scale = ImGui_ImplGlfw_GetContentScaleForWindow(window);
-        if (!std::isfinite(scale) || scale <= 0.0f || std::fabs(scale - ui_content_scale) < 0.001f)
-            return;
 
-        ImGuiStyle& style = ImGui::GetStyle();
-        style.ScaleAllSizes(scale / ui_content_scale);
-        style.FontScaleDpi *= scale / ui_content_scale;
-        ui_content_scale = scale;
-    }
+    // ==================================================
+    // 윈도우 하상 위에 고정 상태 변수
+    // ==================================================
+    bool window_pinned = false;                 // 항상 위에 고정 여부
+    int previous_window_focus = -1;             // 이전 윈도우 포커스 여부
+    Window previous_active_window = None;       // 활성화된 윈도우 객체
 
     void update_window_stacking()
     {
@@ -110,10 +96,6 @@ namespace
         if (!below && want_below) set_state(below_atom, true);
         if ((window_pinned && restack) || above != want_above || below != want_below) XFlush(display);
     }
-
-    // Let X11 hit-test the visible UI in the normal desktop stacking order.
-    // Toggling passthrough from WantCaptureMouse cannot account for other apps
-    // covering our window, and also makes the first click depend on frame timing.
     void update_input_region()
     {
         Display* display = glfwGetX11Display();
@@ -159,12 +141,41 @@ namespace
         XFlush(display);
     }
 
+
+    // ==================================================
+    // DPI
+    // ==================================================
+    float ui_content_scale = 1.0f;
+
+    void update_content_scale(GLFWwindow* window)
+    {
+        const float scale = ImGui_ImplGlfw_GetContentScaleForWindow(window);
+        if (!std::isfinite(scale) || scale <= 0.0f || std::fabs(scale - ui_content_scale) < 0.001f)
+            return;
+
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.ScaleAllSizes(scale / ui_content_scale);
+        style.FontScaleDpi *= scale / ui_content_scale;
+        ui_content_scale = scale;
+    }
+
+
+    // ==================================================
+    // 사이드바
+    // ==================================================
+    struct SidebarTab {
+        std::string label;
+        std::function<void()> draw, sidebar_content;
+        float expanded = 0.0f, content_height = 0.0f;
+        bool open = false;
+    };
+    std::vector<SidebarTab> sidebar_tabs;
+
+
     // ==================================================
     // 뷰포트 상태
     // ==================================================
-    RenderTexture2D view_texture; // 렌더링된 이미지가 저장되는 텍스처
-    Vector2 viewport_mouse_pos = { 0.0, 0.0 };
-    bool is_viewport_hovered   = false;
+
 
 
     // ==================================================
@@ -192,16 +203,233 @@ namespace
 }
 
 
-static void sigint_handler(int signum)
-{
-    ImGui::ShouldClose(true);
-}
+
 
 
 
 
 namespace ImGui
 {
+    void Init(const char* title, int width, int height);
+    void Destroy();
+    bool Context(std::function<void()> func);
+    void LoadConfig(const char* path);
+    bool ShouldClose(bool force_close);
+    void AddTab(const char* label, std::function<void()> draw, std::function<void()> sidebar_content);
+
+    static void ShowMenu();
+    static bool FakeLoading();
+
+
+    static void ChangeStyle();
+
+
+    // Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
+    // bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }
+
+
+    // 구현
+    void Init(const char* title, int width, int height)
+    {
+        std::signal(SIGINT, [](int){ImGui::ShouldClose(true);});
+
+        ImGui::InitLogger();
+
+        WINDOW_TITLE = title;
+
+        // ---------------------------------------------------------------
+        // ImGui & raylib 초기화
+        // ---------------------------------------------------------------
+        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT | FLAG_WINDOW_HIDDEN);
+        InitWindow(width, height, title);
+        MaximizeWindow();
+        window_pinned = false;
+        previous_window_focus = -1;
+        previous_active_window = None;
+        SetTargetFPS(60);
+        SetExitKey(0); // esc로 인한 종료 방지
+
+
+        // imgui 컨텍스트 생성
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImPlot::CreateContext();
+        ImPlot3D::CreateContext();
+
+
+        // 플래그 설정
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // 키보드 네비게이션 활성화
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // 도킹 활성화
+        io.ConfigWindowsMoveFromTitleBarOnly = true;          // 타이틀바만 드래깅 허용
+
+
+        // ---------------------------------------------------------------
+        // 폰트 로딩
+        // ---------------------------------------------------------------
+        ImFontConfig icon_config;
+        icon_config.MergeMode = true;
+        icon_config.GlyphOffset = ICON_OFFSET;
+        icon_config.GlyphMinAdvanceX = FONT_SIZE;
+        static const ImWchar icon_ranges[] = { ICON_MIN_MD, ICON_MAX_16_MD, 0 };
+
+        // 기본 폰트 로딩
+        io.Fonts->AddFontFromMemoryCompressedTTF(
+            level2_compressed_data, level2_compressed_size,
+            FONT_SIZE,
+            NULL,
+            io.Fonts->GetGlyphRangesKorean()
+        );
+
+        // 아이콘 폰트 로딩
+        io.Fonts->AddFontFromMemoryCompressedTTF(
+            MaterialSymbolsRounded_compressed_data,
+            MaterialSymbolsRounded_compressed_size,
+            ICON_SIZE,
+            &icon_config,
+            icon_ranges
+        );
+
+        // 로거 전용 폰트 로딩
+        ImGui::LOGGER_FONT = io.Fonts->AddFontFromMemoryCompressedTTF(
+            d2cording_compressed_data,
+            d2cording_compressed_size,
+            FONT_SIZE,
+            NULL,
+            io.Fonts->GetGlyphRangesKorean()
+        );
+
+
+        // ---------------------------------------------------------------
+        // 테마 색상 변수 정의
+        // ---------------------------------------------------------------
+        ImGui::Style();
+        if (ImGui::theme_id == 0) ImGui::ThemeWhite();
+        else                      ImGui::ThemeDark();
+
+
+        // ---------------------------------------------------------------
+        // 윈도우 및 뷰포트 텍스쳐 생성
+        // ---------------------------------------------------------------
+        GLFWwindow* window = glfwGetCurrentContext();
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplOpenGL3_Init("#version 130");
+        ui_content_scale = 1.0f;
+        update_content_scale(window);
+
+        ClearWindowState(FLAG_WINDOW_HIDDEN);
+    }
+
+    void Destroy()
+    {
+        sidebar_tabs.clear();
+        destroy_textures();
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImPlot::DestroyContext();
+        ImPlot3D::DestroyContext();
+        ImGui::DestroyContext();
+        CloseWindow();
+        ImGui::ShutdownLogger();
+    }
+
+    bool Context(std::function<void()> func)
+    {
+        if (ShouldClose()) {
+            return false;
+        }
+
+
+        // ImGui 프레임 시작
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        update_content_scale(glfwGetCurrentContext());
+        update_window_stacking();
+        ImGui::NewFrame();
+
+        ChangeStyle();
+
+
+        if (!FakeLoading()) {
+            ImGui::ShowMenu();
+            ImGui::ShowLogger(" " ICON_MD_SUBJECT " Log ", ImGui::show_log_window);
+            ImGui::ShowNotifications();
+            ImGui::ShowSystemHud(ImGui::show_system_hud);
+            ImGui::Show3D(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ",  ImGui::show_3d_viewport, func);
+            if (ImGui::show_style_edit) {
+                ImGui::ShowStyleEditor(&ImGui::GetStyle());
+            }
+
+            if (func) func();
+        }
+
+
+        // ImGui, Raylib 렌더링
+        ImGui::Render();
+        update_input_region();
+        BeginDrawing();
+        ClearBackground(BLANK);
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            GLFWwindow* backup_current_context = glfwGetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            glfwMakeContextCurrent(backup_current_context);
+        }
+        EndDrawing();
+
+        return true;
+    }
+
+    void LoadConfig(const char* path)
+    {
+        fs::path p(path);
+
+        // 디렉토리 생성
+        fs::path parent_dir = p.parent_path();
+        if (!parent_dir.empty() && !fs::exists(parent_dir)) {
+            // [폴더가 없음]
+            fs::create_directories(parent_dir); // 하위 폴더까지 한 번에 생성
+        }
+
+
+        // 파일 생성
+        if (!fs::exists(p)) {
+            // [파일이 없음]
+            std::ofstream outfile(p);
+            if (outfile.is_open()) {
+                outfile.close();
+            }
+        }
+
+
+        // config path 설정
+        config_path = fs::absolute(p).string();
+        ImGui::GetIO().IniFilename = config_path.c_str();
+
+
+        // ini 콜백 등록
+        ImGuiSettingsHandler ini_handler;
+        ini_handler.TypeName   = ""; // ini 파일에 기록될 섹션 이름
+        ini_handler.TypeHash   = ImHashStr("");
+        ini_handler.ReadOpenFn = read_open;
+        ini_handler.ReadLineFn = read_line;
+        ini_handler.WriteAllFn = write_all;
+        if (ImGui::FindSettingsHandler(ini_handler.TypeName) == nullptr)
+            ImGui::AddSettingsHandler(&ini_handler);
+
+        ImGui::LoadIniSettingsFromDisk(ImGui::GetIO().IniFilename);
+    }
+
+    bool ShouldClose(bool force_close)
+    {
+        ImGui::should_close_app |= force_close;
+        return WindowShouldClose() || ImGui::should_close_app;
+    }
+
     void AddTab(const char* label, std::function<void()> draw, std::function<void()> sidebar_content)
     {
         if (!label || !*label) return;
@@ -445,340 +673,84 @@ namespace ImGui
         }
     }
 
-    void Init(const char* title, int width, int height)
+    static bool FakeLoading()
     {
-        ImGui::InitLogger();
-        std::signal(SIGINT, sigint_handler);
+        static double opening_start = ImGui::GetTime();
+        const float opening_elapsed = (float)(ImGui::GetTime() - opening_start);
+        auto ease_out = [](float t) { return 1.0f - (1.0f - t) * (1.0f - t); };
+        float opening_progress;
+        if (opening_elapsed < 0.65f) opening_progress = 0.38f * ease_out(opening_elapsed / 0.65f);
+        else if (opening_elapsed < 0.85f) opening_progress = 0.38f;
+        else if (opening_elapsed < 1.20f) opening_progress = 0.38f + 0.22f * ease_out((opening_elapsed - 0.85f) / 0.35f);
+        // 중간 작업은 멈추지 않고 조금 더 천천히 진행한다.
+        else if (opening_elapsed < 2.35f) opening_progress = 0.60f + 0.17f * ((opening_elapsed - 1.20f) / 1.15f);
+        else if (opening_elapsed < 2.65f) opening_progress = 0.77f;
+        else opening_progress = 0.77f + 0.23f * ease_out(ImClamp((opening_elapsed - 2.65f) / 0.95f, 0.0f, 1.0f));
 
-        WINDOW_TITLE = title;
-
-        // ---------------------------------------------------------------
-        // ImGui & raylib 초기화
-        // ---------------------------------------------------------------
-        SetConfigFlags(FLAG_WINDOW_UNDECORATED | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_TRANSPARENT | FLAG_WINDOW_HIDDEN);
-        InitWindow(width, height, title);
-        // Set the initial maximized state before mapping the X11 window.
-        MaximizeWindow();
-        window_pinned = false;
-        previous_window_focus = -1;
-        previous_active_window = None;
-        SetTargetFPS(60);
-        SetExitKey(0); // esc로 인한 종료 방지
-
-
-        // imgui 컨텍스트 생성
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImPlot::CreateContext();
-        ImPlot3D::CreateContext();
-
-
-        // 플래그 설정
-        ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // 키보드 네비게이션 활성화
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // 도킹 활성화
-
-
-        ImFontConfig icon_config;
-        icon_config.MergeMode = true;
-        icon_config.GlyphOffset = ICON_OFFSET;
-        icon_config.GlyphMinAdvanceX = FONT_SIZE;
-        static const ImWchar icon_ranges[] = { ICON_MIN_MD, ICON_MAX_16_MD, 0 };
-
-        // 기본 폰트 로딩
-        io.Fonts->AddFontFromMemoryCompressedTTF(
-            level2_compressed_data, level2_compressed_size,
-            FONT_SIZE,
-            NULL,
-            io.Fonts->GetGlyphRangesKorean()
-        );
-
-        // 아이콘 폰트 로딩
-        io.Fonts->AddFontFromMemoryCompressedTTF(
-            MaterialSymbolsRounded_compressed_data,
-            MaterialSymbolsRounded_compressed_size,
-            ICON_SIZE,
-            &icon_config,
-            icon_ranges
-        );
-
-        // 로거 전용 폰트 로딩
-        ImGui::LOGGER_FONT = io.Fonts->AddFontFromMemoryCompressedTTF(
-            font2_compressed_data,
-            font2_compressed_size,
-            FONT_SIZE,
-            NULL,
-            io.Fonts->GetGlyphRangesKorean()
-        );
-
-
-        // ---------------------------------------------------------------
-        // 테마 색상 변수 정의
-        // ---------------------------------------------------------------
-        ImGui::style();
-        if (ImGui::theme_id == 0) ImGui::theme_white();
-        else                      ImGui::theme_dark();
-
-
-        // ---------------------------------------------------------------
-        // 윈도우 및 뷰포트 텍스쳐 생성
-        // ---------------------------------------------------------------
-        GLFWwindow* window = glfwGetCurrentContext();
-        ImGui_ImplGlfw_InitForOpenGL(window, true);
-        ImGui_ImplOpenGL3_Init("#version 130");
-        ui_content_scale = 1.0f;
-        update_content_scale(window);
-
-        view_texture = LoadRenderTexture((int)WINDOW_WIDTH, (int)WINDOW_HEIGHT);
-        ClearWindowState(FLAG_WINDOW_HIDDEN);
-    }
-
-    void Destroy()
-    {
-        sidebar_tabs.clear();
-        destroy_textures();
-        UnloadRenderTexture(::view_texture);
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImPlot::DestroyContext();
-        ImPlot3D::DestroyContext();
-        ImGui::DestroyContext();
-        CloseWindow();
-        ImGui::ShutdownLogger();
-    }
-
-    bool Context(std::function<void()> func)
-    {
-        if (ShouldClose()) {
+        if (opening_elapsed >= 4.5f)
             return false;
+
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const float scale = ui_content_scale;
+        ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(620.0f * scale, 390.0f * scale));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(24.0f * scale, 20.0f * scale));
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGui::GetStyleColorVec4(ImGuiCol_CheckMark));
+        ImGui::Begin("##opening", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+        ImGui::TextUnformatted("[ SYSTEM BOOT ]");
+        ImGui::SameLine();
+        ImGui::TextDisabled("// %s", WINDOW_TITLE.c_str());
+        ImGui::Separator();
+        static const char* lines[] = {
+            "Initializing runtime environment...",
+            "  > mount /dev/system --read-write",
+            "  > scan modules: core, renderer, interface",
+            "[ OK ] Memory allocation complete",
+            "  > connect workspace://localhost",
+            "  > load config --resolve-dependencies",
+            "[ OK ] Graphics pipeline online",
+            "  > 0x7F02: 48 8B 05 31 C0 90 FF",
+            "  > compiling interface resources...",
+            "[ OK ] System checks passed",
+            "  > starting user session...",
+            "  > decrypting workspace manifest...",
+            "[ OK ] All services ready"
+        };
+        const int line_count = (int)(sizeof(lines) / sizeof(lines[0]));
+        const int step = (int)(opening_progress * (line_count - 1));
+        const float footer_height = 8.0f * scale + ImGui::GetStyle().ItemSpacing.y + ImGui::GetTextLineHeight();
+        const float lines_bottom = ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y - footer_height - 12.0f * scale;
+        const int visible = ImMax(1, (int)((lines_bottom - ImGui::GetCursorPosY()) / ImGui::GetTextLineHeightWithSpacing()));
+        const float lines_height = visible * ImGui::GetTextLineHeightWithSpacing();
+        ImGui::SetCursorPosY(ImMax(ImGui::GetCursorPosY(), lines_bottom - lines_height));
+        for (int i = 0; i < visible; ++i) {
+            int index = step - visible + 1 + i;
+            if (index >= 0) ImGui::TextUnformatted(lines[index]);
+            else ImGui::TextUnformatted(" ");
         }
-
-
-        // -----------------------
-        // 1. ImGui 프레임 시작
-        // -----------------------
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        update_content_scale(glfwGetCurrentContext());
-        update_window_stacking();
-
-        // -----------------------
-        // 전역 좌표는 HUD용으로만 사용한다. ImGui 입력은 GLFW가 전달한다.
-        // -----------------------
-        Display* display = glfwGetX11Display();
-
-        if (display) {
-            Window root = DefaultRootWindow(display);
-            Window root_return, child_return;
-            int root_x, root_y, win_x, win_y;
-            unsigned int mask_return;
-
-            // X11 API를 통해 OS 전역 마우스 좌표를 쿼리
-            if (XQueryPointer(display, root, &root_return, &child_return, &root_x, &root_y, &win_x, &win_y, &mask_return)) {
-
-                ImGui::GLOBAL_MOUSE_POS = ImVec2((float)root_x, (float)root_y);
-            }
-        }
-
-        ImGui::NewFrame();
-
-
-        // -----------------------
-        // 테마 변경
-        // -----------------------
-        if (ImGui::flag_change_thema) {
-            ImGui::flag_change_thema = false;
-
-            if (ImGui::theme_id == 0) ImGui::theme_white();
-            else                      ImGui::theme_dark();
-        }
-
-        // -----------------------
-        // 메뉴 렌더링
-        // -----------------------
-        ImGui::ShowMenu();
-
-        // -----------------------
-        // ImGui log 렌더링
-        // -----------------------
-        if (ImGui::show_log_window)
-        ImGui::ShowLogger(" " ICON_MD_SUBJECT " Log ");
-
-        // -----------------------
-        // Style Editer
-        // -----------------------
-        if (ImGui::show_style_edit) {
-            ImGui::ShowStyleEditor(&ImGui::GetStyle());
-        }
-
-        // -----------------------
-        // 3. 렌더링된 텍스처를 담을 뷰포트 창 띄우기
-        // -----------------------
-        if (ImGui::show_3d_viewport)
-        {
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-
-            ImGui::Begin(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ");
-
-            ImVec2 availSize = ImGui::GetContentRegionAvail();
-            float targetAspect = WINDOW_WIDTH / WINDOW_HEIGHT;
-            float availAspect = availSize.x / availSize.y;
-
-            ImVec2 imageSize;
-            if (availAspect > targetAspect) {
-                imageSize.y = availSize.y;
-                imageSize.x = imageSize.y * targetAspect;
-            } else {
-                imageSize.x = availSize.x;
-                imageSize.y = imageSize.x / targetAspect;
-            }
-
-            ImVec2 cursorStartPos = ImGui::GetCursorScreenPos();
-            float offsetX = (availSize.x - imageSize.x) * 0.5f;
-            float offsetY = (availSize.y - imageSize.y) * 0.5f;
-            ImVec2 imagePos = ImVec2(cursorStartPos.x + offsetX, cursorStartPos.y + offsetY);
-            ImGui::SetCursorScreenPos(imagePos);
-
-            ImTextureID tex_id = (ImTextureID)(intptr_t) view_texture.texture.id;
-            ImGui::Image(tex_id, imageSize, ImVec2(0, 1), ImVec2(1, 0));
-
-            ::is_viewport_hovered = ImGui::IsItemHovered();
-            ImVec2 imMousePosGlobal = ImGui::GetMousePos();
-            viewport_mouse_pos.x = (imMousePosGlobal.x - imagePos.x) * (WINDOW_WIDTH / imageSize.x);
-            viewport_mouse_pos.y = (imMousePosGlobal.y - imagePos.y) * (WINDOW_HEIGHT / imageSize.y);
-
-            // ---------------------------------------------------------------
-            // 4. 사용자 콘텐츠 렌더링 (Raylib 텍스처 + 사용자 ImGui UI)
-            // ---------------------------------------------------------------
-            BeginTextureMode(view_texture);
-            ClearBackground(BLANK);
-
-            // 커서가 숨겨져 있을 때 (카메라 조작 중)
-            if (IsCursorHidden()) {
-                // [뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구]
-                if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                    EnableCursor();
-                }
-                // 카메라 업데이트 수행
-                UpdateCamera(&ImGui::camera, CAMERA_FREE);
-            }
-            // 커서가 보일 때 (일반 UI 조작 중)
-            else {
-                // [뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)]
-                if (ImGui::is_viewport_hovered()) {
-                    if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                        DisableCursor();
-                    }
-                }
-            }
-
-
-            ImGui::PopStyleVar();
-
-            // 사용자 람다 콜백 실행
-            if (func) {
-                BeginMode3D(ImGui::camera);
-                    // 그리드
-                    DrawGrid(10, 1);
-
-                    // 월드 축
-                    draw_axes(0.5, 0.01);
-
-                    // 외부 함수
-                    func();
-                EndMode3D();
-                DrawFPS(10, 10);
-            }
-
-            EndTextureMode();
-
-            ImGui::End();
-        }
-        else
-        {
-            // 3D 뷰포트가 아예 꺼져있을 때도 사용자 UI 루프가 돌도록 처리
-            if (func) func();
-        }
-
-        // -----------------------
-        // ImGui notiy 렌더링
-        // -----------------------
-        ImGui::RenderNotifications();
-
-        // -----------------------
-        // System HUD
-        // -----------------------
-        ImGui::draw_system_hud(ImGui::show_system_hud);
-
-        // -----------------------
-        // ImGui, Raylib 렌더링
-        // -----------------------
-        ImGui::Render();
-        update_input_region();
-        BeginDrawing();
-        ClearBackground(BLANK);
-
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
-            GLFWwindow* backup_current_context = glfwGetCurrentContext();
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
-            glfwMakeContextCurrent(backup_current_context);
-        }
-        EndDrawing();
+        ImGui::SetCursorPosY(ImMax(ImGui::GetCursorPosY(), ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y - footer_height));
+        // 작은 막대에 프레임 테두리가 겹치면 끝부분이 완료 시 튀어 보인다.
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f * scale);
+        ImGui::ProgressBar(opening_progress, ImVec2(-1, 8.0f * scale), "");
+        ImGui::PopStyleVar(2);
+        ImGui::Text("BOOT SEQUENCE  %03d%%  %s", (int)(opening_progress * 100.0f), (step % 2) ? "_" : " ");
+        ImGui::End();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(2);
 
         return true;
     }
 
-    bool ShouldClose(bool force_close)
+    static void ChangeStyle()
     {
-        ImGui::should_close_app |= force_close;
-        return WindowShouldClose() || ImGui::should_close_app;
+        if (ImGui::flag_change_thema) {
+            ImGui::flag_change_thema = false;
+
+            if (ImGui::theme_id == 0) ImGui::ThemeWhite();
+            else                      ImGui::ThemeDark();
+        }
     }
 
-    void LoadConfig(const char* path)
-    {
-        fs::path p(path);
-
-        // 디렉토리 생성
-        fs::path parent_dir = p.parent_path();
-        if (!parent_dir.empty() && !fs::exists(parent_dir)) {
-            // [폴더가 없음]
-            fs::create_directories(parent_dir); // 하위 폴더까지 한 번에 생성
-        }
-
-
-        // 파일 생성
-        if (!fs::exists(p)) {
-            // [파일이 없음]
-            std::ofstream outfile(p);
-            if (outfile.is_open()) {
-                outfile.close();
-            }
-        }
-
-
-        // config path 설정
-        config_path = fs::absolute(p).string();
-        ImGui::GetIO().IniFilename = config_path.c_str();
-
-
-        // ini 콜백 등록
-        ImGuiSettingsHandler ini_handler;
-        ini_handler.TypeName   = ""; // ini 파일에 기록될 섹션 이름
-        ini_handler.TypeHash   = ImHashStr("");
-        ini_handler.ReadOpenFn = read_open;
-        ini_handler.ReadLineFn = read_line;
-        ini_handler.WriteAllFn = write_all;
-        if (ImGui::FindSettingsHandler(ini_handler.TypeName) == nullptr)
-            ImGui::AddSettingsHandler(&ini_handler);
-
-        ImGui::LoadIniSettingsFromDisk(ImGui::GetIO().IniFilename);
-    }
-
-
-    Vector2 get_viewport_mouse_pos()                 { return viewport_mouse_pos;  }
-    bool    is_viewport_hovered()                    { return ::is_viewport_hovered; }
 }

@@ -1,7 +1,7 @@
 // File: 'font2.ttf' (4185500 bytes)
 // Exported using binary_to_compressed_c.exe -u8 "font2.ttf" MyFont
-static const unsigned int font2_compressed_size = 2678403;
-static const unsigned char font2_compressed_data[2678403] =
+static const unsigned int d2cording_compressed_size = 2678403;
+static const unsigned char d2cording_compressed_data[2678403] =
 {
     87,188,0,0,0,0,0,0,0,63,221,156,0,4,0,0,55,0,1,0,0,0,15,0,128,0,3,0,112,70,70,84,77,126,118,205,33,0,63,221,128,130,21,44,28,79,83,47,50,107,244,102,108,0,0,1,120,130,15,60,96,99,109,
     97,112,47,8,66,163,0,1,154,224,0,2,12,204,99,118,116,32,0,169,2,233,0,3,169,112,130,31,44,18,102,112,103,109,6,89,156,55,0,3,167,172,130,51,40,115,103,97,115,112,0,23,0,9,130,79,131,

@@ -3,7 +3,7 @@
 
 namespace ImGui
 {
-    void style()
+    void Style()
     {
         ImGuiStyle& style = ImGui::GetStyle();
 
@@ -41,7 +41,7 @@ namespace ImGui
         style.AntiAliasedLinesUseTex    = true;
     }
 
-    void theme_white()
+    void ThemeWhite()
     {
         if (ImGui::theme_id != 0) return;
 
@@ -155,7 +155,7 @@ namespace ImGui
 
     }
 
-    void theme_dark()
+    void ThemeDark()
     {
         if (ImGui::theme_id != 1) return;
         auto& colors = ImGui::GetStyle().Colors;

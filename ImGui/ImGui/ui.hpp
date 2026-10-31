@@ -17,8 +17,8 @@
 #include "implot.h"
 
 #include "ui_ini.h"
-#include "ui_icon.h"
-#include "ui_draw3d.h"
+#include "ui_font_icon.h"
+#include "ui_3d.h"
 #include "ui_logger.h"
 #include "ui_notify.h"
 #include "ui_loader.h"
@@ -31,7 +31,7 @@
 
 namespace ImGui
 {
-    inline ImVec2 GLOBAL_MOUSE_POS;       // 전역 마우스 좌표
+    // inline ImVec2 GLOBAL_MOUSE_POS;       // 전역 마우스 좌표
 
 
     // ==================================================
@@ -78,15 +78,11 @@ namespace ImGui
     bool ShouldClose(bool force_close = false);
     bool Context(std::function<void()> func);
     void LoadConfig(const char* path);
-    // 프레임 루프 전에 등록한다. 선택 시 콜백에서 필요한 창을 그린다.
-    // 같은 label을 다시 등록하면 콜백을 교체한다.
-    // sidebar_content가 있으면 탭을 눌렀을 때 좌측에서 내용을 펼친다.
-    void AddTab(const char* label, std::function<void()> draw = {},
-                std::function<void()> sidebar_content = {});
+    void AddTab(const char* label, std::function<void()> draw = {}, std::function<void()> sidebar_content = {});
 
     // 뷰포트 마우스 및 상태 유틸리티
-    Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
-    bool    is_viewport_hovered();
+    // Vector2 get_viewport_mouse_pos(); // 뷰포트의 마우스 위치
+    // bool    is_viewport_hovered();
 }
 
 

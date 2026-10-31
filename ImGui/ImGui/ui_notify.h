@@ -8,5 +8,5 @@ namespace ImGui
     void NotifyWarn(const char* format, ...);
     void NotifyError(const char* format, ...);
 
-    void RenderNotifications();
+    void ShowNotifications();
 }

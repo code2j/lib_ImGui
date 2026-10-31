@@ -7,24 +7,7 @@ project(main C CXX)
 # ==================================================================
 # 라이브러리 패키지
 # ==================================================================
-add_subdirectory(raylib)
 add_subdirectory(ImGui)
-
-
-target_link_libraries(ImGui
-        PUBLIC raylib
-)
-
-
-# ==================================================================
-# ImRay 인터페이스
-# ==================================================================
-add_library(ImRay INTERFACE)
-target_link_libraries(ImRay
-        INTERFACE
-        ImGui
-        raylib
-)
 
 
 # ==================================================================
@@ -42,6 +25,6 @@ if(${PROJECT_IS_TOP_LEVEL})
 
     target_link_libraries(main
             PUBLIC
-            ImRay
+            ImGui
     )
 endif()
