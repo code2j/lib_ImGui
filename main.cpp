@@ -45,14 +45,12 @@ int main() {
 
 
 
-    bool is_loading = true;
-    ImGui::Texture texture1 = ImGui::load_texture(IMGUI_ROOT "/image.png");
+    ImGui::Image2D texture1 = ImGui::LoadImage(IMGUI_ROOT "/image.png");
 
 
     while (!ImGui::ShouldClose()) {
     ImGui::Context([&]()
     {
-        // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
 
         ImGui::Begin("aaa");
         ImGui::BeginChild("123", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding);
@@ -63,7 +61,6 @@ int main() {
 
         ImGui::EndChild();
         ImGui::End();
-        // ImGui::PopStyleVar();
 
 
         // ----------------------
@@ -279,8 +276,8 @@ int main() {
             if (show_image) {
                 ImVec2 avail = ImGui::GetContentRegionAvail();
 
-                if (auto tex = texture1.lock()) {
-                    float img_aspect = (float) tex->width / (float) tex->height;
+                if (texture1 && texture1->id != 0) {
+                    float img_aspect = (float) texture1->width / (float) texture1->height;
                     float avail_aspect = avail.x / avail.y;
 
                     ImVec2 size;
@@ -294,7 +291,7 @@ int main() {
                        size.y = size.x / img_aspect;
                     }
 
-                    ImGui::Image(tex->id, size);
+                    ImGui::Image(texture1->id, size);
                 }
 
             }
