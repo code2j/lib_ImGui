@@ -19,15 +19,26 @@ int main(int argc, char **argv) {
     // ros2 초기화 & 노드 생성
     rclcpp::init(argc, argv);
     auto node = rclcpp::Node::make_shared("imgui_camera_viewer");
-    sensor_msgs::msg::Image::ConstSharedPtr latest_image;
+    sensor_msgs::msg::Image::ConstSharedPtr latest_image_color;
+    sensor_msgs::msg::Image::ConstSharedPtr latest_image_depth;
     std::mutex image_mutex;
+    std::mutex depth_mutex;
     auto subscription = node->create_subscription<sensor_msgs::msg::Image>(
         "/camera/color/image_raw",                       // topic name
         rclcpp::SensorDataQoS(),                         // qos
         [&](sensor_msgs::msg::Image::ConstSharedPtr msg) // callback
         {
             std::lock_guard lock(image_mutex);
-            latest_image = std::move(msg);
+            latest_image_color = std::move(msg);
+        }
+    );
+    auto subscription_depth = node->create_subscription<sensor_msgs::msg::Image>(
+        "/camera/depth/image_raw",                       // topic name
+        rclcpp::SensorDataQoS(),                         // qos
+        [&](sensor_msgs::msg::Image::ConstSharedPtr msg) // callback
+        {
+            std::lock_guard lock(depth_mutex);
+            latest_image_depth = std::move(msg);
         }
     );
 
@@ -83,6 +94,7 @@ int main(int argc, char **argv) {
 
 
     sensor_msgs::msg::Image::ConstSharedPtr image_msg;
+    sensor_msgs::msg::Image::ConstSharedPtr depth_msg;
     while (rclcpp::ok() && !ImGui::ShouldClose()) {
 
 
@@ -93,7 +105,11 @@ int main(int argc, char **argv) {
         // 이미지 가져오기
         {
             std::lock_guard lock(image_mutex);
-            if (latest_image) image_msg = std::move(latest_image);
+            if (latest_image_color) image_msg = std::move(latest_image_color);
+        }
+        {
+             std::lock_guard lock(depth_mutex);
+             if (latest_image_depth) depth_msg = std::move(latest_image_depth);
         }
 
 
@@ -111,6 +127,20 @@ int main(int argc, char **argv) {
         }
         ImGui::End();
 
+        ImGui::Begin("Depth");
+
+        if (depth_msg) {
+            ImGui::Image("depth",
+                depth_msg->data.data(),
+                depth_msg->data.size(),
+                depth_msg->width,
+                depth_msg->height,
+                depth_msg->step,
+                ImGui::PixelFormat::Depth32F,
+                ImGui::GetContentRegionAvail()
+            );
+        }
+        ImGui::End();
 
 
 
