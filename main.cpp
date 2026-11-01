@@ -199,6 +199,13 @@ namespace ImGui {
                                      center.y + std::sin(angle) * radius * 0.6f - size.y * 0.5f),
                               IM_COL32_WHITE, items[i]);
             }
+            for (int i = 0; i < count; ++i) {
+                const float angle = -pi * 0.5f + (i - 0.5f) * step;
+                const float x = std::cos(angle), y = std::sin(angle);
+                draw->AddLine(ImVec2(center.x + x * dead_zone, center.y + y * dead_zone),
+                              ImVec2(center.x + x * radius, center.y + y * radius),
+                              GetColorU32(ImGuiCol_Border), 1.0f);
+            }
             draw->AddCircle(center, radius, IM_COL32(220, 220, 220, 220), 64, 2.0f);
             draw->AddCircleFilled(center, dead_zone, IM_COL32(25, 28, 35, 255));
             if (IsKeyPressed(ImGuiKey_Escape)) state->SetBool(open_id, false);
