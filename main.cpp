@@ -105,6 +105,12 @@ int main(int argc, char **argv) {
                 ImGui::GetContentRegionAvail()
             );
         }
+        const char* camera_actions[] = {"살펴보기", "선택하기", "집기", "놓기", "A", "B", "C"};
+        const int action = ImGui::RadialMenu("CameraInteraction", camera_actions, 7);
+        if (action == 0) ImGui::NotifyInfo("살펴보기 선택됨");
+        if (action == 1) ImGui::NotifyInfo("선택하기 선택됨");
+        if (action == 2) ImGui::NotifyInfo("집기 선택됨");
+        if (action == 3) ImGui::NotifyInfo("놓기 선택됨");
         ImGui::End();
 
         ImGui::Begin("Depth");

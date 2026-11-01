@@ -57,4 +57,5 @@ namespace ImGui
     bool Context(std::function<void()> func);
     void LoadConfig(const char* path);
     void AddTab(const char* label, std::function<void()> draw = {}, std::function<void()> sidebar_content = {});
+
 }

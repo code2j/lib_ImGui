@@ -13,6 +13,7 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
 #include <cmath>
+#include <algorithm>
 #include <csignal>
 #include <vector>
 namespace fs = std::filesystem;
@@ -204,6 +205,7 @@ namespace
 
 namespace ImGui
 {
+
     void Init(const char* title, int width, int height);
     void Destroy();
     bool Context(std::function<void()> func);
