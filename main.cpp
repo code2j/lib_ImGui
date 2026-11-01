@@ -133,6 +133,8 @@ int main(int argc, char **argv) {
                 if (ImGuizmo::IsUsing()) tf_control = transform.cast<double>();
             }
         }
+
+        // radial menu
         const char* camera_actions[] = {"살펴보기", "선택하기", "집기", "놓기", "A", "B", "C"};
         const int action = ImGui::RadialMenu("CameraInteraction", camera_actions, 7);
         if (action == 0) ImGui::NotifyInfo("살펴보기 선택됨");
