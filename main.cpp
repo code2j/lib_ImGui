@@ -17,6 +17,45 @@
 Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
+namespace ImGui {
+    // 현재 창의 지정 영역 중앙에 선택 패널을 표시한다.
+    void CameraSelectionPanel(bool& open, const ImVec2& origin, const ImVec2& size)
+    {
+        if (open && size.x > 0 && size.y > 0) {
+            ImGui::SetCursorScreenPos(origin);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0.38f));
+            ImGui::BeginChild("##camera_overlay", size, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+            const ImVec2 card_size(std::min(340.0f, size.x), std::min(160.0f, size.y));
+            ImGui::SetCursorPos(ImVec2((size.x - card_size.x) * 0.5f, (size.y - card_size.y) * 0.5f));
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 16));
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.14f, 0.19f, 1.0f));
+
+            ImGui::BeginChild("##camera_selection", card_size, true, ImGuiWindowFlags_NoScrollbar);
+
+            // 제목
+            ImGui::TextUnformatted("선택하기");
+            ImGui::Separator();
+
+            // 내용
+            ImGui::TextDisabled("선택할 항목을 추가하세요.");
+            ImGui::Dummy(ImVec2(0, 12));
+
+            if (ImGui::Button("닫기", ImVec2(-1, 0)))
+                open = false;
+
+            ImGui::EndChild(); // ##camera_selection
+            ImGui::PopStyleColor();
+            ImGui::PopStyleVar(2);
+            ImGui::EndChild(); // ##camera_overlay
+            ImGui::PopStyleColor();
+
+            if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+                open = false;
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     // ros2 초기화 & 노드 생성
     rclcpp::init(argc, argv);
@@ -96,6 +135,9 @@ int main(int argc, char **argv) {
 
 
         ImGui::Begin("Camera");
+        static bool show_camera_selection = false;
+        const ImVec2 camera_min = ImGui::GetCursorScreenPos();      // 윈도우의 좌상단 좌표
+        const ImVec2 camera_size = ImGui::GetContentRegionAvail();  // 윈도우 크기
         if (image_msg) {
             if (ImGui::Image("camera",
                 image_msg->data.data(),
@@ -126,7 +168,7 @@ int main(int argc, char **argv) {
                 ImGuizmo::SetDrawlist();
                 ImGuizmo::AllowAxisFlip(false);
                 ImGuizmo::SetRect(image_min.x, image_min.y, width, height);
-                ImGuizmo::Manipulate(view.data(), projection.data(),
+                if (!show_camera_selection) ImGuizmo::Manipulate(view.data(), projection.data(),
                                      ImGuizmo::TRANSLATE | ImGuizmo::ROTATE_X |
                                          ImGuizmo::ROTATE_Y | ImGuizmo::ROTATE_Z,
                                      ImGuizmo::LOCAL, transform.data());
@@ -135,12 +177,14 @@ int main(int argc, char **argv) {
         }
 
         // radial menu
-        const char* camera_actions[] = {"살펴보기", "선택하기", "집기", "놓기", "A", "B", "C"};
-        const int action = ImGui::RadialMenu("CameraInteraction", camera_actions, 7);
+        const char* camera_actions[] = {"살펴보기", "선택하기", "집기", "놓기"};
+        const int action = show_camera_selection ? -1 : ImGui::RadialMenu("CameraInteraction", camera_actions, 4);
         if (action == 0) ImGui::NotifyInfo("살펴보기 선택됨");
-        if (action == 1) ImGui::NotifyInfo("선택하기 선택됨");
+        if (action == 1) show_camera_selection = true;
         if (action == 2) ImGui::NotifyInfo("집기 선택됨");
         if (action == 3) ImGui::NotifyInfo("놓기 선택됨");
+
+        ImGui::CameraSelectionPanel(show_camera_selection, camera_min, camera_size);
         ImGui::End();
 
         ImGui::Begin("Depth");
