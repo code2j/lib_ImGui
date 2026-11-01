@@ -101,14 +101,6 @@ namespace ImGui {
                 const float progress_angle = -pi * 0.5f + 2.0f * pi * progress;
                 draw->AddCircleFilled(center, 14.0f, IM_COL32(9, 24, 32, 210), 48);
                 draw->AddCircle(center, 11.0f, IM_COL32(63, 166, 183, 130), 48, 1.0f);
-                for (int i = 0; i < 12; ++i) {
-                    const float angle = -pi * 0.5f + 2.0f * pi * i / 12.0f;
-                    const float x = std::cos(angle), y = std::sin(angle);
-                    draw->AddLine(ImVec2(center.x + x * 21.0f, center.y + y * 21.0f),
-                                  ImVec2(center.x + x * (i % 3 == 0 ? 25.0f : 23.0f),
-                                         center.y + y * (i % 3 == 0 ? 25.0f : 23.0f)),
-                                  i / 12.0f <= progress ? IM_COL32(103, 243, 247, 230) : IM_COL32(53, 105, 119, 150), 1.0f);
-                }
                 if (progress < 1.0f) {
                     draw->PathArcTo(center, 17.0f, progress_angle, pi * 1.5f, 48);
                     draw->PathStroke(IM_COL32(38, 77, 87, 210), 0, 3.0f);
