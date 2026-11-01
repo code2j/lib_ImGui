@@ -13,7 +13,7 @@
 // 내부 설정 매크로
 // ==============================================================================
 #define NOTIFY_MAX_MSG_LENGTH           4096
-#define NOTIFY_PADDING_Y                12.5f        // 상단 Y 패딩
+#define NOTIFY_PADDING_Y                600.5f        // 상단 Y 패딩
 #define NOTIFY_FADE_IN_OUT_TIME         300
 #define NOTIFY_FADE_OUT_TIME            480
 #define NOTIFY_DEFAULT_DISMISS          3000
@@ -200,7 +200,7 @@ namespace ImGui
             g_notifications.clear();
             return;
         }
-        const ImGuiWindow* menu = FindWindowByName("window");
+        const ImGuiWindow* menu = FindWindowByName("Camera");
         ImGuiViewport* viewport = menu && menu->Viewport ? menu->Viewport : GetMainViewport();
         const ImVec2 origin = menu ? menu->Pos : viewport->WorkPos;
         const ImVec2 area = menu ? menu->Size : viewport->WorkSize;
