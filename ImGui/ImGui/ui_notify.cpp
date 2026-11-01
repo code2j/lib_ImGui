@@ -6,13 +6,15 @@
 #include <chrono>
 #include <cstdarg>
 #include <cstdint>
+#include <algorithm>
+#include <cmath>
 
 // ==============================================================================
 // 내부 설정 매크로
 // ==============================================================================
 #define NOTIFY_MAX_MSG_LENGTH           4096
 #define NOTIFY_PADDING_Y                12.5f        // 상단 Y 패딩
-#define NOTIFY_FADE_IN_OUT_TIME         150
+#define NOTIFY_FADE_IN_OUT_TIME         300
 #define NOTIFY_DEFAULT_DISMISS          3000
 #define NOTIFY_OPACITY                  1.0f
 #define NOTIFY_TOAST_FLAGS              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_Tooltip
@@ -191,120 +193,63 @@ namespace ImGui
     // ==============================================================================
     void ShowNotifications()
     {
-        auto viewport = ImGui::GetMainViewport();
-        const auto vp_pos = viewport->WorkPos;
-        const auto vp_size = viewport->WorkSize;
-
-        // 항상 "window" 창의 위치를 기준으로 알림을 표시함
-        const ImGuiWindow* menu_window = ImGui::FindWindowByName("window");
-        const ImVec2 anchor_pos = menu_window ? menu_window->Pos : vp_pos;
-        const ImVec2 anchor_size = menu_window ? menu_window->Size : vp_size;
-        if (menu_window && menu_window->Viewport)
-            viewport = menu_window->Viewport;
-
-        ImGuiContext& g = *GImGui;
-
-        int remove_index = -1;
-
-        // 알림은 최대 1개만 존재하지만 구조를 유지하기 위해 루프 사용
-        for (int i = 0; i < (int)g_notifications.size(); i++)
-        {
-            auto* current_toast = &g_notifications[i];
-
-            if (current_toast->GetPhase() == ImGuiToastPhase_Expired)
-            {
-                remove_index = i;
-                continue;
-            }
-
-            const auto icon = current_toast->GetIcon();
-            const auto content = current_toast->content;
-            const auto phase = current_toast->GetPhase();
-            const auto opacity = current_toast->GetFadePercent();
-
-            // [수정] 상단 중앙 애니메이션: 위에서 아래로 살짝 내려옴
-            float nudge_y = 0.0f;
-            if (phase == ImGuiToastPhase_FadeIn || phase == ImGuiToastPhase_FadeOut)
-            {
-                nudge_y = -15.0f * (1.0f - opacity); // 투명할수록 위쪽(-방향)으로 당겨짐
-            }
-
-            // [수정] 상단 중앙 X, Y 계산
-            float draw_x = anchor_pos.x + anchor_size.x * 0.5f;
-            float draw_y = anchor_pos.y + NOTIFY_PADDING_Y + nudge_y;
-
-            auto text_color = current_toast->type == ImGuiToastType_Info
-                ? GetStyleColorVec4(ImGuiCol_Button) : current_toast->GetColor();
-            if (text_color.x > 1.0f || text_color.y > 1.0f || text_color.z > 1.0f) {
-                text_color.x /= 255.0f; text_color.y /= 255.0f; text_color.z /= 255.0f;
-            }
-            text_color.w = opacity;
-
-            ImVec4 bg_color = GetStyleColorVec4(ImGuiCol_PopupBg);
-            ImVec4 border_color = GetStyleColorVec4(ImGuiCol_Border);
-            ImVec4 content_color = GetStyleColorVec4(ImGuiCol_Text);
-            border_color.w *= opacity;
-            content_color.w *= opacity;
-
-            PushStyleColor(ImGuiCol_WindowBg, bg_color);
-            PushStyleColor(ImGuiCol_Border, border_color);
-            PushStyleColor(ImGuiCol_Text, content_color);
-            PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-            PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
-            PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
-
-            SetNextWindowBgAlpha(opacity);
-
-            char window_name[50]{};
-            snprintf(window_name, sizeof(window_name), "##TOAST%d", current_toast->id);
-
-            // [수정] Pivot을 상단 중앙(0.5, 0.0)으로 설정
-            SetNextWindowPos(ImVec2(draw_x, draw_y), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
-
-            ImGui::SetNextWindowViewport(viewport->ID);
-
-            Begin(window_name, NULL, NOTIFY_TOAST_FLAGS);
-
-            {
-                PushTextWrapPos(anchor_size.x / 2.f);
-                bool was_title_rendered = false;
-
-                if (icon && strlen(icon) > 0)
-                {
-                    TextColored(text_color, "%s", icon);
-                    was_title_rendered = true;
-                }
-
-                if (content && strlen(content) > 0)
-                {
-                    if (was_title_rendered) SameLine(0.0f, 10.0f);
-                    Text("%s", content);
-                }
-                PopTextWrapPos();
-            }
-
-            float progress = current_toast->GetProgressPercent();
-            if (progress > 0.0f)
-            {
-                ImVec2 win_pos = GetWindowPos();
-                ImVec2 win_size = GetWindowSize();
-                float bar_height = 3.0f;
-
-                ImVec2 p_min = ImVec2(win_pos.x + 1.4f, win_pos.y + win_size.y - bar_height);
-                ImVec2 p_max = ImVec2(win_pos.x + (win_size.x * progress), win_pos.y + win_size.y);
-
-                GetWindowDrawList()->AddRectFilled(p_min, p_max, ColorConvertFloat4ToU32(text_color), 4.0f, ImDrawFlags_RoundCornersBottom);
-            }
-
-            End();
-
-            PopStyleVar(3);
-            PopStyleColor(3);
+        if (g_notifications.empty()) return;
+        auto& toast = g_notifications.back();
+        if (toast.GetPhase() == ImGuiToastPhase_Expired) {
+            g_notifications.clear();
+            return;
         }
-
-        if (remove_index != -1)
-        {
-            g_notifications.erase(g_notifications.begin() + remove_index);
+        const ImGuiWindow* menu = FindWindowByName("window");
+        ImGuiViewport* viewport = menu && menu->Viewport ? menu->Viewport : GetMainViewport();
+        const ImVec2 origin = menu ? menu->Pos : viewport->WorkPos;
+        const ImVec2 area = menu ? menu->Size : viewport->WorkSize;
+        const float width = std::max(1.0f, std::min(440.0f, area.x - 24.0f));
+        const float elapsed = static_cast<float>(toast.GetElapsedTime());
+        const float progress = std::max(0.0f, std::min(1.0f,
+            (elapsed - NOTIFY_FADE_IN_OUT_TIME) / toast.dismiss_time));
+        const float alpha = std::max(0.0f, std::min(1.0f, toast.GetFadePercent()));
+        const bool exiting = toast.GetPhase() == ImGuiToastPhase_FadeOut;
+        const float glitch = exiting ? (1.0f - alpha) * 7.0f * std::sin(elapsed * 0.11f) : 0.0f;
+        const ImVec2 pos(origin.x + (area.x - width) * 0.5f + glitch,
+                         origin.y + NOTIFY_PADDING_Y - (1.0f - alpha) * 10.0f);
+        const float height = 72.0f;
+        SetNextWindowPos(pos);
+        SetNextWindowSize(ImVec2(width, height));
+        SetNextWindowViewport(viewport->ID);
+        PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        SetNextWindowBgAlpha(0.0f);
+        Begin("##notification_hud", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
+              ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings |
+              ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus |
+              ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_Tooltip);
+        ImDrawList* draw = GetWindowDrawList();
+        const auto color = [alpha](int r, int g, int b, int a = 255) {
+            return IM_COL32(r, g, b, static_cast<int>(a * alpha));
+        };
+        // 잘린 모서리, 경고색 포인트와 스캔 라인으로 미래형 HUD를 구성한다.
+        const ImVec2 points[] = { ImVec2(pos.x + 12, pos.y), ImVec2(pos.x + width, pos.y),
+            ImVec2(pos.x + width, pos.y + height - 10), ImVec2(pos.x + width - 10, pos.y + height),
+            ImVec2(pos.x, pos.y + height), ImVec2(pos.x, pos.y + 12) };
+        draw->AddConvexPolyFilled(points, 6, color(17, 24, 28, 240));
+        draw->AddPolyline(points, 6, color(246, 224, 70, 210), ImDrawFlags_Closed, 1.0f);
+        draw->AddRectFilled(ImVec2(pos.x, pos.y + 13), ImVec2(pos.x + 3, pos.y + height - 8), color(246, 224, 70));
+        const char* category = toast.type == ImGuiToastType_Error ? "SYSTEM // ERROR" :
+            toast.type == ImGuiToastType_Warning ? "SYSTEM // WARNING" :
+            toast.type == ImGuiToastType_Success ? "SYSTEM // COMPLETE" : "SYSTEM // NOTIFICATION";
+        draw->AddText(ImVec2(pos.x + 15, pos.y + 8), color(246, 224, 70), category);
+        draw->PushClipRect(ImVec2(pos.x + 15, pos.y + 28), ImVec2(pos.x + width - 12, pos.y + 51), true);
+        draw->AddText(ImVec2(pos.x + 15, pos.y + 29), color(235, 242, 234), toast.content);
+        draw->PopClipRect();
+        const float left = pos.x + 15, right = pos.x + width - 15, bar_y = pos.y + height - 11;
+        draw->AddRectFilled(ImVec2(left, bar_y), ImVec2(right, bar_y + 3), color(69, 72, 50));
+        if (progress > 0.0f)
+            draw->AddRectFilled(ImVec2(left, bar_y), ImVec2(left + (right - left) * progress, bar_y + 3), color(246, 224, 70));
+        if (exiting) {
+            const float sweep = (1.0f - alpha) * width;
+            draw->AddRectFilled(ImVec2(pos.x, pos.y + 23), ImVec2(pos.x + sweep, pos.y + 25), color(94, 230, 225, 180));
         }
+        End();
+        PopStyleVar(2);
     }
 }
