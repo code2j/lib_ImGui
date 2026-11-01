@@ -1,4 +1,5 @@
 #include "ui.hpp"
+#include "ImGuizmo.h"
 #include <iostream>
 #include <chrono>
 #include <mutex>
@@ -7,6 +8,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <limits>
+#include <cmath>
 
 #include <fstream>
 #include <string>
@@ -95,7 +97,7 @@ int main(int argc, char **argv) {
 
         ImGui::Begin("Camera");
         if (image_msg) {
-            ImGui::Image("camera",
+            if (ImGui::Image("camera",
                 image_msg->data.data(),
                 image_msg->data.size(),
                 image_msg->width,
@@ -103,7 +105,33 @@ int main(int argc, char **argv) {
                 image_msg->step,
                 ImGui::PixelFormat::RGB8,
                 ImGui::GetContentRegionAvail()
-            );
+            )) {
+                const ImVec2 image_min = ImGui::GetItemRectMin();
+                const ImVec2 image_max = ImGui::GetItemRectMax();
+                const float width = image_max.x - image_min.x;
+                const float height = image_max.y - image_min.y;
+                // 임시 가상 카메라: 실제 영상에 정합하려면 카메라 보정값이 필요하다.
+                const float near_plane = 0.1f, far_plane = 100.0f;
+                const float f = 1.0f / std::tan(45.0f * 3.14159265f / 360.0f);
+                Eigen::Matrix4f projection = Eigen::Matrix4f::Zero();
+                projection(0, 0) = f * height / width;
+                projection(1, 1) = f;
+                projection(2, 2) = (far_plane + near_plane) / (near_plane - far_plane);
+                projection(2, 3) = 2.0f * far_plane * near_plane / (near_plane - far_plane);
+                projection(3, 2) = -1.0f;
+                Eigen::Matrix4f view = Eigen::Matrix4f::Identity();
+                view(2, 3) = -3.0f;
+                Eigen::Matrix4f transform = tf_control.cast<float>();
+                ImGuizmo::BeginFrame();
+                ImGuizmo::SetDrawlist();
+                ImGuizmo::AllowAxisFlip(false);
+                ImGuizmo::SetRect(image_min.x, image_min.y, width, height);
+                ImGuizmo::Manipulate(view.data(), projection.data(),
+                                     ImGuizmo::TRANSLATE | ImGuizmo::ROTATE_X |
+                                         ImGuizmo::ROTATE_Y | ImGuizmo::ROTATE_Z,
+                                     ImGuizmo::LOCAL, transform.data());
+                if (ImGuizmo::IsUsing()) tf_control = transform.cast<double>();
+            }
         }
         const char* camera_actions[] = {"살펴보기", "선택하기", "집기", "놓기", "A", "B", "C"};
         const int action = ImGui::RadialMenu("CameraInteraction", camera_actions, 7);
