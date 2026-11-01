@@ -1392,25 +1392,6 @@ namespace IMGUIZMO_NAMESPACE
       ImU32 colors[7];
       ComputeColors(colors, type, ROTATE);
 
-      vec_t viewDirNormalized;
-      matrix_t viewInverse;
-      if (gContext.mIsOrthographic)
-      {
-         viewInverse.Inverse(*(matrix_t*)&gContext.mViewMat);
-         viewDirNormalized = -viewInverse.v.dir;
-      }
-      else
-      {
-         // In left-handed view matrices, mCameraDir points toward the scene instead of
-         // toward the camera; negate it so we always get the "toward camera" direction,
-         // which selects the correct front-facing half of each rotation ring.
-         viewInverse.Inverse(*(matrix_t*)&gContext.mViewMat);
-         const float handSign = (Dot(Cross(viewInverse.v.right, viewInverse.v.up), viewInverse.v.dir) >= 0.f) ? 1.f : -1.f;
-         viewDirNormalized = Normalized(gContext.mCameraDir) * handSign;
-      }
-
-      viewDirNormalized.TransformVector(gContext.mModelInverse);
-
       gContext.mRadiusSquareCenter = screenRotateSize * gContext.mHeight;
 
       bool hasRSC = Intersects(op, ROTATE_SCREEN);
@@ -1427,24 +1408,19 @@ namespace IMGUIZMO_NAMESPACE
          {
             continue;
          }
-         const int circleMul = hasRSC ? 1 : 2;
-
-         ImVec2* circlePos = (ImVec2*)alloca(sizeof(ImVec2) * (circleMul * halfCircleSegmentCount + 1));
-         const bool rightHanded = gContext.mProjectionMat.m[2][3] < 0.f;
-         float angleStart = atan2f(viewDirNormalized[(4 - axis) % 3], viewDirNormalized[(3 - axis) % 3]) + (gContext.mIsOrthographic ? ZPI : -ZPI) * 0.5f + (rightHanded ? 0.f : ZPI);
-
-         for (int i = 0; i < circleMul * halfCircleSegmentCount + 1; i++)
+         ImVec2 circlePos[halfCircleSegmentCount + 1];
+         for (int i = 0; i <= halfCircleSegmentCount; i++)
          {
-            float ng = angleStart + (float)circleMul * ZPI * ((float)i / (float)(circleMul * halfCircleSegmentCount));
-            vec_t axisPos = makeVect(cosf(ng), sinf(ng), 0.f);
+            const float angle = (ZPI * 0.5f) * (float)i / (float)halfCircleSegmentCount;
+            vec_t axisPos = makeVect(cosf(angle), sinf(angle), 0.f);
             vec_t pos = makeVect(axisPos[axis], axisPos[(axis + 1) % 3], axisPos[(axis + 2) % 3]) * gContext.mScreenFactor * rotationDisplayFactor;
             circlePos[i] = worldToPos(pos, gContext.mMVP);
          }
          {
 #if IMGUI_VERSION_NUM < 19276
-            drawList->AddPolyline(circlePos, circleMul* halfCircleSegmentCount + 1, colors[3 - axis], 0, gContext.mStyle.RotationLineThickness );
+            drawList->AddPolyline(circlePos, halfCircleSegmentCount + 1, colors[3 - axis], 0, gContext.mStyle.RotationLineThickness );
 #else
-            drawList->AddPolyline(circlePos, circleMul* halfCircleSegmentCount + 1, colors[3 - axis], gContext.mStyle.RotationLineThickness, 0 );
+            drawList->AddPolyline(circlePos, halfCircleSegmentCount + 1, colors[3 - axis], gContext.mStyle.RotationLineThickness, 0 );
 #endif
          }
 
@@ -2186,14 +2162,11 @@ namespace IMGUIZMO_NAMESPACE
          vec_t intersectViewPos;
          intersectViewPos.TransformPoint(intersectWorldPos, gContext.mViewMat);
 
-         if (ImAbs(modelViewPos.z) - ImAbs(intersectViewPos.z) < -FLT_EPSILON)
-         {
-            continue;
-         }
-
          const vec_t localPos = intersectWorldPos - gContext.mModel.v.position;
          vec_t idealPosOnCircle = Normalized(localPos);
          idealPosOnCircle.TransformVector(gContext.mModelInverse);
+         if (idealPosOnCircle[(i + 1) % 3] < 0.f || idealPosOnCircle[(i + 2) % 3] < 0.f)
+            continue;
          const ImVec2 idealPosOnCircleScreen = worldToPos(idealPosOnCircle * rotationDisplayFactor * gContext.mScreenFactor, gContext.mMVP);
 
          //gContext.mDrawList->AddCircle(idealPosOnCircleScreen, 5.f, IM_COL32_WHITE);
