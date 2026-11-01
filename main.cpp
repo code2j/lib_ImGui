@@ -18,6 +18,70 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
 namespace ImGui {
+    enum class HudInputType { Key, MouseLeft, MouseRight };
+    struct HudHint { const char* key; const char* description; HudInputType type; };
+    void ControlsHud(const ImVec2& origin, const ImVec2& size, const HudHint* hints, int count)
+    {
+        if (!hints || count <= 0 || size.x <= 100.0f || size.y <= 50.0f) return;
+                ImDrawList* draw = ImGui::GetWindowDrawList();
+                const float padding = 12.0f, line = ImGui::GetTextLineHeight();
+                const float row_height = line + 10.0f, header_height = line + 14.0f;
+                float key_width = 0.0f, description_width = 0.0f;
+                for (int i = 0; i < count; ++i) {
+                    const auto& hint = hints[i];
+                    key_width = std::max(key_width, ImGui::CalcTextSize(hint.key).x);
+                    description_width = std::max(description_width, ImGui::CalcTextSize(hint.description).x);
+                }
+                const float badge_width = key_width + 16.0f;
+                const float width = std::min(size.x - 16.0f, std::max(185.0f, padding * 3 + badge_width + description_width));
+                const float height = std::min(size.y - 16.0f, header_height + padding + row_height * count);
+                const ImVec2 pos(origin.x + 8.0f, origin.y + size.y - height - 8.0f);
+                const ImVec2 end(pos.x + width, pos.y + height);
+                draw->PushClipRect(pos, end, true);
+                draw->AddRectFilled(pos, end, IM_COL32(24, 27, 34, 225), 3.0f);
+                draw->AddRect(pos, end, IM_COL32(57, 64, 78, 200), 3.0f);
+                draw->AddRectFilled(pos, ImVec2(pos.x + 3.0f, end.y), IM_COL32(93, 105, 240, 240));
+                draw->AddText(ImVec2(pos.x + padding, pos.y + 6.0f), IM_COL32(160, 169, 255, 255), "CONTROLS");
+                draw->AddLine(ImVec2(pos.x + padding, pos.y + header_height),
+                              ImVec2(end.x - padding, pos.y + header_height), IM_COL32(57, 64, 78, 200));
+                for (int i = 0; i < count; ++i) {
+                    const float y = pos.y + header_height + 6.0f + i * row_height;
+                    const ImVec2 badge_min(pos.x + padding, y);
+                    const ImVec2 badge_max(badge_min.x + badge_width, y + line + 4.0f);
+                    if (hints[i].type != HudInputType::Key) {
+                        const float mouse_width = 18.0f;
+                        const float mx = badge_min.x + (badge_width - mouse_width) * 0.5f;
+                        const float my = y;
+                        const float mouse_height = line + 4.0f;
+                        draw->AddRectFilled(ImVec2(mx, my), ImVec2(mx + mouse_width, my + mouse_height),
+                                            IM_COL32(36, 41, 51, 255), 7.0f);
+                        const bool left = hints[i].type == HudInputType::MouseLeft;
+                        draw->AddRectFilled(ImVec2(mx + (left ? 1.0f : mouse_width * 0.5f), my + 1.0f),
+                                            ImVec2(mx + (left ? mouse_width * 0.5f : mouse_width - 1.0f), my + mouse_height * 0.48f),
+                                            IM_COL32(245, 247, 252, 255), 6.0f,
+                                            left ? ImDrawFlags_RoundCornersTopLeft : ImDrawFlags_RoundCornersTopRight);
+                        draw->AddRect(ImVec2(mx, my), ImVec2(mx + mouse_width, my + mouse_height),
+                                      IM_COL32(139, 148, 165, 255), 7.0f);
+                        draw->AddLine(ImVec2(mx, my + mouse_height * 0.48f),
+                                      ImVec2(mx + mouse_width, my + mouse_height * 0.48f), IM_COL32(139, 148, 165, 255));
+                        draw->AddLine(ImVec2(mx + mouse_width * 0.5f, my + 1.0f),
+                                      ImVec2(mx + mouse_width * 0.5f, my + mouse_height * 0.48f), IM_COL32(139, 148, 165, 255));
+                    } else {
+                        draw->AddRectFilled(badge_min, badge_max, IM_COL32(36, 41, 51, 240), 3.0f);
+                        draw->AddRect(badge_min, badge_max, IM_COL32(93, 105, 240, 190), 3.0f);
+                        const float text_width = ImGui::CalcTextSize(hints[i].key).x;
+                        draw->AddText(ImVec2(badge_min.x + (badge_width - text_width) * 0.5f, y + 2.0f),
+                                      IM_COL32(225, 229, 237, 255), hints[i].key);
+                    }
+                    draw->AddText(ImVec2(badge_max.x + padding, y + 2.0f),
+                                  IM_COL32(225, 229, 237, 255), hints[i].description);
+                }
+                draw->PopClipRect();
+    }
+}
+
+
+namespace ImGui {
     // 현재 창의 지정 영역 중앙에 선택 패널을 표시한다.
     void CameraSelectionPanel(bool& open, const ImVec2& origin, const ImVec2& size)
     {
@@ -56,6 +120,87 @@ namespace ImGui {
                 open = false;
         }
     }
+
+
+    int RadialMenu(const char* id, const char* const items[], int count, float radius = 90.0f, float dead_zone = 20.0f, float hold_seconds = 0.25f)
+    {
+        if (count <= 0 || !items || radius <= 0.0f) return -1;
+        dead_zone = std::max(0.0f, std::min(dead_zone, radius));
+        ImGuiStorage* state = GetStateStorage();
+        PushID(id);
+        const ImGuiID open_id = GetID("##radial_open");
+        const ImGuiID pending_id = GetID("##radial_pending");
+        const ImGuiID time_id = GetID("##radial_start");
+        const ImGuiID x_id = GetID("##radial_x");
+        const ImGuiID y_id = GetID("##radial_y");
+        if (IsWindowHovered() && IsMouseClicked(ImGuiMouseButton_Right)) {
+            const ImVec2 mouse = GetMousePos();
+            state->SetBool(pending_id, true);
+            state->SetBool(open_id, false);
+            state->SetFloat(time_id, static_cast<float>(GetTime()));
+            state->SetFloat(x_id, mouse.x);
+            state->SetFloat(y_id, mouse.y);
+        }
+        if (state->GetBool(pending_id)) {
+            if (!IsMouseDown(ImGuiMouseButton_Right) || IsKeyPressed(ImGuiKey_Escape)) {
+                state->SetBool(pending_id, false);
+            } else {
+                const float elapsed = static_cast<float>(GetTime()) - state->GetFloat(time_id);
+                const float progress = hold_seconds <= 0.0f ? 1.0f : std::min(1.0f, elapsed / hold_seconds);
+                const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
+                ImDrawList* draw = GetForegroundDrawList();
+                constexpr float pi = 3.14159265358979323846f;
+                const float progress_angle = -pi * 0.5f + 2.0f * pi * progress;
+                if (progress < 1.0f) {
+                    draw->PathArcTo(center, 17.0f, progress_angle, pi * 1.5f, 48);
+                    draw->PathStroke(IM_COL32(30, 35, 45, 200), 0, 4.0f);
+                }
+                if (progress > 0.0f) {
+                    draw->PathArcTo(center, 17.0f, -pi * 0.5f, progress_angle, 48);
+                    draw->PathStroke(GetColorU32(ImGuiCol_Button), 0, 4.0f);
+                }
+                if (progress >= 1.0f) {
+                    state->SetBool(pending_id, false);
+                    state->SetBool(open_id, true);
+                }
+            }
+        }
+        int result = -1;
+        if (state->GetBool(open_id)) {
+            constexpr float pi = 3.14159265358979323846f;
+            const float step = 2.0f * pi / count;
+            const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
+            const ImVec2 mouse = GetMousePos();
+            const float dx = mouse.x - center.x, dy = mouse.y - center.y;
+            int selected = -1;
+            if (dx * dx + dy * dy >= dead_zone * dead_zone) {
+                float angle = std::atan2(dy, dx) + pi * 0.5f + step * 0.5f;
+                angle = std::fmod(angle + 2.0f * pi, 2.0f * pi);
+                selected = static_cast<int>(angle / step) % count;
+            }
+            ImDrawList* draw = GetForegroundDrawList();
+            for (int i = 0; i < count; ++i) {
+                const float angle = -pi * 0.5f + i * step;
+                draw->PathLineTo(center);
+                draw->PathArcTo(center, radius, angle - step * 0.5f, angle + step * 0.5f, 32);
+                draw->PathFillConvex(i == selected ? GetColorU32(ImGuiCol_Button) : IM_COL32(35, 40, 50, 230));
+                const ImVec2 size = CalcTextSize(items[i]);
+                draw->AddText(ImVec2(center.x + std::cos(angle) * radius * 0.6f - size.x * 0.5f,
+                                     center.y + std::sin(angle) * radius * 0.6f - size.y * 0.5f),
+                              IM_COL32_WHITE, items[i]);
+            }
+            draw->AddCircle(center, radius, IM_COL32(220, 220, 220, 220), 64, 2.0f);
+            draw->AddCircleFilled(center, dead_zone, IM_COL32(25, 28, 35, 255));
+            if (IsKeyPressed(ImGuiKey_Escape)) state->SetBool(open_id, false);
+            else if (IsMouseReleased(ImGuiMouseButton_Right)) {
+                result = selected;
+                state->SetBool(open_id, false);
+            }
+        }
+        PopID();
+        return result;
+    }
+
 }
 
 int main(int argc, char **argv) {
@@ -177,6 +322,13 @@ int main(int argc, char **argv) {
                 if (ImGuizmo::IsUsing()) tf_control = transform.cast<double>();
             }
         }
+
+        const ImGui::HudHint camera_hints[] = {
+            {"", "길게 눌러 메뉴", ImGui::HudInputType::MouseRight},
+            {"ESC", "메뉴 / 선택 닫기", ImGui::HudInputType::Key},
+        };
+        if (!show_camera_selection)
+            ImGui::ControlsHud(camera_min, camera_size, camera_hints, IM_ARRAYSIZE(camera_hints));
 
         // radial menu
         const char* camera_actions[] = {"선택하기", "집기", "놓기"};
