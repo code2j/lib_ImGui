@@ -92,13 +92,8 @@ void ImGui::ShowLogger(const char *title, bool open)
         return;
     }
 
-    // 왼쪽 사이드바 너비 지정 (버튼 크기 + 약간의 여백)
-    float sidebar_width = BUTTON_SIZE.x + 0.0f;
-
-    // ===============================================================
-    //  왼쪽 패널: 아이콘 버튼들 (세로 배치)
-    // ===============================================================
-    ImGui::BeginChild("Sidebar", ImVec2(sidebar_width, 0), false);
+    ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    const ImVec2 content_start = ImGui::GetCursorPos();
 
     ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(125, 125, 125, 20));
@@ -126,7 +121,7 @@ void ImGui::ShowLogger(const char *title, bool open)
         logger.auto_scroll = !logger.auto_scroll;
     }
 
-    ImGui::PopStyleColor(3); // 텍스트 색상 Pop
+    ImGui::PopStyleColor(); // 텍스트 색상 복구
 
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("자동 스크롤");
@@ -134,16 +129,18 @@ void ImGui::ShowLogger(const char *title, bool open)
 
     // 스타일 복구
     ImGui::PopStyleVar();
-    ImGui::PopStyleColor();
+    ImGui::PopStyleColor(3);
 
-    ImGui::EndChild(); // 왼쪽 패널 종료
-    ImGui::SameLine();
+    const ImVec2 region_min = ImGui::GetWindowPos();
+    const float separator_x = ImGui::GetCursorScreenPos().x - ImGui::GetCursorPosX() + content_start.x + BUTTON_SIZE.x + ImGui::GetStyle().ItemSpacing.x * 0.5f;
+    const float separator_top = ImGui::GetCursorScreenPos().y - ImGui::GetCursorPosY() + content_start.y;
+    const float separator_bottom = region_min.y + ImGui::GetWindowHeight();
+    ImGui::GetWindowDrawList()->AddLine(ImVec2(separator_x, separator_top), ImVec2(separator_x, separator_bottom),
+                                        ImGui::GetColorU32(ImGuiCol_Separator));
 
-
-    // ===============================================================
-    // 텍스트 출력 그리기
-    // ===============================================================
-    ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    // 버튼 오른쪽에 로그를 표시한다.
+    ImGui::Indent(BUTTON_SIZE.x + ImGui::GetStyle().ItemSpacing.x);
+    ImGui::SetCursorPosY(content_start.y);
 
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
@@ -154,6 +151,8 @@ void ImGui::ShowLogger(const char *title, bool open)
     ImGui::PopFont();
 
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
+
+    ImGui::Unindent(BUTTON_SIZE.x + ImGui::GetStyle().ItemSpacing.x);
 
     // 자동 스크롤 로직
     if (logger.auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
