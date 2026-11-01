@@ -1,5 +1,9 @@
 #include "ui.hpp"
 #include "ImGuizmo.h"
+#include "imgui_internal.h"
+#include <future>
+#include <vector>
+#include <cstdio>
 #include <iostream>
 #include <chrono>
 #include <mutex>
@@ -18,6 +22,269 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
 
+
+
+namespace {
+    struct CpuData {
+        unsigned long long prev_idle = 0;
+        unsigned long long prev_total = 0;
+        float usage = 0.0f;
+        float temp = -1.0f;
+    };
+
+    struct RamData {
+        float usage = 0.0f;
+        float used_gb = 0.0f;
+        float total_gb = 0.0f;
+    };
+
+    struct GpuData {
+        float usage = 0.0f;
+        float mem_used_gb = 0.0f;
+        float mem_total_gb = 0.0f;
+        float temp = -1.0f;
+        bool available = false;
+    };
+
+    // 1. CPU 사용량 업데이트
+    void update_cpu_usage(CpuData& total_cpu, std::vector<CpuData>& core_cpus)
+    {
+        std::ifstream file("/proc/stat");
+        std::string line;
+        int core_idx = 0;
+        while (std::getline(file, line)) {
+            if (line.compare(0, 3, "cpu") != 0) break;
+
+            std::istringstream ss(line);
+            std::string cpu_label;
+            unsigned long long user, nice, system, idle, iowait, irq, softirq, steal;
+            ss >> cpu_label >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
+
+            unsigned long long current_idle = idle + iowait;
+            unsigned long long current_non_idle = user + nice + system + irq + softirq + steal;
+            unsigned long long current_total = current_idle + current_non_idle;
+
+            CpuData* target = nullptr;
+            if (cpu_label == "cpu") {
+                target = &total_cpu;
+            } else {
+                if (core_idx >= core_cpus.size()) core_cpus.resize(core_idx + 1);
+                target = &core_cpus[core_idx];
+                core_idx++;
+            }
+
+            if (target) {
+                unsigned long long total_diff = current_total - target->prev_total;
+                unsigned long long idle_diff = current_idle - target->prev_idle;
+                if (total_diff > 0) {
+                    target->usage = static_cast<float>(total_diff - idle_diff) / total_diff * 100.0f;
+                }
+                target->prev_idle = current_idle;
+                target->prev_total = current_total;
+            }
+        }
+    }
+
+    // 2. CPU 온도 업데이트
+    void update_cpu_temp(CpuData& total_cpu)
+    {
+        std::ifstream temp_file("/sys/class/thermal/thermal_zone0/temp");
+        long millicelsius = 0;
+        if (temp_file >> millicelsius) {
+            total_cpu.temp = millicelsius / 1000.0f;
+        } else {
+            total_cpu.temp = -1.0f;
+        }
+    }
+
+    // 3. RAM 사용량 업데이트
+    void update_ram_usage(RamData& ram)
+    {
+        std::ifstream mem_file("/proc/meminfo");
+        std::string mem_line;
+        long long mem_total = 0, mem_available = 0;
+
+        while (std::getline(mem_file, mem_line)) {
+            if (mem_line.compare(0, 8, "MemTotal") == 0) {
+                std::istringstream iss(mem_line);
+                std::string key, unit;
+                iss >> key >> mem_total >> unit;
+            } else if (mem_line.compare(0, 12, "MemAvailable") == 0) {
+                std::istringstream iss(mem_line);
+                std::string key, unit;
+                iss >> key >> mem_available >> unit;
+            }
+        }
+
+        if (mem_total > 0) {
+            long long mem_used = mem_total - mem_available;
+            ram.usage = static_cast<float>(mem_used) / mem_total * 100.0f;
+            ram.used_gb = static_cast<float>(mem_used) / (1024.0f * 1024.0f);
+            ram.total_gb = static_cast<float>(mem_total) / (1024.0f * 1024.0f);
+        }
+    }
+
+    // 4. GPU 사용량 및 온도 업데이트 (NVIDIA)
+    void update_gpu_usage(GpuData& gpu)
+    {
+        FILE* pipe = popen("nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader,nounits 2>/dev/null", "r");
+        if (!pipe) {
+            gpu.available = false;
+            return;
+        }
+
+        char buffer[128];
+        if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            std::string result = buffer;
+            std::replace(result.begin(), result.end(), ',', ' ');
+            std::istringstream iss(result);
+
+            float util, mem_used_mib, mem_total_mib, temp;
+            if (iss >> util >> mem_used_mib >> mem_total_mib >> temp) {
+                gpu.usage = util;
+                gpu.mem_used_gb = mem_used_mib / 1024.0f;
+                gpu.mem_total_gb = mem_total_mib / 1024.0f;
+                gpu.temp = temp;
+                gpu.available = true;
+            } else {
+                gpu.available = false;
+            }
+        } else {
+            gpu.available = false;
+        }
+
+        pclose(pipe);
+    }
+}
+
+
+static void ShowTelemetryHud(const ImVec2& origin, const ImVec2& area)
+{
+    if (area.x <= 0.0f || area.y <= 0.0f) return;
+    static CpuData cpu;
+    static std::vector<CpuData> cores;
+    static RamData ram;
+    static GpuData gpu;
+    static std::future<GpuData> gpu_request;
+    static double last_sample = -1.0;
+    const double now = ImGui::GetTime();
+    if (gpu_request.valid() && gpu_request.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+        gpu = gpu_request.get();
+    if (last_sample < 0.0 || now - last_sample >= 1.0) {
+        update_cpu_usage(cpu, cores);
+        update_ram_usage(ram);
+        if (!gpu_request.valid()) gpu_request = std::async(std::launch::async, [] {
+            GpuData sample;
+            update_gpu_usage(sample);
+            return sample;
+        });
+        last_sample = now;
+    }
+
+    const float scale = ImGui::GetFontSize() / 16.0f;
+    const float margin = 16.0f * scale;
+    const float radius = 21.0f * scale;
+    const float spacing = 56.0f * scale;
+    const float width = spacing * 2.0f + radius * 2.0f;
+    const float height = radius * 2.0f + ImGui::GetTextLineHeight() + 8.0f * scale;
+    if (area.x < width + margin * 2.0f || area.y < height + margin * 2.0f) return;
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    draw->PushClipRect(origin, ImVec2(origin.x + area.x, origin.y + area.y), true);
+    const ImVec2 first(origin.x + area.x - margin - width + radius,
+                       origin.y + margin + radius);
+    constexpr float pi = 3.14159265358979323846f;
+    int hovered_gauge = -1;
+    auto gauge = [&](int index, float value, bool available) {
+        const ImVec2 center(first.x + index * spacing, first.y);
+        const float fraction = std::clamp(value / 100.0f, 0.0f, 1.0f);
+        const ImU32 accent = value >= 90.0f && available ? IM_COL32(255, 95, 91, 255) :
+                             value >= 75.0f && available ? IM_COL32(255, 193, 91, 255) : IM_COL32(120, 224, 215, 255);
+        draw->AddCircleFilled(center, radius - 3.0f * scale, IM_COL32(5, 17, 22, 165), 48);
+        const float start = pi * 0.75f, end = pi * 2.25f;
+        constexpr int segments = 15;
+        for (int i = 0; i < segments; ++i) {
+            const float segment = (end - start) / segments;
+            const float a = start + segment * i + 0.04f;
+            const float b = start + segment * (i + 1) - 0.04f;
+            draw->PathArcTo(center, radius, a, b, 3);
+            draw->PathStroke(available && (i + 1.0f) / segments <= fraction ? accent : IM_COL32(45, 93, 102, 150), 0, 3.0f * scale);
+        }
+        const ImVec2 mouse = ImGui::GetMousePos();
+        const float dx = mouse.x - center.x, dy = mouse.y - center.y;
+        if (ImGui::IsWindowHovered() && dx * dx + dy * dy <= radius * radius)
+            hovered_gauge = index;
+        const float x = center.x, y = center.y;
+        const float icon_scale = scale * 1.45f;
+        const float thickness = 2.0f * scale;
+        const ImU32 icon = available ? IM_COL32(165, 239, 237, 255) : IM_COL32(99, 133, 136, 220);
+        if (index == 0) { // CPU: 핀이 있는 칩
+            draw->AddRect(ImVec2(x - 5 * icon_scale, y - 5 * icon_scale), ImVec2(x + 5 * icon_scale, y + 5 * icon_scale), icon, 0.0f, 0, thickness);
+            draw->AddRect(ImVec2(x - 2 * icon_scale, y - 2 * icon_scale), ImVec2(x + 2 * icon_scale, y + 2 * icon_scale), icon, 0.0f, 0, thickness);
+            for (int i = -1; i <= 1; ++i) {
+                draw->AddLine(ImVec2(x + i * 3 * icon_scale, y - 7 * icon_scale), ImVec2(x + i * 3 * icon_scale, y - 5 * icon_scale), icon, thickness);
+                draw->AddLine(ImVec2(x + i * 3 * icon_scale, y + 5 * icon_scale), ImVec2(x + i * 3 * icon_scale, y + 7 * icon_scale), icon, thickness);
+            }
+        } else if (index == 1) { // GPU: 팬이 달린 그래픽 카드
+            draw->AddRect(ImVec2(x - 8 * icon_scale, y - 5 * icon_scale), ImVec2(x + 8 * icon_scale, y + 5 * icon_scale), icon, 0.0f, 0, thickness);
+            draw->AddCircle(ImVec2(x, y), 3.0f * icon_scale, icon, 12, thickness);
+            draw->AddCircleFilled(ImVec2(x, y), 1.0f * icon_scale, icon);
+            draw->AddLine(ImVec2(x - 5 * icon_scale, y + 5 * icon_scale), ImVec2(x - 5 * icon_scale, y + 7 * icon_scale), icon, thickness);
+            draw->AddLine(ImVec2(x + 5 * icon_scale, y + 5 * icon_scale), ImVec2(x + 5 * icon_scale, y + 7 * icon_scale), icon, thickness);
+        } else { // RAM: 메모리 모듈
+            draw->AddRect(ImVec2(x - 9 * icon_scale, y - 4 * icon_scale), ImVec2(x + 9 * icon_scale, y + 4 * icon_scale), icon, 0.0f, 0, thickness);
+            for (int i = -1; i <= 1; ++i)
+                draw->AddRectFilled(ImVec2(x + (i * 5 - 1) * icon_scale, y - 2 * icon_scale), ImVec2(x + (i * 5 + 1) * icon_scale, y + 1 * icon_scale), icon);
+            draw->AddLine(ImVec2(x - 6 * icon_scale, y + 6 * icon_scale), ImVec2(x + 6 * icon_scale, y + 6 * icon_scale), icon, thickness);
+        }
+    };
+    gauge(0, cpu.usage, cpu.prev_total != 0);
+    gauge(1, gpu.usage, gpu.available);
+    gauge(2, ram.usage, ram.total_gb > 0.0f);
+    draw->PopClipRect();
+    if (hovered_gauge >= 0) {
+        const char* names[] = {"CPU", "GPU", "RAM"};
+        const float values[] = {cpu.usage, gpu.usage, ram.usage};
+        const bool available[] = {cpu.prev_total != 0, gpu.available, ram.total_gb > 0.0f};
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 8));
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.28f, 0.86f, 0.92f, 0.9f));
+        if (ImGui::BeginTooltip()) {
+            ImDrawList* tooltip_draw = ImGui::GetWindowDrawList();
+            tooltip_draw->ChannelsSplit(2);
+            tooltip_draw->ChannelsSetCurrent(1);
+            ImGui::TextColored(ImVec4(0.28f, 0.86f, 0.92f, 1.0f), "SYSTEM // %s", names[hovered_gauge]);
+            ImGui::Separator();
+            if (available[hovered_gauge]) ImGui::Text("사용률  %.1f%%", values[hovered_gauge]);
+            else ImGui::TextUnformatted("사용률  N/A");
+            if (hovered_gauge == 1) {
+                if (gpu.available && gpu.mem_total_gb > 0.0f)
+                    ImGui::Text("VRAM  %.1f / %.1f GiB", gpu.mem_used_gb, gpu.mem_total_gb);
+                else ImGui::TextUnformatted("VRAM  N/A");
+            } else if (hovered_gauge == 2) {
+                if (ram.total_gb > 0.0f)
+                    ImGui::Text("메모리  %.1f / %.1f GiB", ram.used_gb, ram.total_gb);
+                else ImGui::TextUnformatted("메모리  N/A");
+            }
+            tooltip_draw->ChannelsSetCurrent(0);
+            const ImVec2 tip_pos = ImGui::GetWindowPos();
+            const ImVec2 cursor_max = ImGui::GetCursorScreenPos();
+            const float tip_width = std::max(ImGui::GetWindowSize().x, ImGui::GetContentRegionMax().x + ImGui::GetStyle().WindowPadding.x);
+            const float tip_height = cursor_max.y - tip_pos.y + ImGui::GetStyle().WindowPadding.y;
+            const float cut = 8.0f;
+            const ImVec2 frame[] = {ImVec2(tip_pos.x + cut, tip_pos.y), ImVec2(tip_pos.x + tip_width, tip_pos.y),
+                ImVec2(tip_pos.x + tip_width, tip_pos.y + tip_height - cut), ImVec2(tip_pos.x + tip_width - cut, tip_pos.y + tip_height),
+                ImVec2(tip_pos.x, tip_pos.y + tip_height), ImVec2(tip_pos.x, tip_pos.y + cut)};
+            tooltip_draw->AddConvexPolyFilled(frame, 6, IM_COL32(6, 19, 26, 245));
+            tooltip_draw->AddPolyline(frame, 6, IM_COL32(72, 220, 235, 230), ImDrawFlags_Closed, 1.0f);
+            tooltip_draw->ChannelsMerge();
+            ImGui::EndTooltip();
+        }
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(3);
+    }
+}
 
 
 namespace ImGui {
@@ -406,11 +673,14 @@ int main(int argc, char **argv) {
         };
         if (!show_camera_selection)
             ImGui::ControlsHud(camera_min, camera_size, camera_hints, IM_ARRAYSIZE(camera_hints));
+        ShowTelemetryHud(camera_min, camera_size);
 
         // radial menu
         const char* camera_actions[] = {"선택하기", "집기", "놓기"};
         const int action = show_camera_selection ? -1 : ImGui::RadialMenu("CameraInteraction", camera_actions, 3);
+        if (action == 0) ImGui::NotifyInfo("사이버펑크 스타일 노티피케이션");
         if (action == 1) show_camera_selection = true;
+
 
 
         ImGui::CameraSelectionPanel(show_camera_selection, camera_min, camera_size);
