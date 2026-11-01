@@ -11,6 +11,19 @@ namespace {
     RenderTexture2D view_texture; // 렌더링된 이미지가 저장되는 텍스처
     Vector2 viewport_mouse_pos = { 0.0, 0.0 };
     bool is_viewport_hovered   = false;
+    bool camera_control = false;
+    bool restore_no_mouse = false;
+    Vector2 saved_mouse_pos = { 0.0f, 0.0f };
+
+    void StopCameraControl()
+    {
+        if (!camera_control) return;
+        EnableCursor();
+        SetMousePosition((int)saved_mouse_pos.x, (int)saved_mouse_pos.y);
+        if (!restore_no_mouse)
+            ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+        camera_control = false;
+    }
 }
 
 namespace ImGui
@@ -32,8 +45,10 @@ namespace ImGui
 
     void Show3D(const char* title, bool open, std::function<void()> func)
     {
-        if (!open)
+        if (!open) {
+            StopCameraControl();
             return;
+        }
 
         if (!view_texture.id)
             view_texture = LoadRenderTexture((int)WIDTH_3D, (int)HEIGHT_3D);
@@ -80,19 +95,23 @@ namespace ImGui
         ClearBackground(BLANK);
 
         // 커서가 숨겨져 있을 때 (카메라 조작 중)
-        if (IsCursorHidden()) {
+        if (camera_control) {
             // [뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구]
             if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                EnableCursor();
+                StopCameraControl();
             }
             // 카메라 업데이트 수행
-            UpdateCamera(&ImGui::camera, CAMERA_FREE);
+            else UpdateCamera(&ImGui::camera, CAMERA_FREE);
         }
         // 커서가 보일 때 (일반 UI 조작 중)
         else {
             // [뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)]
             if (is_viewport_hovered) {
                 if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+                    saved_mouse_pos = GetMousePosition();
+                    restore_no_mouse = (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) != 0;
+                    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
+                    camera_control = true;
                     DisableCursor();
                 }
             }
@@ -114,6 +133,7 @@ namespace ImGui
 
     void Destroy3D()
     {
+        StopCameraControl();
         UnloadRenderTexture(view_texture);
 
     }
