@@ -25,6 +25,8 @@ namespace ImGui {
             ImGui::SetCursorScreenPos(origin);
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0.38f));
             ImGui::BeginChild("##camera_overlay", size, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+            // 팝업 모달 크기
             const ImVec2 card_size(std::min(340.0f, size.x), std::min(160.0f, size.y));
             ImGui::SetCursorPos(ImVec2((size.x - card_size.x) * 0.5f, (size.y - card_size.y) * 0.5f));
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);

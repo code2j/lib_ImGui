@@ -3300,20 +3300,48 @@ void ImGui::Help(const char *desc)
     }
 }
 
-int ImGui::RadialMenu(const char* id, const char* const items[], int count, float radius, float dead_zone)
+int ImGui::RadialMenu(const char* id, const char* const items[], int count, float radius, float dead_zone, float hold_seconds)
 {
     if (count <= 0 || !items || radius <= 0.0f) return -1;
     dead_zone = std::max(0.0f, std::min(dead_zone, radius));
     ImGuiStorage* state = GetStateStorage();
     PushID(id);
     const ImGuiID open_id = GetID("##radial_open");
+    const ImGuiID pending_id = GetID("##radial_pending");
+    const ImGuiID time_id = GetID("##radial_start");
     const ImGuiID x_id = GetID("##radial_x");
     const ImGuiID y_id = GetID("##radial_y");
     if (IsWindowHovered() && IsMouseClicked(ImGuiMouseButton_Right)) {
         const ImVec2 mouse = GetMousePos();
-        state->SetBool(open_id, true);
+        state->SetBool(pending_id, true);
+        state->SetBool(open_id, false);
+        state->SetFloat(time_id, static_cast<float>(GetTime()));
         state->SetFloat(x_id, mouse.x);
         state->SetFloat(y_id, mouse.y);
+    }
+    if (state->GetBool(pending_id)) {
+        if (!IsMouseDown(ImGuiMouseButton_Right) || IsKeyPressed(ImGuiKey_Escape)) {
+            state->SetBool(pending_id, false);
+        } else {
+            const float elapsed = static_cast<float>(GetTime()) - state->GetFloat(time_id);
+            const float progress = hold_seconds <= 0.0f ? 1.0f : std::min(1.0f, elapsed / hold_seconds);
+            const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
+            ImDrawList* draw = GetForegroundDrawList();
+            constexpr float pi = 3.14159265358979323846f;
+            const float progress_angle = -pi * 0.5f + 2.0f * pi * progress;
+            if (progress < 1.0f) {
+                draw->PathArcTo(center, 17.0f, progress_angle, pi * 1.5f, 48);
+                draw->PathStroke(IM_COL32(30, 35, 45, 200), 0, 4.0f);
+            }
+            if (progress > 0.0f) {
+                draw->PathArcTo(center, 17.0f, -pi * 0.5f, progress_angle, 48);
+                draw->PathStroke(IM_COL32(100, 170, 255, 255), 0, 4.0f);
+            }
+            if (progress >= 1.0f) {
+                state->SetBool(pending_id, false);
+                state->SetBool(open_id, true);
+            }
+        }
     }
     int result = -1;
     if (state->GetBool(open_id)) {
