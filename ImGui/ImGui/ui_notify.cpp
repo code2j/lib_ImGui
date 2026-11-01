@@ -233,17 +233,22 @@ namespace ImGui
             float draw_x = anchor_pos.x + anchor_size.x * 0.5f;
             float draw_y = anchor_pos.y + NOTIFY_PADDING_Y + nudge_y;
 
-            auto text_color = current_toast->GetColor();
+            auto text_color = current_toast->type == ImGuiToastType_Info
+                ? GetStyleColorVec4(ImGuiCol_Button) : current_toast->GetColor();
             if (text_color.x > 1.0f || text_color.y > 1.0f || text_color.z > 1.0f) {
                 text_color.x /= 255.0f; text_color.y /= 255.0f; text_color.z /= 255.0f;
             }
             text_color.w = opacity;
 
-            auto raw_bg_color = current_toast->GetBgColor();
-            ImVec4 bg_color = ImVec4(raw_bg_color.x / 255.0f, raw_bg_color.y / 255.0f, raw_bg_color.z / 255.0f, opacity);
+            ImVec4 bg_color = GetStyleColorVec4(ImGuiCol_PopupBg);
+            ImVec4 border_color = GetStyleColorVec4(ImGuiCol_Border);
+            ImVec4 content_color = GetStyleColorVec4(ImGuiCol_Text);
+            border_color.w *= opacity;
+            content_color.w *= opacity;
 
             PushStyleColor(ImGuiCol_WindowBg, bg_color);
-            PushStyleColor(ImGuiCol_Border, text_color);
+            PushStyleColor(ImGuiCol_Border, border_color);
+            PushStyleColor(ImGuiCol_Text, content_color);
             PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
             PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
             PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
@@ -294,7 +299,7 @@ namespace ImGui
             End();
 
             PopStyleVar(3);
-            PopStyleColor(2);
+            PopStyleColor(3);
         }
 
         if (remove_index != -1)
