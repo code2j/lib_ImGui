@@ -39,7 +39,7 @@ namespace ImGui {
                 ImVec2(card_pos.x + card_size.x, card_pos.y + card_size.y - cut),
                 ImVec2(card_pos.x + card_size.x - cut, card_pos.y + card_size.y),
                 ImVec2(card_pos.x, card_pos.y + card_size.y), ImVec2(card_pos.x, card_pos.y + cut)};
-            draw->AddConvexPolyFilled(corners, 6, IM_COL32(9, 24, 32, 250));
+            draw->AddConvexPolyFilled(corners, 6, IM_COL32(9, 24, 32, 210));
             draw->AddPolyline(corners, 6, IM_COL32(72, 220, 235, 230), ImDrawFlags_Closed, 1.0f);
             draw->AddRectFilled(ImVec2(card_pos.x, card_pos.y + cut), ImVec2(card_pos.x + 3, card_pos.y + card_size.y - 8), IM_COL32(72, 220, 235, 255));
             ImGui::SetCursorScreenPos(card_pos);
