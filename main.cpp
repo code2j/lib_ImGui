@@ -22,35 +22,42 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 namespace ImGui {
     // 현재 창의 지정 영역 중앙에 선택 패널을 표시한다.
-    void CameraSelectionPanel(bool& open, const ImVec2& origin, const ImVec2& size)
+        void CameraSelectionPanel(bool& open, const ImVec2& origin, const ImVec2& size)
     {
         if (open && size.x > 0 && size.y > 0) {
             ImGui::SetCursorScreenPos(origin);
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0.38f));
             ImGui::BeginChild("##camera_overlay", size, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-            // 팝업 모달 크기
-            const ImVec2 card_size(std::min(340.0f, size.x), std::min(160.0f, size.y));
-            ImGui::SetCursorPos(ImVec2((size.x - card_size.x) * 0.5f, (size.y - card_size.y) * 0.5f));
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 16));
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.14f, 0.19f, 1.0f));
-
-            ImGui::BeginChild("##camera_selection", card_size, true, ImGuiWindowFlags_NoScrollbar);
-
-            // 제목
-            ImGui::TextUnformatted("선택하기");
+            const ImVec2 card_size(std::min(380.0f, size.x), std::min(190.0f, size.y));
+            const ImVec2 card_pos(origin.x + (size.x - card_size.x) * 0.5f,
+                                  origin.y + (size.y - card_size.y) * 0.5f);
+            ImDrawList* draw = ImGui::GetWindowDrawList();
+            const float cut = std::min(14.0f, std::min(card_size.x, card_size.y) * 0.25f);
+            const ImVec2 corners[] = {ImVec2(card_pos.x + cut, card_pos.y),
+                ImVec2(card_pos.x + card_size.x, card_pos.y),
+                ImVec2(card_pos.x + card_size.x, card_pos.y + card_size.y - cut),
+                ImVec2(card_pos.x + card_size.x - cut, card_pos.y + card_size.y),
+                ImVec2(card_pos.x, card_pos.y + card_size.y), ImVec2(card_pos.x, card_pos.y + cut)};
+            draw->AddConvexPolyFilled(corners, 6, IM_COL32(9, 24, 32, 250));
+            draw->AddPolyline(corners, 6, IM_COL32(72, 220, 235, 230), ImDrawFlags_Closed, 1.0f);
+            draw->AddRectFilled(ImVec2(card_pos.x, card_pos.y + cut), ImVec2(card_pos.x + 3, card_pos.y + card_size.y - 8), IM_COL32(72, 220, 235, 255));
+            ImGui::SetCursorScreenPos(card_pos);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18, 14));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.08f, 0.30f, 0.36f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.10f, 0.43f, 0.50f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.54f, 0.60f, 1.0f));
+            ImGui::BeginChild("##camera_selection", card_size, ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar);
+            ImGui::TextColored(ImVec4(0.28f, 0.86f, 0.92f, 1.0f), "SYSTEM // SELECTION");
             ImGui::Separator();
-
-            // 내용
+            ImGui::TextUnformatted("선택하기");
             ImGui::TextDisabled("선택할 항목을 추가하세요.");
             ImGui::Dummy(ImVec2(0, 12));
-
-            if (ImGui::Button("닫기", ImVec2(-1, 0)))
-                open = false;
-
-            ImGui::EndChild(); // ##camera_selection
-            ImGui::PopStyleColor();
+            if (ImGui::Button("닫기", ImVec2(-1, 0))) open = false;
+            ImGui::EndChild();
+            ImGui::PopStyleColor(4);
             ImGui::PopStyleVar(2);
             ImGui::EndChild(); // ##camera_overlay
             ImGui::PopStyleColor();
@@ -59,6 +66,7 @@ namespace ImGui {
                 open = false;
         }
     }
+
 
     // 라디얼 메뉴
     int RadialMenu(const char* id, const char* const items[], int count, float radius = 90.0f, float dead_zone = 20.0f, float hold_seconds = 0.25f)
