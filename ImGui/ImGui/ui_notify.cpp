@@ -11,7 +11,7 @@
 // 내부 설정 매크로
 // ==============================================================================
 #define NOTIFY_MAX_MSG_LENGTH           4096
-#define NOTIFY_PADDING_Y                5.f        // 상단 Y 패딩
+#define NOTIFY_PADDING_Y                12.5f        // 상단 Y 패딩
 #define NOTIFY_FADE_IN_OUT_TIME         150
 #define NOTIFY_DEFAULT_DISMISS          3000
 #define NOTIFY_OPACITY                  1.0f
@@ -191,9 +191,16 @@ namespace ImGui
     // ==============================================================================
     void ShowNotifications()
     {
-        const auto viewport = ImGui::GetMainViewport();
+        auto viewport = ImGui::GetMainViewport();
         const auto vp_pos = viewport->WorkPos;
         const auto vp_size = viewport->WorkSize;
+
+        // 항상 "window" 창의 위치를 기준으로 알림을 표시함
+        const ImGuiWindow* menu_window = ImGui::FindWindowByName("window");
+        const ImVec2 anchor_pos = menu_window ? menu_window->Pos : vp_pos;
+        const ImVec2 anchor_size = menu_window ? menu_window->Size : vp_size;
+        if (menu_window && menu_window->Viewport)
+            viewport = menu_window->Viewport;
 
         ImGuiContext& g = *GImGui;
 
@@ -223,8 +230,8 @@ namespace ImGui
             }
 
             // [수정] 상단 중앙 X, Y 계산
-            float draw_x = vp_pos.x + (vp_size.x * 0.5f); // 중앙
-            float draw_y = vp_pos.y + NOTIFY_PADDING_Y + nudge_y; // 상단 + 패딩 + 애니메이션
+            float draw_x = anchor_pos.x + anchor_size.x * 0.5f;
+            float draw_y = anchor_pos.y + NOTIFY_PADDING_Y + nudge_y;
 
             auto text_color = current_toast->GetColor();
             if (text_color.x > 1.0f || text_color.y > 1.0f || text_color.z > 1.0f) {
@@ -247,14 +254,14 @@ namespace ImGui
             snprintf(window_name, sizeof(window_name), "##TOAST%d", current_toast->id);
 
             // [수정] Pivot을 상단 중앙(0.5, 0.0)으로 설정
-            SetNextWindowPos(ImVec2(draw_x, draw_y), ImGuiCond_Always, ImVec2(0.5f, -1.0f));
+            SetNextWindowPos(ImVec2(draw_x, draw_y), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
 
             ImGui::SetNextWindowViewport(viewport->ID);
 
             Begin(window_name, NULL, NOTIFY_TOAST_FLAGS);
 
             {
-                PushTextWrapPos(vp_size.x / 2.f); // 중앙 배치를 고려해 텍스트 랩핑 영역 확장
+                PushTextWrapPos(anchor_size.x / 2.f);
                 bool was_title_rendered = false;
 
                 if (icon && strlen(icon) > 0)
