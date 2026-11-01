@@ -179,12 +179,10 @@ int main(int argc, char **argv) {
         }
 
         // radial menu
-        const char* camera_actions[] = {"살펴보기", "선택하기", "집기", "놓기"};
-        const int action = show_camera_selection ? -1 : ImGui::RadialMenu("CameraInteraction", camera_actions, 4);
-        if (action == 0) ImGui::NotifyInfo("살펴보기 선택됨");
+        const char* camera_actions[] = {"선택하기", "집기", "놓기"};
+        const int action = show_camera_selection ? -1 : ImGui::RadialMenu("CameraInteraction", camera_actions, 3);
         if (action == 1) show_camera_selection = true;
-        if (action == 2) ImGui::NotifyInfo("집기 선택됨");
-        if (action == 3) ImGui::NotifyInfo("놓기 선택됨");
+
 
         ImGui::CameraSelectionPanel(show_camera_selection, camera_min, camera_size);
         ImGui::End();
