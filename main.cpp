@@ -78,6 +78,7 @@ namespace ImGui {
         const ImGuiID open_id = GetID("##radial_open");
         const ImGuiID pending_id = GetID("##radial_pending");
         const ImGuiID time_id = GetID("##radial_start");
+        const ImGuiID opened_at_id = GetID("##radial_opened_at");
         const ImGuiID x_id = GetID("##radial_x");
         const ImGuiID y_id = GetID("##radial_y");
         if (IsWindowHovered() && IsMouseClicked(ImGuiMouseButton_Right)) {
@@ -109,6 +110,7 @@ namespace ImGui {
                 if (progress >= 1.0f) {
                     state->SetBool(pending_id, false);
                     state->SetBool(open_id, true);
+                    state->SetFloat(opened_at_id, static_cast<float>(GetTime()));
                 }
             }
         }
@@ -126,25 +128,35 @@ namespace ImGui {
                 selected = static_cast<int>(angle / step) % count;
             }
             ImDrawList* draw = GetForegroundDrawList();
+            const float reveal = std::min(1.0f, (static_cast<float>(GetTime()) - state->GetFloat(opened_at_id)) / 0.16f);
+            const auto hud_color = [reveal](int r, int g, int b, int a = 255) {
+                return IM_COL32(r, g, b, static_cast<int>(a * reveal));
+            };
             for (int i = 0; i < count; ++i) {
                 const float angle = -pi * 0.5f + i * step;
                 draw->PathLineTo(center);
                 draw->PathArcTo(center, radius, angle - step * 0.5f, angle + step * 0.5f, 32);
-                draw->PathFillConvex(i == selected ? GetColorU32(ImGuiCol_Button) : IM_COL32(35, 40, 50, 230));
+                draw->PathFillConvex(i == selected ? hud_color(18, 93, 108, 240) : hud_color(9, 24, 32, 235));
+                const float inset = std::min(0.07f, step * 0.12f);
+                draw->PathArcTo(center, std::max(0.0f, radius - 3.0f), angle - step * 0.5f + inset, angle + step * 0.5f - inset, 32);
+                draw->PathStroke(i == selected ? hud_color(103, 243, 247) : hud_color(53, 150, 167, 170), 0, i == selected ? 3.0f : 1.0f);
                 const ImVec2 size = CalcTextSize(items[i]);
                 draw->AddText(ImVec2(center.x + std::cos(angle) * radius * 0.6f - size.x * 0.5f,
                                      center.y + std::sin(angle) * radius * 0.6f - size.y * 0.5f),
-                              IM_COL32_WHITE, items[i]);
+                              i == selected ? hud_color(172, 255, 255) : hud_color(194, 225, 227), items[i]);
             }
             for (int i = 0; i < count; ++i) {
                 const float angle = -pi * 0.5f + (i - 0.5f) * step;
                 const float x = std::cos(angle), y = std::sin(angle);
                 draw->AddLine(ImVec2(center.x + x * dead_zone, center.y + y * dead_zone),
                               ImVec2(center.x + x * radius, center.y + y * radius),
-                              GetColorU32(ImGuiCol_Border), 1.0f);
+                              hud_color(63, 166, 183, 180), 1.0f);
             }
-            draw->AddCircle(center, radius, IM_COL32(220, 220, 220, 220), 64, 2.0f);
-            draw->AddCircleFilled(center, dead_zone, IM_COL32(25, 28, 35, 255));
+            draw->AddCircle(center, radius, hud_color(72, 220, 235, 200), 64, 1.0f);
+            draw->AddCircleFilled(center, dead_zone, hud_color(9, 24, 32, 245));
+            draw->AddCircle(center, dead_zone, hud_color(72, 220, 235, 180), 48, 1.0f);
+            draw->AddLine(ImVec2(center.x - 4, center.y), ImVec2(center.x + 4, center.y), hud_color(105, 235, 245), 1.0f);
+            draw->AddLine(ImVec2(center.x, center.y - 4), ImVec2(center.x, center.y + 4), hud_color(105, 235, 245), 1.0f);
             if (IsKeyPressed(ImGuiKey_Escape)) state->SetBool(open_id, false);
             else if (IsMouseReleased(ImGuiMouseButton_Right)) {
                 result = selected;
