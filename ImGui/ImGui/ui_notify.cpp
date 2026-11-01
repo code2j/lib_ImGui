@@ -210,10 +210,10 @@ namespace ImGui
             (elapsed - NOTIFY_FADE_IN_OUT_TIME) / toast.dismiss_time));
         const float alpha = std::max(0.0f, std::min(1.0f, toast.GetFadePercent()));
         const bool exiting = toast.GetPhase() == ImGuiToastPhase_FadeOut;
+        const bool entering = toast.GetPhase() == ImGuiToastPhase_FadeIn;
         const float exit_progress = exiting ? 1.0f - alpha : 0.0f;
         const float entrance_alpha = exiting ? 1.0f : alpha;
-        const ImVec2 pos(origin.x + (area.x - width) * 0.5f,
-                         origin.y + NOTIFY_PADDING_Y - (1.0f - entrance_alpha) * 10.0f);
+        const ImVec2 pos(origin.x + (area.x - width) * 0.5f, origin.y + NOTIFY_PADDING_Y);
         const float height = 72.0f;
         SetNextWindowPos(pos);
         SetNextWindowSize(ImVec2(width, height));
@@ -227,8 +227,10 @@ namespace ImGui
               ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_Tooltip);
         ImDrawList* draw = GetWindowDrawList();
         // 짧은 신호 끊김 뒤 HUD가 수평 스캔 라인으로 압축된다.
-        const float flicker = exiting && ((exit_progress > 0.16f && exit_progress < 0.21f) ||
-                                           (exit_progress > 0.34f && exit_progress < 0.38f)) ? 0.3f : 1.0f;
+        const bool signal_drop = (exiting && ((exit_progress > 0.16f && exit_progress < 0.21f) ||
+                                             (exit_progress > 0.34f && exit_progress < 0.38f))) ||
+                                 (entering && entrance_alpha > 0.46f && entrance_alpha < 0.53f);
+        const float flicker = signal_drop ? 0.3f : 1.0f;
         const float brightness = entrance_alpha * flicker * (exiting ? std::min(1.0f, (1.0f - exit_progress) * 4.0f) : 1.0f);
         const auto color = [brightness](int r, int g, int b, int a = 255) {
             return IM_COL32(r, g, b, static_cast<int>(a * brightness));
@@ -241,9 +243,12 @@ namespace ImGui
             case ImGuiToastType_Info: break;
         }
         const float shutter = exiting ? std::max(0.0f, (exit_progress - 0.42f) / 0.58f) : 0.0f;
-        const float half_height = height * 0.5f * (1.0f - shutter);
-        draw->PushClipRect(ImVec2(pos.x, pos.y + height * 0.5f - half_height),
-                           ImVec2(pos.x + width, pos.y + height * 0.5f + half_height), true);
+        const float reveal_width = entering ? std::min(1.0f, entrance_alpha * 3.0f) : 1.0f;
+        const float reveal_height = entering ? std::max(0.0f, std::min(1.0f, (entrance_alpha - 0.18f) / 0.55f)) : 1.0f;
+        const float half_height = height * 0.5f * (1.0f - shutter) * reveal_height;
+        const float half_width = width * 0.5f * reveal_width;
+        draw->PushClipRect(ImVec2(pos.x + width * 0.5f - half_width, pos.y + height * 0.5f - half_height),
+                           ImVec2(pos.x + width * 0.5f + half_width, pos.y + height * 0.5f + half_height), true);
         const ImVec2 points[] = { ImVec2(pos.x + 12, pos.y), ImVec2(pos.x + width, pos.y),
             ImVec2(pos.x + width, pos.y + height - 10), ImVec2(pos.x + width - 10, pos.y + height),
             ImVec2(pos.x, pos.y + height), ImVec2(pos.x, pos.y + 12) };
@@ -265,7 +270,15 @@ namespace ImGui
             const float scan_y = pos.y + height * (0.15f + exit_progress * 1.6f);
             draw->AddRectFilled(ImVec2(pos.x + 3, scan_y), ImVec2(pos.x + width - 3, scan_y + 2), color(red, green, blue, 150));
         }
+        if (entering && entrance_alpha > 0.2f) {
+            const float scan_y = pos.y + height * std::min(1.0f, (entrance_alpha - 0.2f) / 0.8f);
+            draw->AddRectFilled(ImVec2(pos.x + 3, scan_y), ImVec2(pos.x + width - 3, scan_y + 2), color(red, green, blue, 180));
+        }
         draw->PopClipRect();
+        if (entering && entrance_alpha < 0.73f) {
+            draw->AddLine(ImVec2(pos.x + width * 0.5f - half_width, pos.y + height * 0.5f),
+                          ImVec2(pos.x + width * 0.5f + half_width, pos.y + height * 0.5f), color(red, green, blue), 2.0f);
+        }
         if (exiting && shutter > 0.0f && shutter < 1.0f) {
             const float half_width = width * 0.5f * (1.0f - shutter);
             draw->AddLine(ImVec2(pos.x + width * 0.5f - half_width, pos.y + height * 0.5f),
