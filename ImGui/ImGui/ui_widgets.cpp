@@ -3300,82 +3300,82 @@ void ImGui::Help(const char *desc)
     }
 }
 
-int ImGui::RadialMenu(const char* id, const char* const items[], int count, float radius, float dead_zone, float hold_seconds)
-{
-    if (count <= 0 || !items || radius <= 0.0f) return -1;
-    dead_zone = std::max(0.0f, std::min(dead_zone, radius));
-    ImGuiStorage* state = GetStateStorage();
-    PushID(id);
-    const ImGuiID open_id = GetID("##radial_open");
-    const ImGuiID pending_id = GetID("##radial_pending");
-    const ImGuiID time_id = GetID("##radial_start");
-    const ImGuiID x_id = GetID("##radial_x");
-    const ImGuiID y_id = GetID("##radial_y");
-    if (IsWindowHovered() && IsMouseClicked(ImGuiMouseButton_Right)) {
-        const ImVec2 mouse = GetMousePos();
-        state->SetBool(pending_id, true);
-        state->SetBool(open_id, false);
-        state->SetFloat(time_id, static_cast<float>(GetTime()));
-        state->SetFloat(x_id, mouse.x);
-        state->SetFloat(y_id, mouse.y);
-    }
-    if (state->GetBool(pending_id)) {
-        if (!IsMouseDown(ImGuiMouseButton_Right) || IsKeyPressed(ImGuiKey_Escape)) {
-            state->SetBool(pending_id, false);
-        } else {
-            const float elapsed = static_cast<float>(GetTime()) - state->GetFloat(time_id);
-            const float progress = hold_seconds <= 0.0f ? 1.0f : std::min(1.0f, elapsed / hold_seconds);
-            const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
-            ImDrawList* draw = GetForegroundDrawList();
-            constexpr float pi = 3.14159265358979323846f;
-            const float progress_angle = -pi * 0.5f + 2.0f * pi * progress;
-            if (progress < 1.0f) {
-                draw->PathArcTo(center, 17.0f, progress_angle, pi * 1.5f, 48);
-                draw->PathStroke(IM_COL32(30, 35, 45, 200), 0, 4.0f);
-            }
-            if (progress > 0.0f) {
-                draw->PathArcTo(center, 17.0f, -pi * 0.5f, progress_angle, 48);
-                draw->PathStroke(IM_COL32(100, 170, 255, 255), 0, 4.0f);
-            }
-            if (progress >= 1.0f) {
-                state->SetBool(pending_id, false);
-                state->SetBool(open_id, true);
-            }
-        }
-    }
-    int result = -1;
-    if (state->GetBool(open_id)) {
-        constexpr float pi = 3.14159265358979323846f;
-        const float step = 2.0f * pi / count;
-        const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
-        const ImVec2 mouse = GetMousePos();
-        const float dx = mouse.x - center.x, dy = mouse.y - center.y;
-        int selected = -1;
-        if (dx * dx + dy * dy >= dead_zone * dead_zone) {
-            float angle = std::atan2(dy, dx) + pi * 0.5f + step * 0.5f;
-            angle = std::fmod(angle + 2.0f * pi, 2.0f * pi);
-            selected = static_cast<int>(angle / step) % count;
-        }
-        ImDrawList* draw = GetForegroundDrawList();
-        for (int i = 0; i < count; ++i) {
-            const float angle = -pi * 0.5f + i * step;
-            draw->PathLineTo(center);
-            draw->PathArcTo(center, radius, angle - step * 0.5f, angle + step * 0.5f, 32);
-            draw->PathFillConvex(i == selected ? IM_COL32(75, 130, 210, 240) : IM_COL32(35, 40, 50, 230));
-            const ImVec2 size = CalcTextSize(items[i]);
-            draw->AddText(ImVec2(center.x + std::cos(angle) * radius * 0.6f - size.x * 0.5f,
-                                 center.y + std::sin(angle) * radius * 0.6f - size.y * 0.5f),
-                          IM_COL32_WHITE, items[i]);
-        }
-        draw->AddCircle(center, radius, IM_COL32(220, 220, 220, 220), 64, 2.0f);
-        draw->AddCircleFilled(center, dead_zone, IM_COL32(25, 28, 35, 255));
-        if (IsKeyPressed(ImGuiKey_Escape)) state->SetBool(open_id, false);
-        else if (IsMouseReleased(ImGuiMouseButton_Right)) {
-            result = selected;
-            state->SetBool(open_id, false);
-        }
-    }
-    PopID();
-    return result;
-}
+// int ImGui::RadialMenu(const char* id, const char* const items[], int count, float radius, float dead_zone, float hold_seconds)
+// {
+//     if (count <= 0 || !items || radius <= 0.0f) return -1;
+//     dead_zone = std::max(0.0f, std::min(dead_zone, radius));
+//     ImGuiStorage* state = GetStateStorage();
+//     PushID(id);
+//     const ImGuiID open_id = GetID("##radial_open");
+//     const ImGuiID pending_id = GetID("##radial_pending");
+//     const ImGuiID time_id = GetID("##radial_start");
+//     const ImGuiID x_id = GetID("##radial_x");
+//     const ImGuiID y_id = GetID("##radial_y");
+//     if (IsWindowHovered() && IsMouseClicked(ImGuiMouseButton_Right)) {
+//         const ImVec2 mouse = GetMousePos();
+//         state->SetBool(pending_id, true);
+//         state->SetBool(open_id, false);
+//         state->SetFloat(time_id, static_cast<float>(GetTime()));
+//         state->SetFloat(x_id, mouse.x);
+//         state->SetFloat(y_id, mouse.y);
+//     }
+//     if (state->GetBool(pending_id)) {
+//         if (!IsMouseDown(ImGuiMouseButton_Right) || IsKeyPressed(ImGuiKey_Escape)) {
+//             state->SetBool(pending_id, false);
+//         } else {
+//             const float elapsed = static_cast<float>(GetTime()) - state->GetFloat(time_id);
+//             const float progress = hold_seconds <= 0.0f ? 1.0f : std::min(1.0f, elapsed / hold_seconds);
+//             const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
+//             ImDrawList* draw = GetForegroundDrawList();
+//             constexpr float pi = 3.14159265358979323846f;
+//             const float progress_angle = -pi * 0.5f + 2.0f * pi * progress;
+//             if (progress < 1.0f) {
+//                 draw->PathArcTo(center, 17.0f, progress_angle, pi * 1.5f, 48);
+//                 draw->PathStroke(IM_COL32(30, 35, 45, 200), 0, 4.0f);
+//             }
+//             if (progress > 0.0f) {
+//                 draw->PathArcTo(center, 17.0f, -pi * 0.5f, progress_angle, 48);
+//                 draw->PathStroke(IM_COL32(100, 170, 255, 255), 0, 4.0f);
+//             }
+//             if (progress >= 1.0f) {
+//                 state->SetBool(pending_id, false);
+//                 state->SetBool(open_id, true);
+//             }
+//         }
+//     }
+//     int result = -1;
+//     if (state->GetBool(open_id)) {
+//         constexpr float pi = 3.14159265358979323846f;
+//         const float step = 2.0f * pi / count;
+//         const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
+//         const ImVec2 mouse = GetMousePos();
+//         const float dx = mouse.x - center.x, dy = mouse.y - center.y;
+//         int selected = -1;
+//         if (dx * dx + dy * dy >= dead_zone * dead_zone) {
+//             float angle = std::atan2(dy, dx) + pi * 0.5f + step * 0.5f;
+//             angle = std::fmod(angle + 2.0f * pi, 2.0f * pi);
+//             selected = static_cast<int>(angle / step) % count;
+//         }
+//         ImDrawList* draw = GetForegroundDrawList();
+//         for (int i = 0; i < count; ++i) {
+//             const float angle = -pi * 0.5f + i * step;
+//             draw->PathLineTo(center);
+//             draw->PathArcTo(center, radius, angle - step * 0.5f, angle + step * 0.5f, 32);
+//             draw->PathFillConvex(i == selected ? IM_COL32(75, 130, 210, 240) : IM_COL32(35, 40, 50, 230));
+//             const ImVec2 size = CalcTextSize(items[i]);
+//             draw->AddText(ImVec2(center.x + std::cos(angle) * radius * 0.6f - size.x * 0.5f,
+//                                  center.y + std::sin(angle) * radius * 0.6f - size.y * 0.5f),
+//                           IM_COL32_WHITE, items[i]);
+//         }
+//         draw->AddCircle(center, radius, IM_COL32(220, 220, 220, 220), 64, 2.0f);
+//         draw->AddCircleFilled(center, dead_zone, IM_COL32(25, 28, 35, 255));
+//         if (IsKeyPressed(ImGuiKey_Escape)) state->SetBool(open_id, false);
+//         else if (IsMouseReleased(ImGuiMouseButton_Right)) {
+//             result = selected;
+//             state->SetBool(open_id, false);
+//         }
+//     }
+//     PopID();
+//     return result;
+// }
 

@@ -167,6 +167,6 @@ namespace ImGui
     // Begine 윈도우 내에서 사용할 것
     // 선택이 없으면 -1을 리턴
     // ====================================================
-    int RadialMenu(const char* id, const char* const items[], int count, float radius = 90.0f, float dead_zone = 20.0f, float hold_seconds = 0.25f);
+    // int RadialMenu(const char* id, const char* const items[], int count, float radius = 90.0f, float dead_zone = 20.0f, float hold_seconds = 0.25f);
 
 }
