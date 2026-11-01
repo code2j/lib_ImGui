@@ -15,6 +15,7 @@
 #define NOTIFY_MAX_MSG_LENGTH           4096
 #define NOTIFY_PADDING_Y                12.5f        // 상단 Y 패딩
 #define NOTIFY_FADE_IN_OUT_TIME         300
+#define NOTIFY_FADE_OUT_TIME            480
 #define NOTIFY_DEFAULT_DISMISS          3000
 #define NOTIFY_OPACITY                  1.0f
 #define NOTIFY_TOAST_FLAGS              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_Tooltip
@@ -104,7 +105,7 @@ namespace
         ImGuiToastPhase GetPhase() const
         {
             const auto elapsed = GetElapsedTime();
-            if (elapsed > NOTIFY_FADE_IN_OUT_TIME + this->dismiss_time + NOTIFY_FADE_IN_OUT_TIME)
+            if (elapsed > NOTIFY_FADE_IN_OUT_TIME + this->dismiss_time + NOTIFY_FADE_OUT_TIME)
                 return ImGuiToastPhase_Expired;
             else if (elapsed > NOTIFY_FADE_IN_OUT_TIME + this->dismiss_time)
                 return ImGuiToastPhase_FadeOut;
@@ -122,7 +123,7 @@ namespace
             if (phase == ImGuiToastPhase_FadeIn)
                 return ((float)elapsed / (float)NOTIFY_FADE_IN_OUT_TIME) * NOTIFY_OPACITY;
             else if (phase == ImGuiToastPhase_FadeOut)
-                return (1.f - (((float)elapsed - (float)NOTIFY_FADE_IN_OUT_TIME - (float)this->dismiss_time) / (float)NOTIFY_FADE_IN_OUT_TIME)) * NOTIFY_OPACITY;
+                return (1.f - (((float)elapsed - (float)NOTIFY_FADE_IN_OUT_TIME - (float)this->dismiss_time) / (float)NOTIFY_FADE_OUT_TIME)) * NOTIFY_OPACITY;
 
             return 1.f * NOTIFY_OPACITY;
         }
@@ -209,9 +210,10 @@ namespace ImGui
             (elapsed - NOTIFY_FADE_IN_OUT_TIME) / toast.dismiss_time));
         const float alpha = std::max(0.0f, std::min(1.0f, toast.GetFadePercent()));
         const bool exiting = toast.GetPhase() == ImGuiToastPhase_FadeOut;
-        const float glitch = exiting ? (1.0f - alpha) * 7.0f * std::sin(elapsed * 0.11f) : 0.0f;
-        const ImVec2 pos(origin.x + (area.x - width) * 0.5f + glitch,
-                         origin.y + NOTIFY_PADDING_Y - (1.0f - alpha) * 10.0f);
+        const float exit_progress = exiting ? 1.0f - alpha : 0.0f;
+        const float entrance_alpha = exiting ? 1.0f : alpha;
+        const ImVec2 pos(origin.x + (area.x - width) * 0.5f,
+                         origin.y + NOTIFY_PADDING_Y - (1.0f - entrance_alpha) * 10.0f);
         const float height = 72.0f;
         SetNextWindowPos(pos);
         SetNextWindowSize(ImVec2(width, height));
@@ -224,8 +226,12 @@ namespace ImGui
               ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus |
               ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_Tooltip);
         ImDrawList* draw = GetWindowDrawList();
-        const auto color = [alpha](int r, int g, int b, int a = 255) {
-            return IM_COL32(r, g, b, static_cast<int>(a * alpha));
+        // 짧은 신호 끊김 뒤 HUD가 수평 스캔 라인으로 압축된다.
+        const float flicker = exiting && ((exit_progress > 0.16f && exit_progress < 0.21f) ||
+                                           (exit_progress > 0.34f && exit_progress < 0.38f)) ? 0.3f : 1.0f;
+        const float brightness = entrance_alpha * flicker * (exiting ? std::min(1.0f, (1.0f - exit_progress) * 4.0f) : 1.0f);
+        const auto color = [brightness](int r, int g, int b, int a = 255) {
+            return IM_COL32(r, g, b, static_cast<int>(a * brightness));
         };
         int red = 72, green = 220, blue = 235;
         switch (toast.type) {
@@ -234,13 +240,16 @@ namespace ImGui
             case ImGuiToastType_Error: red = 255; green = 75; blue = 90; break;
             case ImGuiToastType_Info: break;
         }
-        // 잘린 모서리, 경고색 포인트와 스캔 라인으로 미래형 HUD를 구성한다.
+        const float shutter = exiting ? std::max(0.0f, (exit_progress - 0.42f) / 0.58f) : 0.0f;
+        const float half_height = height * 0.5f * (1.0f - shutter);
+        draw->PushClipRect(ImVec2(pos.x, pos.y + height * 0.5f - half_height),
+                           ImVec2(pos.x + width, pos.y + height * 0.5f + half_height), true);
         const ImVec2 points[] = { ImVec2(pos.x + 12, pos.y), ImVec2(pos.x + width, pos.y),
             ImVec2(pos.x + width, pos.y + height - 10), ImVec2(pos.x + width - 10, pos.y + height),
             ImVec2(pos.x, pos.y + height), ImVec2(pos.x, pos.y + 12) };
         draw->AddConvexPolyFilled(points, 6, color(17, 24, 28, 240));
         draw->AddPolyline(points, 6, color(red, green, blue, 210), ImDrawFlags_Closed, 1.0f);
-        draw->AddRectFilled(ImVec2(pos.x, pos.y + 13), ImVec2(pos.x + 3, pos.y + height - 8), color(red, green, blue));
+        draw->AddLine(ImVec2(pos.x + 1.5f, pos.y + 13), ImVec2(pos.x + 1.5f, pos.y + height - 8), color(red, green, blue), 3.0f);
         const char* category = toast.type == ImGuiToastType_Error ? "SYSTEM // ERROR" :
             toast.type == ImGuiToastType_Warning ? "SYSTEM // WARNING" :
             toast.type == ImGuiToastType_Success ? "SYSTEM // COMPLETE" : "SYSTEM // NOTIFICATION";
@@ -252,9 +261,15 @@ namespace ImGui
         draw->AddRectFilled(ImVec2(left, bar_y), ImVec2(right, bar_y + 3), color(red / 4, green / 4, blue / 4));
         if (progress > 0.0f)
             draw->AddRectFilled(ImVec2(left, bar_y), ImVec2(left + (right - left) * progress, bar_y + 3), color(red, green, blue));
-        if (exiting) {
-            const float sweep = (1.0f - alpha) * width;
-            draw->AddRectFilled(ImVec2(pos.x, pos.y + 23), ImVec2(pos.x + sweep, pos.y + 25), color(red, green, blue, 180));
+        if (exiting && exit_progress < 0.42f) {
+            const float scan_y = pos.y + height * (0.15f + exit_progress * 1.6f);
+            draw->AddRectFilled(ImVec2(pos.x + 3, scan_y), ImVec2(pos.x + width - 3, scan_y + 2), color(red, green, blue, 150));
+        }
+        draw->PopClipRect();
+        if (exiting && shutter > 0.0f && shutter < 1.0f) {
+            const float half_width = width * 0.5f * (1.0f - shutter);
+            draw->AddLine(ImVec2(pos.x + width * 0.5f - half_width, pos.y + height * 0.5f),
+                          ImVec2(pos.x + width * 0.5f + half_width, pos.y + height * 0.5f), color(red, green, blue), 2.0f);
         }
         End();
         PopStyleVar(2);
