@@ -227,27 +227,34 @@ namespace ImGui
         const auto color = [alpha](int r, int g, int b, int a = 255) {
             return IM_COL32(r, g, b, static_cast<int>(a * alpha));
         };
+        int red = 72, green = 220, blue = 235;
+        switch (toast.type) {
+            case ImGuiToastType_Success: red = 100; green = 235; blue = 155; break;
+            case ImGuiToastType_Warning: red = 246; green = 224; blue = 70; break;
+            case ImGuiToastType_Error: red = 255; green = 75; blue = 90; break;
+            case ImGuiToastType_Info: break;
+        }
         // 잘린 모서리, 경고색 포인트와 스캔 라인으로 미래형 HUD를 구성한다.
         const ImVec2 points[] = { ImVec2(pos.x + 12, pos.y), ImVec2(pos.x + width, pos.y),
             ImVec2(pos.x + width, pos.y + height - 10), ImVec2(pos.x + width - 10, pos.y + height),
             ImVec2(pos.x, pos.y + height), ImVec2(pos.x, pos.y + 12) };
         draw->AddConvexPolyFilled(points, 6, color(17, 24, 28, 240));
-        draw->AddPolyline(points, 6, color(246, 224, 70, 210), ImDrawFlags_Closed, 1.0f);
-        draw->AddRectFilled(ImVec2(pos.x, pos.y + 13), ImVec2(pos.x + 3, pos.y + height - 8), color(246, 224, 70));
+        draw->AddPolyline(points, 6, color(red, green, blue, 210), ImDrawFlags_Closed, 1.0f);
+        draw->AddRectFilled(ImVec2(pos.x, pos.y + 13), ImVec2(pos.x + 3, pos.y + height - 8), color(red, green, blue));
         const char* category = toast.type == ImGuiToastType_Error ? "SYSTEM // ERROR" :
             toast.type == ImGuiToastType_Warning ? "SYSTEM // WARNING" :
             toast.type == ImGuiToastType_Success ? "SYSTEM // COMPLETE" : "SYSTEM // NOTIFICATION";
-        draw->AddText(ImVec2(pos.x + 15, pos.y + 8), color(246, 224, 70), category);
+        draw->AddText(ImVec2(pos.x + 15, pos.y + 8), color(red, green, blue), category);
         draw->PushClipRect(ImVec2(pos.x + 15, pos.y + 28), ImVec2(pos.x + width - 12, pos.y + 51), true);
         draw->AddText(ImVec2(pos.x + 15, pos.y + 29), color(235, 242, 234), toast.content);
         draw->PopClipRect();
         const float left = pos.x + 15, right = pos.x + width - 15, bar_y = pos.y + height - 11;
-        draw->AddRectFilled(ImVec2(left, bar_y), ImVec2(right, bar_y + 3), color(69, 72, 50));
+        draw->AddRectFilled(ImVec2(left, bar_y), ImVec2(right, bar_y + 3), color(red / 4, green / 4, blue / 4));
         if (progress > 0.0f)
-            draw->AddRectFilled(ImVec2(left, bar_y), ImVec2(left + (right - left) * progress, bar_y + 3), color(246, 224, 70));
+            draw->AddRectFilled(ImVec2(left, bar_y), ImVec2(left + (right - left) * progress, bar_y + 3), color(red, green, blue));
         if (exiting) {
             const float sweep = (1.0f - alpha) * width;
-            draw->AddRectFilled(ImVec2(pos.x, pos.y + 23), ImVec2(pos.x + sweep, pos.y + 25), color(94, 230, 225, 180));
+            draw->AddRectFilled(ImVec2(pos.x, pos.y + 23), ImVec2(pos.x + sweep, pos.y + 25), color(red, green, blue, 180));
         }
         End();
         PopStyleVar(2);
