@@ -699,11 +699,25 @@ namespace ImGui
         const float scale = ui_content_scale;
         ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowSize(ImVec2(620.0f * scale, 390.0f * scale));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(24.0f * scale, 20.0f * scale));
-        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGui::GetStyleColorVec4(ImGuiCol_CheckMark));
-        ImGui::Begin("##opening", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
-        ImGui::TextUnformatted("[ SYSTEM BOOT ]");
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.025f, 0.075f, 0.10f, 0.96f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.72f, 0.90f, 0.91f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(0.35f, 0.65f, 0.68f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(0.16f, 0.57f, 0.63f, 0.8f));
+        ImGui::Begin("##opening", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs);
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        const ImVec2 pos = ImGui::GetWindowPos();
+        const ImVec2 size = ImGui::GetWindowSize();
+        const float cut = 18.0f * scale;
+        const ImVec2 frame[] = {pos + ImVec2(cut, 0), pos + ImVec2(size.x, 0),
+            pos + ImVec2(size.x, size.y - cut), pos + ImVec2(size.x - cut, size.y),
+            pos + ImVec2(0, size.y), pos + ImVec2(0, cut)};
+        draw->AddPolyline(frame, 6, IM_COL32(72, 220, 235, 220), ImDrawFlags_Closed, 1.0f * scale);
+        draw->AddRectFilled(pos + ImVec2(0, cut), pos + ImVec2(3.0f * scale, size.y - 12.0f * scale), IM_COL32(72, 220, 235, 220));
+        const float scan_y = pos.y + std::fmod(opening_elapsed * 70.0f * scale, size.y);
+        draw->AddLine(ImVec2(pos.x + 4.0f * scale, scan_y), ImVec2(pos.x + size.x - 4.0f * scale, scan_y), IM_COL32(72, 220, 235, 24));
+        ImGui::TextColored(ImVec4(0.28f, 0.86f, 0.92f, 1.0f), "SYSTEM ");
         ImGui::SameLine();
         ImGui::TextDisabled("// %s", WINDOW_TITLE.c_str());
         ImGui::Separator();
@@ -736,14 +750,22 @@ namespace ImGui
         }
         ImGui::SetCursorPosY(ImMax(ImGui::GetCursorPosY(), ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y - footer_height));
 
-        // 로딩바 그리기
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f * scale);
-        ImGui::ProgressBar(opening_progress, ImVec2(-1, 8.0f * scale), "");
-        ImGui::PopStyleVar(2);
+        // 분할된 로딩 바는 진행률에 따라 왼쪽부터 켜진다.
+        const ImVec2 bar_pos = ImGui::GetCursorScreenPos();
+        const float bar_width = ImGui::GetContentRegionAvail().x;
+        const float bar_height = 8.0f * scale;
+        const int segments = 40;
+        const float gap = 2.0f * scale;
+        for (int i = 0; i < segments; ++i) {
+            const float x0 = bar_pos.x + bar_width * i / segments;
+            const float x1 = bar_pos.x + bar_width * (i + 1) / segments - gap;
+            if (x1 > x0) draw->AddRectFilled(ImVec2(x0, bar_pos.y), ImVec2(x1, bar_pos.y + bar_height),
+                (i + 1.0f) / segments <= opening_progress ? IM_COL32(72, 220, 235, 255) : IM_COL32(28, 62, 69, 220));
+        }
+        ImGui::Dummy(ImVec2(bar_width, bar_height));
         ImGui::Text("BOOT SEQUENCE  %03d%%  %s", (int)(opening_progress * 100.0f), (step % 2) ? "_" : " ");
         ImGui::End();
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(4);
         ImGui::PopStyleVar(2);
 
         return true;
