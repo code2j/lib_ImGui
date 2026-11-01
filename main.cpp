@@ -24,6 +24,18 @@ namespace ImGui {
     // 현재 창의 지정 영역 중앙에 선택 패널을 표시한다.
         void CameraSelectionPanel(bool& open, const ImVec2& origin, const ImVec2& size)
     {
+        ImGuiStorage* state = ImGui::GetStateStorage();
+        const ImGuiID active_id = ImGui::GetID("##camera_selection_anim_active");
+        const ImGuiID start_id = ImGui::GetID("##camera_selection_anim_start");
+        if (!open) {
+            state->SetBool(active_id, false);
+            return;
+        }
+        if (!state->GetBool(active_id)) {
+            state->SetBool(active_id, true);
+            state->SetFloat(start_id, static_cast<float>(ImGui::GetTime()));
+        }
+        const float anim = ImClamp((static_cast<float>(ImGui::GetTime()) - state->GetFloat(start_id)) / 0.36f, 0.0f, 1.0f);
         if (open && size.x > 0 && size.y > 0) {
             ImGui::SetCursorScreenPos(origin);
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0.38f));
@@ -39,9 +51,25 @@ namespace ImGui {
                 ImVec2(card_pos.x + card_size.x, card_pos.y + card_size.y - cut),
                 ImVec2(card_pos.x + card_size.x - cut, card_pos.y + card_size.y),
                 ImVec2(card_pos.x, card_pos.y + card_size.y), ImVec2(card_pos.x, card_pos.y + cut)};
-            draw->AddConvexPolyFilled(corners, 6, IM_COL32(9, 24, 32, 210));
-            draw->AddPolyline(corners, 6, IM_COL32(72, 220, 235, 230), ImDrawFlags_Closed, 1.0f);
-            draw->AddRectFilled(ImVec2(card_pos.x, card_pos.y + cut), ImVec2(card_pos.x + 3, card_pos.y + card_size.y - 8), IM_COL32(72, 220, 235, 255));
+            const float panel_alpha = ImClamp(anim / 0.30f, 0.0f, 1.0f);
+            draw->AddConvexPolyFilled(corners, 6, IM_COL32(9, 24, 32, static_cast<int>(210 * panel_alpha)));
+            draw->AddPolyline(corners, 6, IM_COL32(72, 220, 235, static_cast<int>(230 * panel_alpha)), ImDrawFlags_Closed, 1.0f);
+            draw->AddRectFilled(ImVec2(card_pos.x, card_pos.y + cut), ImVec2(card_pos.x + 3, card_pos.y + card_size.y - 8), IM_COL32(72, 220, 235, static_cast<int>(255 * panel_alpha)));
+            if (anim < 0.85f) {
+                const float bracket_alpha = ImClamp((0.85f - anim) / 0.2f, 0.0f, 1.0f);
+                const float offset = (1.0f - ImClamp(anim / 0.4f, 0.0f, 1.0f)) * 14.0f;
+                const float length = std::min(18.0f, std::min(card_size.x, card_size.y) * 0.2f);
+                const ImU32 bracket = IM_COL32(103, 243, 247, static_cast<int>(240 * bracket_alpha));
+                for (int i = 0; i < 4; ++i) {
+                    const float sx = (i & 1) ? -1.0f : 1.0f;
+                    const float sy = (i & 2) ? -1.0f : 1.0f;
+                    const ImVec2 p(card_pos.x + ((i & 1) ? card_size.x + offset : -offset),
+                                   card_pos.y + ((i & 2) ? card_size.y + offset : -offset));
+                    draw->AddLine(p, ImVec2(p.x + sx * length, p.y), bracket, 2.0f);
+                    draw->AddLine(p, ImVec2(p.x, p.y + sy * length), bracket, 2.0f);
+                }
+            }
+            if (anim >= 0.30f) {
             ImGui::SetCursorScreenPos(card_pos);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18, 14));
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
@@ -59,11 +87,13 @@ namespace ImGui {
             ImGui::EndChild();
             ImGui::PopStyleColor(4);
             ImGui::PopStyleVar(2);
+            }
             ImGui::EndChild(); // ##camera_overlay
             ImGui::PopStyleColor();
 
             if (ImGui::IsKeyPressed(ImGuiKey_Escape))
                 open = false;
+            if (!open) state->SetBool(active_id, false);
         }
     }
 
