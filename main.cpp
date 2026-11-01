@@ -18,7 +18,7 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
 namespace ImGui {
-    enum class HudInputType { Key, MouseLeft, MouseRight };
+    enum class HudInputType { Key, MouseLeft, MouseRight, MouseLeftHold, MouseRightHold };
     struct HudHint { const char* key; const char* description; HudInputType type; };
     void ControlsHud(const ImVec2& origin, const ImVec2& size, const HudHint* hints, int count)
     {
@@ -30,6 +30,8 @@ namespace ImGui {
                 for (int i = 0; i < count; ++i) {
                     const auto& hint = hints[i];
                     key_width = std::max(key_width, ImGui::CalcTextSize(hint.key).x);
+                    if (hint.type == HudInputType::MouseLeftHold || hint.type == HudInputType::MouseRightHold)
+                        key_width = std::max(key_width, 18.0f + 2.0f + ImGui::CalcTextSize("꾸욲~").x * 0.7f);
                     description_width = std::max(description_width, ImGui::CalcTextSize(hint.description).x);
                 }
                 const float badge_width = key_width + 16.0f;
@@ -49,13 +51,15 @@ namespace ImGui {
                     const ImVec2 badge_min(pos.x + padding, y);
                     const ImVec2 badge_max(badge_min.x + badge_width, y + line + 4.0f);
                     if (hints[i].type != HudInputType::Key) {
+                        const bool hold = hints[i].type == HudInputType::MouseLeftHold || hints[i].type == HudInputType::MouseRightHold;
                         const float mouse_width = 18.0f;
-                        const float mx = badge_min.x + (badge_width - mouse_width) * 0.5f;
+                        const float group_width = mouse_width + (hold ? 2.0f + ImGui::CalcTextSize("꾸욲~").x * 0.7f : 0.0f);
+                        const float mx = badge_min.x + (badge_width - group_width) * 0.5f;
                         const float my = y;
                         const float mouse_height = line + 4.0f;
                         draw->AddRectFilled(ImVec2(mx, my), ImVec2(mx + mouse_width, my + mouse_height),
                                             IM_COL32(36, 41, 51, 255), 7.0f);
-                        const bool left = hints[i].type == HudInputType::MouseLeft;
+                        const bool left = hints[i].type == HudInputType::MouseLeft || hints[i].type == HudInputType::MouseLeftHold;
                         draw->AddRectFilled(ImVec2(mx + (left ? 1.0f : mouse_width * 0.5f), my + 1.0f),
                                             ImVec2(mx + (left ? mouse_width * 0.5f : mouse_width - 1.0f), my + mouse_height * 0.48f),
                                             IM_COL32(245, 247, 252, 255), 6.0f,
@@ -66,6 +70,12 @@ namespace ImGui {
                                       ImVec2(mx + mouse_width, my + mouse_height * 0.48f), IM_COL32(139, 148, 165, 255));
                         draw->AddLine(ImVec2(mx + mouse_width * 0.5f, my + 1.0f),
                                       ImVec2(mx + mouse_width * 0.5f, my + mouse_height * 0.48f), IM_COL32(139, 148, 165, 255));
+                        if (hold) {
+                            const float font_size = ImGui::GetFontSize() * 0.7f;
+                            draw->AddText(ImGui::GetFont(), font_size,
+                                          ImVec2(mx + mouse_width + 2.0f, my),
+                                          IM_COL32(255, 215, 80, 255), "꾸욲~");
+                        }
                     } else {
                         draw->AddRectFilled(badge_min, badge_max, IM_COL32(36, 41, 51, 240), 3.0f);
                         draw->AddRect(badge_min, badge_max, IM_COL32(93, 105, 240, 190), 3.0f);
@@ -324,7 +334,7 @@ int main(int argc, char **argv) {
         }
 
         const ImGui::HudHint camera_hints[] = {
-            {"", "길게 눌러 메뉴", ImGui::HudInputType::MouseRight},
+            {"", "메뉴", ImGui::HudInputType::MouseRightHold},
             {"ESC", "메뉴 / 선택 닫기", ImGui::HudInputType::Key},
         };
         if (!show_camera_selection)
