@@ -170,12 +170,15 @@ namespace ImGui {
                 const ImVec2 pos(origin.x + 8.0f, origin.y + size.y - height - 8.0f);
                 const ImVec2 end(pos.x + width, pos.y + height);
                 draw->PushClipRect(pos, end, true);
-                draw->AddRectFilled(pos, end, IM_COL32(24, 27, 34, 225), 3.0f);
-                draw->AddRect(pos, end, IM_COL32(57, 64, 78, 200), 3.0f);
-                draw->AddRectFilled(pos, ImVec2(pos.x + 3.0f, end.y), IM_COL32(93, 105, 240, 240));
-                draw->AddText(ImVec2(pos.x + padding, pos.y + 6.0f), IM_COL32(160, 169, 255, 255), "CONTROLS");
+                const ImVec2 frame[] = {ImVec2(pos.x + 10, pos.y), ImVec2(end.x, pos.y),
+                    ImVec2(end.x, end.y - 10), ImVec2(end.x - 10, end.y),
+                    ImVec2(pos.x, end.y), ImVec2(pos.x, pos.y + 10)};
+                draw->AddConvexPolyFilled(frame, 6, IM_COL32(17, 24, 28, 235));
+                draw->AddPolyline(frame, 6, IM_COL32(246, 224, 70, 210), ImDrawFlags_Closed, 1.0f);
+                draw->AddRectFilled(ImVec2(pos.x, pos.y + 11), ImVec2(pos.x + 3.0f, end.y - 5), IM_COL32(246, 224, 70, 240));
+                draw->AddText(ImVec2(pos.x + padding, pos.y + 6.0f), IM_COL32(246, 224, 70, 255), "CONTROLS // INPUT");
                 draw->AddLine(ImVec2(pos.x + padding, pos.y + header_height),
-                              ImVec2(end.x - padding, pos.y + header_height), IM_COL32(57, 64, 78, 200));
+                              ImVec2(end.x - padding, pos.y + header_height), IM_COL32(246, 224, 70, 100));
                 for (int i = 0; i < count; ++i) {
                     const float y = pos.y + header_height + 6.0f + i * row_height;
                     const ImVec2 badge_min(pos.x + padding, y);
@@ -188,11 +191,11 @@ namespace ImGui {
                         const float my = y;
                         const float mouse_height = line + 4.0f;
                         draw->AddRectFilled(ImVec2(mx, my), ImVec2(mx + mouse_width, my + mouse_height),
-                                            IM_COL32(36, 41, 51, 255), 7.0f);
+                                            IM_COL32(32, 39, 37, 255), 7.0f);
                         const bool left = hints[i].type == HudInputType::MouseLeft || hints[i].type == HudInputType::MouseLeftHold;
                         draw->AddRectFilled(ImVec2(mx + (left ? 1.0f : mouse_width * 0.5f), my + 1.0f),
                                             ImVec2(mx + (left ? mouse_width * 0.5f : mouse_width - 1.0f), my + mouse_height * 0.48f),
-                                            IM_COL32(245, 247, 252, 255), 6.0f,
+                                            IM_COL32(246, 224, 70, 255), 6.0f,
                                             left ? ImDrawFlags_RoundCornersTopLeft : ImDrawFlags_RoundCornersTopRight);
                         draw->AddRect(ImVec2(mx, my), ImVec2(mx + mouse_width, my + mouse_height),
                                       IM_COL32(139, 148, 165, 255), 7.0f);
@@ -207,8 +210,8 @@ namespace ImGui {
                                           IM_COL32(255, 215, 80, 255), "꾸욲~");
                         }
                     } else {
-                        draw->AddRectFilled(badge_min, badge_max, IM_COL32(36, 41, 51, 240), 3.0f);
-                        draw->AddRect(badge_min, badge_max, IM_COL32(93, 105, 240, 190), 3.0f);
+                        draw->AddRectFilled(badge_min, badge_max, IM_COL32(32, 39, 37, 240));
+                        draw->AddRect(badge_min, badge_max, IM_COL32(246, 224, 70, 190));
                         const float text_width = ImGui::CalcTextSize(hints[i].key).x;
                         draw->AddText(ImVec2(badge_min.x + (badge_width - text_width) * 0.5f, y + 2.0f),
                                       IM_COL32(225, 229, 237, 255), hints[i].key);
