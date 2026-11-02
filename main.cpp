@@ -19,9 +19,6 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
 
-
-
-
 int main(int argc, char **argv) {
 
 
@@ -317,3 +314,69 @@ int main(int argc, char **argv) {
 }
 
 
+
+// namespace ImGui {
+// enum class HudInputType { Key, MouseLeft, MouseRight, MouseLeftHold, MouseRightHold };
+// struct HudHint { const char* key; const char* description; HudInputType type; };
+//
+// void ControlsHud(const ImVec2& origin, const ImVec2& size, const HudHint* hints, int count)
+// {
+//     if (!hints || count <= 0 || size.x <= 100.0f || size.y <= 50.0f) return;
+//     ImDrawList* draw = ImGui::GetWindowDrawList();
+//     const float padding = 12.0f, line = ImGui::GetTextLineHeight();
+//     const float row_height = line + 10.0f, header_height = 0.0f;
+//     float key_width = 0.0f, description_width = 0.0f;
+//     for (int i = 0; i < count; ++i) {
+//         const auto& hint = hints[i];
+//         key_width = std::max(key_width, ImGui::CalcTextSize(hint.key).x);
+//         if (hint.type == HudInputType::MouseLeftHold || hint.type == HudInputType::MouseRightHold)
+//             key_width = std::max(key_width, 18.0f + 2.0f * (2.0f + ImGui::CalcTextSize("꾸욲~").x * 0.7f));
+//         description_width = std::max(description_width, ImGui::CalcTextSize(hint.description).x);
+//     }
+//     const float badge_width = key_width + 16.0f;
+//     const float width = std::min(size.x - 16.0f, std::max(185.0f, padding * 3 + badge_width + description_width));
+//     const float height = std::min(size.y - 16.0f, header_height + padding + row_height * count);
+//     const ImVec2 pos(origin.x + 8.0f, origin.y + size.y - height - 8.0f);
+//     const ImVec2 end(pos.x + width, pos.y + height);
+//     draw->PushClipRect(pos, end, true);
+//     draw->AddRectFilled(pos, end, ImGui::GetColorU32(ImGuiCol_ChildBg, 0.88f), 8.0f);
+//     draw->AddRect(pos, end, ImGui::GetColorU32(ImGuiCol_Border), 8.0f);
+//     for (int i = 0; i < count; ++i) {
+//         const float y = pos.y + header_height + 6.0f + i * row_height;
+//         const ImVec2 badge_min(pos.x + padding, y);
+//         const ImVec2 badge_max(badge_min.x + badge_width, y + line + 4.0f);
+//         if (hints[i].type != HudInputType::Key) {
+//             const bool hold = hints[i].type == HudInputType::MouseLeftHold || hints[i].type == HudInputType::MouseRightHold;
+//             const float mouse_width = 18.0f;
+//             const float mx = badge_min.x + (badge_width - mouse_width) * 0.5f;
+//             const float my = y, mouse_height = line + 4.0f;
+//             draw->AddRectFilled(ImVec2(mx, my), ImVec2(mx + mouse_width, my + mouse_height), ImGui::GetColorU32(ImGuiCol_FrameBg), 7.0f);
+//             const bool left = hints[i].type == HudInputType::MouseLeft || hints[i].type == HudInputType::MouseLeftHold;
+//             draw->AddRectFilled(ImVec2(mx + (left ? 1.0f : mouse_width * 0.5f), my + 1.0f),
+//                 ImVec2(mx + (left ? mouse_width * 0.5f : mouse_width - 1.0f), my + mouse_height * 0.48f),
+//                 ImGui::GetColorU32(ImGuiCol_Button), 6.0f, left ? ImDrawFlags_RoundCornersTopLeft : ImDrawFlags_RoundCornersTopRight);
+//             draw->AddRect(ImVec2(mx, my), ImVec2(mx + mouse_width, my + mouse_height), ImGui::GetColorU32(ImGuiCol_TextDisabled), 7.0f);
+//             draw->AddLine(ImVec2(mx, my + mouse_height * 0.48f), ImVec2(mx + mouse_width, my + mouse_height * 0.48f), ImGui::GetColorU32(ImGuiCol_TextDisabled));
+//             draw->AddLine(ImVec2(mx + mouse_width * 0.5f, my + 1.0f), ImVec2(mx + mouse_width * 0.5f, my + mouse_height * 0.48f), ImGui::GetColorU32(ImGuiCol_TextDisabled));
+//             if (hold) {
+//                 const float font_size = ImGui::GetFontSize() * 0.7f;
+//                 draw->AddText(ImGui::GetFont(), font_size, ImVec2(mx + mouse_width + 2.0f, my), IM_COL32(255, 215, 80, 255), "꾸욲~");
+//             }
+//         } else {
+//             const float rounding = 5.0f;
+//             const float text_width = ImGui::CalcTextSize(hints[i].key).x;
+//             const float cap_width = std::max(line + 4.0f, text_width + 16.0f);
+//             const float cap_x = badge_min.x + (badge_width - cap_width) * 0.5f;
+//             const ImVec2 cap_min(cap_x, badge_min.y);
+//             const ImVec2 cap_max(cap_x + cap_width, badge_max.y);
+//             const ImVec2 face_max(cap_max.x, cap_max.y - 3.0f);
+//             draw->AddRectFilled(cap_min, cap_max, ImGui::GetColorU32(ImGuiCol_Border), rounding);
+//             draw->AddRectFilled(cap_min, face_max, ImGui::GetColorU32(ImGuiCol_FrameBg), rounding);
+//             draw->AddRect(cap_min, face_max, ImGui::GetColorU32(ImGuiCol_TextDisabled, 0.6f), rounding);
+//             draw->AddText(ImVec2(cap_x + (cap_width - text_width) * 0.5f, y + 0.5f), ImGui::GetColorU32(ImGuiCol_Text), hints[i].key);
+//         }
+//         draw->AddText(ImVec2(badge_max.x + padding, y + 2.0f), ImGui::GetColorU32(ImGuiCol_Text), hints[i].description);
+//     }
+//     draw->PopClipRect();
+// }
+// }
