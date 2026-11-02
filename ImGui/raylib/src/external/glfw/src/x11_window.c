@@ -1438,7 +1438,9 @@ static void processEvent(XEvent *event)
                 updateCursorImage(window);
 
             _glfwInputCursorEnter(window, GLFW_TRUE);
-            _glfwInputCursorPos(window, x, y);
+            // Disabled mode reports virtual coordinates; crossing coordinates are physical.
+            if (window->cursorMode != GLFW_CURSOR_DISABLED)
+                _glfwInputCursorPos(window, x, y);
 
             window->x11.lastCursorPosX = x;
             window->x11.lastCursorPosY = y;
