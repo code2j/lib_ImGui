@@ -1300,13 +1300,15 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
     // ==========================================
     // [레이아웃 계산] 라벨은 왼쪽, 위젯은 우측 끝
     // ==========================================
-    const float w = ImGui::CalcItemWidth();
-    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
-    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
+    const float available_width = ImMax(1.0f, window->WorkRect.Max.x - pos.x);
+    const float label_width = label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f;
+    const float w = ImMax(1.0f, ImMin(ImGui::CalcItemWidth(), available_width - label_width));
+    const float total_width = available_width;
 
     const float frame_x = pos.x + total_width - w;
     const float frame_height = label_size.y + style.FramePadding.y * 2.0f;
 
+    const float value_height = g.FontSize * 0.85f;
     const ImRect frame_bb(ImVec2(frame_x, pos.y), ImVec2(frame_x + w, pos.y + frame_height));
     const ImRect total_bb(pos, ImVec2(pos.x + total_width, frame_bb.Max.y));
 
@@ -1327,7 +1329,7 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
         }
 
         ImGui::PushID(label);
-        ImGui::SetCursorScreenPos(ImVec2(frame_x, pos.y));
+        ImGui::SetCursorScreenPos(ImVec2(frame_x, frame_bb.Min.y));
         ImGui::PushMultiItemsWidths(2, w);
 
         bool just_entered = storage->GetBool(just_entered_id, false);
@@ -1381,11 +1383,11 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
     if (!ImGui::ItemAdd(total_bb, id, &frame_bb, ImGuiItemFlags_Inputable))
         return false;
 
-    float grab_width = 12.0f;
+    float grab_width = ImMin(12.0f, w * 0.5f);
     float track_height = 4.0f;
     float track_x0 = frame_bb.Min.x + grab_width * 0.5f;
     float track_x1 = frame_bb.Max.x - grab_width * 0.5f;
-    float track_w = track_x1 - track_x0;
+    float track_w = ImMax(0.5f, track_x1 - track_x0);
 
     double b_min_d = GetAsDouble(data_type, p_bound_min);
     double b_max_d = GetAsDouble(data_type, p_bound_max);
@@ -1491,7 +1493,7 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
     // ==========================================
     ImGui::RenderNavCursor(frame_bb, id);
 
-    float track_y = std::floor(frame_bb.GetCenter().y + 0.5f);
+    float track_y = std::floor(frame_bb.Max.y - 9.0f + 0.5f);
     float lx = std::floor(left_x + 0.5f);
     float rx = std::floor(right_x + 0.5f);
 
@@ -1545,69 +1547,16 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
             ImGui::RenderText(ImVec2(pos.x, frame_bb.Min.y + style.FramePadding.y), label, label_display_end);
     }
 
-    // 드래그(Active) 중일 때 디자인된 말풍선 출력
-    if (g.ActiveId == id)
-    {
-        char val_min_buf[64], val_max_buf[64];
-        DataTypeFormatString(val_min_buf, sizeof(val_min_buf), data_type, p_min, format);
-        DataTypeFormatString(val_max_buf, sizeof(val_max_buf), data_type, p_max, format);
-
-        #ifndef ICON_MD_ARROW_RANGE
-        #define ICON_MD_ARROW_RANGE "-"
-        #endif
-
-        char value_buf[128];
-        snprintf(value_buf, sizeof(value_buf), "%s " ICON_MD_ARROW_RANGE " %s", val_min_buf, val_max_buf);
-
-        // 현재 조작 중인 그랩을 기준으로 위치 설정 (중앙 혹은 조작중인 위치)
-        float active_x = (left_x + right_x) * 0.5f;
-        if (active_grab == 1) active_x = left_x;
-        else if (active_grab == 2) active_x = right_x;
-
-        // 툴팁 렌더링을 윈도우 영역 밖에서도 잘리지 않도록 최상단 Foreground DrawList 사용
-        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
-
-        ImVec2 text_size = ImGui::CalcTextSize(value_buf);
-        ImVec2 padding(10.0f, 6.0f);
-        float tooltip_y_offset = 12.0f;
-
-        // 삼각형 그랩의 윗변(track_y - tri_h)을 기준으로 말풍선 위치 계산
-        float grab_top_y = track_y - tri_h;
-
-        ImVec2 tooltip_min = ImVec2(active_x - text_size.x * 0.5f - padding.x, grab_top_y - tooltip_y_offset - text_size.y - padding.y * 2.0f);
-        ImVec2 tooltip_max = ImVec2(active_x + text_size.x * 0.5f + padding.x, grab_top_y - tooltip_y_offset);
-
-        ImU32 tooltip_bg_col     = ImGui::GetColorU32(ImGuiCol_FrameBg);
-        ImU32 tooltip_border_col = ImGui::GetColorU32(ImGuiCol_Border);
-
-        // 1. 말풍선 둥근 사각형 배경 & 테두리
-        draw_list->AddRectFilled(tooltip_min, tooltip_max, tooltip_bg_col, 6.0f);
-        draw_list->AddRect(tooltip_min, tooltip_max, tooltip_border_col, 6.0f);
-
-        // 꼬리 꼭짓점 기본 좌표 (사각형 하단 선 기준)
-        ImVec2 p1 = ImVec2(active_x - 6.0f, tooltip_max.y);
-        ImVec2 p2 = ImVec2(active_x + 6.0f, tooltip_max.y);
-        ImVec2 p3 = ImVec2(active_x, tooltip_max.y + 6.0f); // 꼬리 끝(아래)
-
-        // 2. 몸통과 꼬리가 만나는 부분의 테두리를 확실하게 지우기
-        draw_list->AddRectFilled(
-            ImVec2(p1.x + 0.5f, tooltip_max.y - 1.0f),
-            ImVec2(p2.x - 0.5f, tooltip_max.y + 1.0f),
-            tooltip_bg_col
-        );
-
-        // 3. 꼬리 배경 삼각형 그리기
-        ImVec2 fill_p1 = ImVec2(p1.x, tooltip_max.y - 1.0f);
-        ImVec2 fill_p2 = ImVec2(p2.x, tooltip_max.y - 1.0f);
-        draw_list->AddTriangleFilled(fill_p1, fill_p2, p3, tooltip_bg_col);
-
-        // 4. 꼬리 테두리 (V자 선)
-        ImVec2 tail_pts[3] = { p1, p3, p2 };
-        draw_list->AddPolyline(tail_pts, 3, tooltip_border_col, 0, 1.0f);
-
-        // 5. 텍스트 렌더링
-        draw_list->AddText(tooltip_min + padding, ImGui::GetColorU32(ImGuiCol_Text), value_buf);
-    }
+    char min_buf[64], max_buf[64], range_buf[140];
+    DataTypeFormatString(min_buf, IM_COUNTOF(min_buf), data_type, p_min, format);
+    DataTypeFormatString(max_buf, IM_COUNTOF(max_buf), data_type, p_max, format);
+    ImFormatString(range_buf, IM_COUNTOF(range_buf), "%s ~ %s", min_buf, max_buf);
+    const float value_width = g.Font->CalcTextSizeA(value_height, FLT_MAX, 0.0f, range_buf).x;
+    const float value_left = ImMax(pos.x, frame_bb.Max.x - value_width);
+    const ImVec4 clip_rect(pos.x, pos.y, frame_bb.Max.x, pos.y + value_height);
+    window->DrawList->AddText(g.Font, value_height,
+        ImVec2(value_left, pos.y),
+        GetColorU32(ImGuiCol_TextDisabled), range_buf, NULL, 0.0f, &clip_rect);
 
     return value_changed;
 }
@@ -1755,14 +1704,12 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
     if (format == NULL)
         format = DataTypeGetInfo(data_type)->PrintFmt;
     char value_buf[64];
-    DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
-    const float badge_width = CalcTextSize(value_buf).x + style.FramePadding.x * 2.0f;
 
     // [수정] 슬라이더 위젯의 너비 계산 (기본 아이템 너비 사용)
     const float w = CalcItemWidth();
 
     // [수정] 전체 가용 영역 및 위젯이 배치될 오른쪽 좌표 계산
-    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + badge_width + style.ItemInnerSpacing.x + w;
+    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
     const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
 
     // 슬라이더 프레임을 오른쪽 끝에 배치
@@ -1812,14 +1759,15 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
     if (v_min_val != v_max_val)
         t = (float)ImClamp((v_clamped - v_min_val) / (v_max_val - v_min_val), 0.0, 1.0);
 
+    const float track_y = std::floor(frame_bb.Max.y - 9.0f + 0.5f);
     float grab_padding = 2.0f;
-    float grab_radius = 9.0f;
+    float grab_radius = 6.0f;
     float grab_w = grab_radius * 2.0f;
     float internal_min_x = slider_bb.Min.x + grab_padding + grab_w * 0.5f;
     float internal_max_x = slider_bb.Max.x - grab_padding - grab_w * 0.5f;
 
     float grab_center_x = ImLerp(internal_min_x, internal_max_x, t);
-    ImVec2 current_grab_center = ImVec2(grab_center_x, frame_bb.GetCenter().y);
+    ImVec2 current_grab_center = ImVec2(grab_center_x, track_y);
 
     float grab_hitbox_radius = grab_radius + 4.0f;
     ImRect interact_grab_bb(
@@ -1905,12 +1853,12 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
         if (internal_max_c > internal_min_c)
             t_render = ImClamp((g_bb.GetCenter().x - internal_min_c) / (internal_max_c - internal_min_c), 0.0f, 1.0f);
         float mapped_x = ImLerp(slider_bb.Min.x, slider_bb.Max.x, t_render);
-        return ImVec2(mapped_x, frame_bb.GetCenter().y);
+        return ImVec2(mapped_x, track_y);
     };
 
     float track_height = 4.0f;
-    ImVec2 track_min = ImVec2(frame_bb.Min.x, frame_bb.GetCenter().y - track_height * 0.5f);
-    ImVec2 track_max = ImVec2(frame_bb.Max.x, frame_bb.GetCenter().y + track_height * 0.5f);
+    ImVec2 track_min = ImVec2(frame_bb.Min.x, track_y - track_height * 0.5f);
+    ImVec2 track_max = ImVec2(frame_bb.Max.x, track_y + track_height * 0.5f);
 
     ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab);
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
@@ -1924,18 +1872,16 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
         window->DrawList->AddRectFilled(track_min, fill_max, fill_track_col, track_height * 0.5f);
     }
 
-    window->DrawList->AddCircleFilled(grab_center, grab_radius, IM_COL32(255, 255, 255, 255));
-    ImU32 grab_border_col = GetColorU32(ImGuiCol_Border);
-    float grab_border_thickness = 1.0f;
-    window->DrawList->AddCircle(grab_center, grab_radius, grab_border_col, 0, grab_border_thickness);
+    window->DrawList->AddCircleFilled(grab_center, grab_radius, GetColorU32(ImVec4(1, 1, 1, 1)));
+    window->DrawList->AddCircle(grab_center, grab_radius, GetColorU32(ImGuiCol_Border));
 
-    // Draw the current value beside the track, including while dragging.
     DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
-    const ImRect badge_bb(ImVec2(frame_bb.Min.x - style.ItemInnerSpacing.x - badge_width, frame_bb.Min.y),
-                          ImVec2(frame_bb.Min.x - style.ItemInnerSpacing.x, frame_bb.Max.y));
-    PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
-    RenderTextClipped(badge_bb.Min, badge_bb.Max, value_buf, NULL, NULL, ImVec2(1.0f, 0.5f));
-    PopStyleColor();
+    const float value_height = g.FontSize * 0.85f;
+    const float value_width = g.Font->CalcTextSizeA(value_height, FLT_MAX, 0.0f, value_buf).x;
+    const ImVec4 clip_rect(frame_bb.Min.x, pos.y, frame_bb.Max.x, pos.y + value_height);
+    window->DrawList->AddText(g.Font, value_height,
+        ImVec2(ImMax(frame_bb.Min.x, frame_bb.Max.x - value_width), pos.y),
+        GetColorU32(ImGuiCol_TextDisabled), value_buf, NULL, 0.0f, &clip_rect);
 
     // [수정] 라벨(텍스트)을 가장 왼쪽 위치(pos.x)에 렌더링
     if (label_size.x > 0.0f)
