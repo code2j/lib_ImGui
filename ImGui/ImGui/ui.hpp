@@ -21,7 +21,7 @@
 #include "ui_3d.h"
 #include "ui_logger.h"
 #include "ui_notify.h"
-#include "ui_loader.h"
+#include "ui_image.h"
 #include "ui_widgets.h"
 #include "ui_system_hud.h"
 #include "ui_style.h"
@@ -53,7 +53,7 @@ namespace ImGui
     void Init(const char* title, int width = 1280, int height = 720);
     void Destroy();
     bool ShouldClose(bool force_close = false);
-    bool Context(std::function<void()> func);
+    bool Context(std::function<void()> func, std::function<void()> draw_3d = {});
     void LoadConfig(const char* path);
     void AddTab(const char* label, std::function<void()> draw = {}, std::function<void()> sidebar_content = {});
 

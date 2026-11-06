@@ -8,7 +8,6 @@ cmake_policy(SET CMP0072 NEW)
 file(GLOB IMGUI_SRC "*.cpp" "*.h" "*.hpp")
 add_library(ImGui
         ${IMGUI_SRC}
-        ../ImGuizmo/ImGuizmo.cpp
 )
 
 find_package(X11 REQUIRED)
@@ -21,7 +20,6 @@ target_link_libraries(ImGui PRIVATE X11::X11 X11::Xext)
 target_include_directories(ImGui
         PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}
-        ${CMAKE_CURRENT_LIST_DIR}/../ImGuizmo
 )
 
 

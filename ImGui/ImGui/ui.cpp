@@ -208,7 +208,7 @@ namespace ImGui
 
     void Init(const char* title, int width, int height);
     void Destroy();
-    bool Context(std::function<void()> func);
+    bool Context(std::function<void()> func, std::function<void()> draw_3d);
     void LoadConfig(const char* path);
     bool ShouldClose(bool force_close);
     void AddTab(const char* label, std::function<void()> draw, std::function<void()> sidebar_content);
@@ -325,7 +325,7 @@ namespace ImGui
         ImGui::ShutdownLogger();
     }
 
-    bool Context(std::function<void()> func)
+    bool Context(std::function<void()> func, std::function<void()> draw_3d)
     {
         if (ShouldClose()) {
             return false;
@@ -347,7 +347,7 @@ namespace ImGui
             ImGui::ShowLogger(" " ICON_MD_SUBJECT " Log ", ImGui::show_log_window);
             ImGui::ShowNotifications();
             ImGui::ShowSystemHud(ImGui::show_system_hud);
-            ImGui::Show3D(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ",  ImGui::show_3d_viewport, func);
+            ImGui::Show3D(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ",  ImGui::show_3d_viewport, draw_3d);
             if (ImGui::show_style_edit) {
                 ImGui::ShowStyleEditor(&ImGui::GetStyle());
             }
@@ -748,6 +748,7 @@ namespace ImGui
 
         return true;
     }
+
 
     static void ChangeStyle()
     {

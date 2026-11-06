@@ -1,5 +1,6 @@
 #include "ui_3d.h"
 #include "raylib.h"
+#include "raymath.h"
 #include "imgui.h"
 #include "ui.hpp"
 #include "ui_font_icon.h"
@@ -12,6 +13,7 @@ namespace {
     Vector2 viewport_mouse_pos = { 0.0, 0.0 };
     bool is_viewport_hovered   = false;
     bool camera_control = false;
+    bool viewport_clicked = false;
     bool restore_no_mouse = false;
     Vector2 saved_mouse_pos = { 0.0f, 0.0f };
 
@@ -28,6 +30,18 @@ namespace {
 
 namespace ImGui
 {
+    bool Get3DClick(Vector2& position)
+    {
+        position = viewport_mouse_pos;
+        return viewport_clicked;
+    }
+
+    bool Get3DMouse(Vector2& position)
+    {
+        position = viewport_mouse_pos;
+        return is_viewport_hovered && !camera_control;
+    }
+
     void DrawAxes(float length, float thickness)
     {
         const int sides         = 8;         // 원기둥의 면 개수
@@ -45,6 +59,7 @@ namespace ImGui
 
     void Show3D(const char* title, bool open, std::function<void()> func)
     {
+        viewport_clicked = false;
         if (!open) {
             StopCameraControl();
             return;
@@ -88,6 +103,7 @@ namespace ImGui
         ImVec2 imMousePosGlobal = ImGui::GetMousePos();
         viewport_mouse_pos.x = (imMousePosGlobal.x - imagePos.x) * (WIDTH_3D / imageSize.x);
         viewport_mouse_pos.y = (imMousePosGlobal.y - imagePos.y) * (HEIGHT_3D / imageSize.y);
+        viewport_clicked = is_viewport_hovered && !camera_control && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
 
 
 
@@ -96,18 +112,30 @@ namespace ImGui
 
         // 커서가 숨겨져 있을 때 (카메라 조작 중)
         if (camera_control) {
-            // [뷰포트 호버 여부와 상관없이 우클릭으로 무조건 커서 복구]
-            if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+            // 버튼을 놓거나 창 포커스를 잃으면 카메라 조작을 종료한다.
+            if (!IsMouseButtonDown(MOUSE_BUTTON_MIDDLE) || !IsWindowFocused()) {
                 StopCameraControl();
             }
             // 카메라 업데이트 수행
-            else UpdateCamera(&ImGui::camera, CAMERA_FREE);
+            else {
+                const Vector2 delta = GetMouseDelta();
+                UpdateCameraPro(&ImGui::camera, {0, 0, 0},
+                    { delta.x * 0.05f, delta.y * 0.05f, 0.0f }, 0.0f);
+                const Vector3 forward = Vector3Normalize(Vector3Subtract(ImGui::camera.target, ImGui::camera.position));
+                const Vector3 right = Vector3Normalize(Vector3CrossProduct(forward, ImGui::camera.up));
+                const float speed = 5.4f * GetFrameTime();
+                const Vector3 movement = Vector3Add(
+                    Vector3Scale(forward, (IsKeyDown(KEY_W) - IsKeyDown(KEY_S)) * speed),
+                    Vector3Scale(right, (IsKeyDown(KEY_D) - IsKeyDown(KEY_A)) * speed));
+                ImGui::camera.position = Vector3Add(ImGui::camera.position, movement);
+                ImGui::camera.target = Vector3Add(ImGui::camera.target, movement);
+            }
         }
         // 커서가 보일 때 (일반 UI 조작 중)
         else {
-            // [뷰포트 위에 있을 때만 우클릭으로 커서 숨기기 (카메라 조작 시작)]
+            // [뷰포트 위에 있을 때만 가운데 버튼으로 커서 숨기기 (카메라 조작 시작)]
             if (is_viewport_hovered) {
-                if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+                if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) {
                     saved_mouse_pos = GetMousePosition();
                     restore_no_mouse = (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse) != 0;
                     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
@@ -122,7 +150,8 @@ namespace ImGui
         // 렌더링
         BeginMode3D(ImGui::camera);
             DrawGrid(10, 1);        // 그리드
-            DrawAxes(0.5, 0.01);    // 월드 축
+            DrawAxes(0.1, 0.01);    // 월드 축
+            if (func) func();
         EndMode3D();
         DrawFPS(10, 10);
         EndTextureMode();

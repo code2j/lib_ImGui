@@ -1,5 +1,4 @@
 #include "ui.hpp"
-#include "ImGuizmo.h"
 #include <iostream>
 #include <chrono>
 #include <mutex>
@@ -40,7 +39,6 @@ int main(int argc, char **argv) {
 
 
 
-    ImGui::Image2D texture1 = ImGui::LoadImage(IMGUI_ROOT "/image.png");
 
 
     while (!ImGui::ShouldClose()) {
@@ -256,23 +254,6 @@ int main(int argc, char **argv) {
                 if (show_image) {
                     ImVec2 avail = ImGui::GetContentRegionAvail();
 
-                    if (texture1 && texture1->id != 0) {
-                        float img_aspect = (float) texture1->width / (float) texture1->height;
-                        float avail_aspect = avail.x / avail.y;
-
-                        ImVec2 size;
-                        if (avail_aspect > img_aspect) {
-                           // 가용 영역이 더 넓음 - 높이에 맞춤
-                           size.y = avail.y;
-                           size.x = size.y * img_aspect;
-                        } else {
-                           // 가용 영역이 더 좁음 - 너비에 맞춤
-                           size.x = avail.x;
-                           size.y = size.x / img_aspect;
-                        }
-
-                        ImGui::Image(texture1->id, size);
-                    }
 
                 }
                 ImGui::EndChild();

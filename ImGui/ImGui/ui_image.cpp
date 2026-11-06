@@ -1,4 +1,4 @@
-#include "ui_loader.h"
+#include "ui_image.h"
 #include <limits>
 #include <cmath>
 #include <cstdint>
@@ -11,10 +11,10 @@ namespace ImGui
 {
     static std::vector<std::shared_ptr<Texture2D>> LOADED_TEXTURES;
 
-    Image2D LoadImage(const char* path)
+    ImImage LoadImage(const char* path)
     {
         Texture2D tex = LoadTexture(path);
-        if (tex.id == 0) return Image2D();
+        if (tex.id == 0) return ImImage();
 
         std::shared_ptr<Texture2D> ptr(
             new Texture2D(tex),
@@ -31,7 +31,7 @@ namespace ImGui
         return ptr;
     }
 
-    static bool UpdateImageTexture(Image2D& image, const void* data, size_t data_size, int width, int height, size_t stride, PixelFormat format, bool big_endian)
+    static bool UpdateImageTexture(ImImage& image, const void* data, size_t data_size, int width, int height, size_t stride, PixelFormat format, bool big_endian)
     {
         // 입력 픽셀 형식과 채널 수 확인
         const bool mono = format == PixelFormat::Mono8;
@@ -54,7 +54,7 @@ namespace ImGui
             auto* dst = rgba.data() + static_cast<size_t>(y) * width * 4;
             for (int x = 0; x < width; ++x, src += channels, dst += 4) {
                 if (depth16 || depth32) {
-                    // 깊이 0~5m를 흑백으로 변환, 유효하지 않은 값은 검정
+                    // 가까울수록 밝게 표시하고 유효하지 않은 값은 검정으로 유지
                     uint32_t bits = 0;
                     for (size_t i = 0; i < channels; ++i)
                         bits = (bits << 8) | src[big_endian ? i : channels - 1 - i];
@@ -62,7 +62,7 @@ namespace ImGui
                     if (depth16) meters = static_cast<float>(bits) * 0.001f;
                     else std::memcpy(&meters, &bits, sizeof(meters));
                     const auto gray = std::isfinite(meters) && meters > 0.0f
-                        ? static_cast<unsigned char>(std::min(meters / 5.0f, 1.0f) * 255.0f) : 0;
+                        ? static_cast<unsigned char>((1.0f - std::min(meters / 1.0f, 1.0f)) * 255.0f) : 0;
                     dst[0] = dst[1] = dst[2] = gray;
                     dst[3] = 255;
                 } else {
@@ -121,7 +121,7 @@ namespace ImGui
         return true;
     }
 
-    static std::unordered_map<std::string, Image2D> NAMED_IMAGES;
+    static std::unordered_map<std::string, ImImage> NAMED_IMAGES;
 
     static bool StoreImage(const char* name, const void* data, size_t data_size, int width, int height, size_t stride, PixelFormat format, bool big_endian)
     {
@@ -134,7 +134,7 @@ namespace ImGui
             return UpdateImageTexture(it->second, data, data_size, width, height, stride, format, big_endian);
 
         // 이미지 이름이 없으면 새로운 이미지 생성
-        Image2D image;
+        ImImage image;
         if (!UpdateImageTexture(image, data, data_size, width, height, stride, format, big_endian))
             return false;
 
@@ -143,7 +143,7 @@ namespace ImGui
         return true;
     }
 
-    bool Image(const char* name, const void* data, size_t data_size, int width, int height, size_t stride, PixelFormat format, ImVec2 size, bool big_endian)
+    bool Pixel2Image(const char* name, const void* data, size_t data_size, int width, int height, size_t stride, PixelFormat format, ImVec2 size, bool big_endian)
     {
         if (size.x <= 0 || size.y <= 0 ||
             !StoreImage(name, data, data_size, width, height, stride, format, big_endian)) return false;
