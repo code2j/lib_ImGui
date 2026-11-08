@@ -19,31 +19,23 @@ Eigen::Matrix4d tf_control = Eigen::Matrix4d::Identity();
 
 
 int main(int argc, char **argv) {
-
-
-
     // ImGui 초기화
     ImGui::Init("테스트 프로그램", 1280, 720);
     ImGui::LoadConfig("../imgui.ini");
 
-    // 좌측 메뉴에 빈 도킹 영역을 추가한다.
-    ImGui::AddTab(ICON_MD_TUNE "  사용자 패널0");
-    ImGui::AddTab(ICON_MD_TUNE "  사용자 패널1");
-    ImGui::AddTab(ICON_MD_TUNE "  사용자 패널2");
-    ImGui::AddTab(ICON_MD_TUNE "  사용자 패널3");
-    ImGui::AddTab(ICON_MD_TUNE "  사용자 패널4");
-
-
-
-
-
-
-
+    ImGui::AddTab(ICON_MD_HOME "  메인 ");
 
 
     while (!ImGui::ShouldClose()) {
         ImGui::Context([&]()
         {
+            ImGui::Begin("테스트");
+            static bool c = false;
+            ImGui::Check("큐브 렌더링", &c);
+            if (c) {
+                ImGui3D::Cube({0,0,0});
+            }
+            ImGui::End();
             ImGui::Begin(" " ICON_MD_TUNE " 제어 패널 ");
 
             if (ImGui::BeginCollapsingHeader(ICON_MD_WIDGETS " Widgets Example ")) {

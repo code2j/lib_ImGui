@@ -4,6 +4,8 @@
 #include "imgui.h"
 #include "ui.hpp"
 #include "ui_font_icon.h"
+#include <vector>
+
 
 namespace {
     const float WIDTH_3D= 1280;
@@ -26,9 +28,19 @@ namespace {
             ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
         camera_control = false;
     }
+
+    enum class Shape { Cube, Sphere, Line };
+    struct DrawCommand {
+        Shape shape;
+        Vector3 first;
+        Vector3 second;
+        float radius;
+        Color color;
+    };
+    std::vector<DrawCommand> commands;
 }
 
-namespace ImGui
+namespace ImGui3D
 {
     bool Get3DClick(Vector2& position)
     {
@@ -119,16 +131,16 @@ namespace ImGui
             // 카메라 업데이트 수행
             else {
                 const Vector2 delta = GetMouseDelta();
-                UpdateCameraPro(&ImGui::camera, {0, 0, 0},
+                UpdateCameraPro(&ImGui3D::camera, {0, 0, 0},
                     { delta.x * 0.05f, delta.y * 0.05f, 0.0f }, 0.0f);
-                const Vector3 forward = Vector3Normalize(Vector3Subtract(ImGui::camera.target, ImGui::camera.position));
-                const Vector3 right = Vector3Normalize(Vector3CrossProduct(forward, ImGui::camera.up));
+                const Vector3 forward = Vector3Normalize(Vector3Subtract(ImGui3D::camera.target, ImGui3D::camera.position));
+                const Vector3 right = Vector3Normalize(Vector3CrossProduct(forward, ImGui3D::camera.up));
                 const float speed = 5.4f * GetFrameTime();
                 const Vector3 movement = Vector3Add(
                     Vector3Scale(forward, (IsKeyDown(KEY_W) - IsKeyDown(KEY_S)) * speed),
                     Vector3Scale(right, (IsKeyDown(KEY_D) - IsKeyDown(KEY_A)) * speed));
-                ImGui::camera.position = Vector3Add(ImGui::camera.position, movement);
-                ImGui::camera.target = Vector3Add(ImGui::camera.target, movement);
+                ImGui3D::camera.position = Vector3Add(ImGui3D::camera.position, movement);
+                ImGui3D::camera.target = Vector3Add(ImGui3D::camera.target, movement);
             }
         }
         // 커서가 보일 때 (일반 UI 조작 중)
@@ -148,10 +160,11 @@ namespace ImGui
 
 
         // 렌더링
-        BeginMode3D(ImGui::camera);
+        BeginMode3D(ImGui3D::camera);
             DrawGrid(10, 1);        // 그리드
             DrawAxes(0.1, 0.01);    // 월드 축
             if (func) func();
+            ImGui3D::RenderFrame();
         EndMode3D();
         DrawFPS(10, 10);
         EndTextureMode();
@@ -165,5 +178,37 @@ namespace ImGui
         StopCameraControl();
         UnloadRenderTexture(view_texture);
 
+    }
+
+
+    void Cube(Vector3 position, Vector3 size, Color color)
+    {
+        commands.push_back({Shape::Cube, position, size, 0.0f, color});
+    }
+
+    void Sphere(Vector3 center, float radius, Color color)
+    {
+        commands.push_back({Shape::Sphere, center, {}, radius, color});
+    }
+
+    void Line(Vector3 start, Vector3 end, Color color)
+    {
+        commands.push_back({Shape::Line, start, end, 0.0f, color});
+    }
+
+    void ClearFrame()
+    {
+        commands.clear();
+    }
+
+    void RenderFrame()
+    {
+        for (const auto& command : commands) {
+            switch (command.shape) {
+                case Shape::Cube: DrawCubeV(command.first, command.second, command.color); break;
+                case Shape::Sphere: DrawSphere(command.first, command.radius, command.color); break;
+                case Shape::Line: DrawLine3D(command.first, command.second, command.color); break;
+            }
+        }
     }
 }

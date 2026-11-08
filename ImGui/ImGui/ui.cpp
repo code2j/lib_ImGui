@@ -339,6 +339,8 @@ namespace ImGui
         update_window_stacking();
         ImGui::NewFrame();
 
+        ImGui3D::ClearFrame();
+
         ChangeStyle();
 
 
@@ -347,12 +349,12 @@ namespace ImGui
             ImGui::ShowLogger(" " ICON_MD_SUBJECT " Log ", ImGui::show_log_window);
             ImGui::ShowNotifications();
             ImGui::ShowSystemHud(ImGui::show_system_hud);
-            ImGui::Show3D(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ",  ImGui::show_3d_viewport, draw_3d);
             if (ImGui::show_style_edit) {
                 ImGui::ShowStyleEditor(&ImGui::GetStyle());
             }
 
             if (func) func();
+            ImGui3D::Show3D(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ",  ImGui::show_3d_viewport, draw_3d);
         }
 
 
