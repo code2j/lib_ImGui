@@ -431,6 +431,7 @@ namespace ImGui
             if (tab.label == label) {
                 tab.draw = std::move(draw);
                 tab.sidebar_content = std::move(sidebar_content);
+                tab.content_height = 0.0f;
                 return;
             }
         }
@@ -464,7 +465,9 @@ namespace ImGui
         // 창 상단에 둥근 헤더 배경과 본문을 구분하는 선을 그린다.
         const ImVec2 pos = ImGui::GetWindowPos();
         const ImVec2 size = ImGui::GetWindowSize();
-        const float actions_x = size.x - inset - button_size * 4 - gap * 3;
+        const float actions_x = size.x - inset - button_size * 5 - gap * 4;
+        static bool sidebar_open = true;
+        static float sidebar_expansion = 1.0f;
         ImDrawList* draw = ImGui::GetWindowDrawList();
         draw->AddRectFilled(pos, pos + ImVec2(size.x, header_height),
                             ImGui::GetColorU32(ImGuiCol_ChildBg), 12.0f * scale,
@@ -479,11 +482,11 @@ namespace ImGui
             ImGui::SetWindowPos(pos + ImGui::GetIO().MouseDelta);
 
         // 헤더 왼쪽에 위젯 아이콘 배지와 창 제목, WORKSPACE 부제를 그린다.
-        const ImVec2 badge = pos + ImVec2(inset, 16.0f * scale);
+        const ImVec2 badge = pos + ImVec2(inset + (60.0f * scale - button_size) * 0.5f, 16.0f * scale);
         draw->AddRectFilled(badge, badge + ImVec2(button_size, button_size), ImGui::GetColorU32(ImGuiCol_Button), 10.0f * scale);
         const ImVec2 icon_size = ImGui::CalcTextSize(ICON_MD_WIDGETS);
         draw->AddText(badge + (ImVec2(button_size, button_size) - icon_size) * 0.5f, IM_COL32(255, 255, 255, 255), ICON_MD_WIDGETS);
-        const float text_x = inset + button_size + 12.0f * scale;
+        const float text_x = badge.x - pos.x + button_size + 12.0f * scale;
         draw->PushClipRect(pos + ImVec2(text_x, 0), pos + ImVec2(actions_x - gap, header_height), true);
         draw->AddText(pos + ImVec2(text_x, 10.0f * scale), ImGui::GetColorU32(ImGuiCol_Text), WINDOW_TITLE.c_str());
         draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.72f, pos + ImVec2(text_x, 39.0f * scale), ImGui::GetColorU32(ImGuiCol_TextDisabled), "WORKSPACE");
@@ -508,22 +511,27 @@ namespace ImGui
             return pressed;
         };
 
+        // 사이드바 접기 및 펼치기
+        if (action(0, sidebar_open ? ICON_MD_MENU_OPEN "##sidebar_toggle" : ICON_MD_MENU "##sidebar_toggle",
+                   sidebar_open ? "사이드바 접기" : "사이드바 펼치기"))
+            sidebar_open = !sidebar_open;
+
         // 고정 핀 버튼
-        if (action(0, ICON_MD_KEEP "##window_pin", window_pinned ? "고정 해제" : "항상 위에 고정", window_pinned)) {
+        if (action(1, ICON_MD_KEEP "##window_pin", window_pinned ? "고정 해제" : "항상 위에 고정", window_pinned)) {
             window_pinned = !window_pinned;
             update_window_stacking();
         }
 
         // 설정 버튼
-        if (action(1, ICON_MD_SETTINGS "##window_setting", "워크스페이스 설정", ImGui::IsPopupOpen("SettingsPopup")))
+        if (action(2, ICON_MD_SETTINGS "##window_setting", "워크스페이스 설정", ImGui::IsPopupOpen("SettingsPopup")))
             ImGui::OpenPopup("SettingsPopup");
 
         // 최소화 버튼
-        if (action(2, ICON_MD_REMOVE "##window_minimaze", "최소화"))
+        if (action(3, ICON_MD_REMOVE "##window_minimaze", "최소화"))
             MinimizeWindow();
 
         // 닫기 버튼
-        if (action(3, ICON_MD_CLOSE "##window_close", "닫기", false, true))
+        if (action(4, ICON_MD_CLOSE "##window_close", "닫기", false, true))
             ImGui::ShouldClose(true);
 
         // 설정 팝업
@@ -559,7 +567,13 @@ namespace ImGui
 
         // 사이드 패널 영역 설정
         const float body_y = header_height + 8.0f * scale;
-        const float sidebar_width = ImMin(220.0f * scale, size.x * 0.32f);
+        sidebar_expansion += ((sidebar_open ? 1.0f : 0.0f) - sidebar_expansion) *
+                             (1.0f - std::exp(-14.0f * ImGui::GetIO().DeltaTime));
+        if (std::abs(sidebar_expansion - (sidebar_open ? 1.0f : 0.0f)) < 0.001f)
+            sidebar_expansion = sidebar_open ? 1.0f : 0.0f;
+        const float expanded_width = ImMin(220.0f * scale, size.x * 0.32f);
+        const float sidebar_width = 60.0f * scale + (expanded_width - 60.0f * scale) * sidebar_expansion;
+        const bool compact_sidebar = sidebar_expansion < 0.8f;
         ImGui::SetCursorPos(ImVec2(16.0f * scale, body_y + 8.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8) * scale);
@@ -594,12 +608,29 @@ namespace ImGui
             ImGui::PushID(i);
             const char* label = SIDETAP_BAR[i].label.c_str();
             // 선택된 탭을 다시 누르면 하위 내용을 접거나 펼친다.
-            if (ImGui::Button(label, ImVec2(-FLT_MIN, 42.0f * scale))) {
-                if (tab.sidebar_content)
+            if (ImGui::Button("##sidebar_tab", ImVec2(-FLT_MIN, 42.0f * scale))) {
+                if (!compact_sidebar && tab.sidebar_content)
                     tab.open = selected ? !tab.open : true;
                 selected_page = i;
             }
             const ImVec2 button_min = ImGui::GetItemRectMin();
+            const ImVec2 button_max = ImGui::GetItemRectMax();
+            unsigned int codepoint = 0;
+            const int first_len = ImTextCharFromUtf8(&codepoint, label, nullptr);
+            const char* label_end = ImGui::FindRenderedTextEnd(label);
+            const char* first_end = label + (first_len > 0 ? first_len : 0);
+            if (first_end > label_end) first_end = label_end;
+            const ImVec2 icon_size = ImGui::CalcTextSize(label, first_end);
+            const float icon_x = button_min.x + (44.0f * scale - icon_size.x) * 0.5f;
+            const float text_y = button_min.y + (button_max.y - button_min.y - icon_size.y) * 0.5f;
+            ImDrawList* button_draw = ImGui::GetWindowDrawList();
+            button_draw->PushClipRect(button_min, button_max, true);
+            button_draw->AddText(ImVec2(icon_x, text_y), ImGui::GetColorU32(ImGuiCol_Text), label, first_end);
+            if (first_end < label_end && sidebar_expansion > 0.0f)
+                button_draw->AddText(ImVec2(icon_x + icon_size.x, text_y), ImGui::GetColorU32(ImGuiCol_Text, sidebar_expansion), first_end, label_end);
+            button_draw->PopClipRect();
+            if (compact_sidebar && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                ImGui::SetTooltip("%s", label);
             if (selected_page == i) {
                 target_y = button_min.y - sidebar_origin_y;
                 indicator_x = button_min.x;
@@ -608,7 +639,7 @@ namespace ImGui
             if (selected) ImGui::PopStyleColor();
             ImGui::PopStyleColor();
             // 하위 내용의 높이를 먼저 측정한 뒤 크기와 투명도를 함께 변경한다.
-            if (tab.sidebar_content) {
+            if (tab.sidebar_content && !compact_sidebar) {
                 const bool measuring = tab.open && tab.content_height == 0.0f;
                 if (!measuring) {
                     const float speed = ImGui::GetIO().DeltaTime * 7.0f;
