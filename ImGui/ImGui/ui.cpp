@@ -488,7 +488,7 @@ namespace ImGui
         draw->AddText(badge + (ImVec2(button_size, button_size) - icon_size) * 0.5f, IM_COL32(255, 255, 255, 255), ICON_MD_WIDGETS);
         const float text_x = badge.x - pos.x + button_size + 12.0f * scale;
         draw->PushClipRect(pos + ImVec2(text_x, 0), pos + ImVec2(actions_x - gap, header_height), true);
-        draw->AddText(pos + ImVec2(text_x, 10.0f * scale), ImGui::GetColorU32(ImGuiCol_Text), WINDOW_TITLE.c_str());
+        draw->AddText(pos + ImVec2(text_x, 13.0f * scale), ImGui::GetColorU32(ImGuiCol_Text), WINDOW_TITLE.c_str());
         draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.72f, pos + ImVec2(text_x, 39.0f * scale), ImGui::GetColorU32(ImGuiCol_TextDisabled), "WORKSPACE");
         draw->PopClipRect();
 
