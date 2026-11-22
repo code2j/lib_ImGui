@@ -28,17 +28,11 @@ int main(int argc, char **argv) {
     while (!ImGui::ShouldClose()) {
         ImGui::Context([&]()
         {
-            ImGui::Begin("테스트");
-            static bool c = false;
-            ImGui::Check("큐브 렌더링", &c);
-            if (c) {
-                ImGui3D::Cube({0,0,0});
-            }
-            ImGui::End();
-            ImGui::Begin(" " ICON_MD_TUNE " 제어 패널 ");
-
+            ImGui::Begin(ICON_MD_WIDGETS " Wedgets");
+            const float availableHeight = ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing();
+            const float widgetsHeight = availableHeight > 1.0f ? availableHeight : 1.0f;
             if (ImGui::BeginCollapsingHeader(ICON_MD_WIDGETS " Widgets Example ")) {
-                ImGui::BeginChild("Widgets_Child", ImVec2(0, 1150), true);
+                ImGui::BeginChild("Widgets_Child", ImVec2(0, widgetsHeight), true);
 
                 // ==========================================
                 // 1. 기본 컨트롤 (Basic Controls)
@@ -48,24 +42,24 @@ int main(int argc, char **argv) {
 
                 static bool is_c = false;
                 if (ImGui::Check("체크박스", &is_c)) {
-                    if (is_c)
-                        ImGui::NotifyInfo("체크박스 선택됨");
-                    else
-                        ImGui::NotifyInfo("체크박스 해제됨");
+                    // if (is_c)
+                    //     ImGui::NotifyInfo("체크박스 선택됨");
+                    // else
+                    //     ImGui::NotifyInfo("체크박스 해제됨");
                 }
 
                 static int radio_idx = 0;
-                if (ImGui::Radio("라디오 1", &radio_idx, 0))
-                    ImGui::NotifyInfo("라디오 1 선택됨");
-                if (ImGui::Radio("라디오 2", &radio_idx, 1))
-                    ImGui::NotifyInfo("라디오 2 선택됨");
+                if (ImGui::Radio("라디오 1", &radio_idx, 0)) {}
+                    // ImGui::NotifyInfo("라디오 1 선택됨");
+                if (ImGui::Radio("라디오 2", &radio_idx, 1)) {}
+                    // ImGui::NotifyInfo("라디오 2 선택됨");
 
                 static bool is_t = false;
                 if (ImGui::Toggle("토글", &is_t)) {
-                    if (is_t)
-                        ImGui::NotifyInfo("토글 선택됨");
-                    else
-                        ImGui::NotifyInfo("토글 해제됨");
+                    // if (is_t)
+                    //     ImGui::NotifyInfo("토글 선택됨");
+                    // else
+                    //     ImGui::NotifyInfo("토글 해제됨");
                 }
 
                 float btn_width = ImGui::GetContentRegionAvail().x / 4.15f;
@@ -180,99 +174,29 @@ int main(int argc, char **argv) {
 
                 static float color_rgba[4] = { 0.8f, 0.2f, 0.3f, 0.5f };
                 ImGui::ColorEdit4X("컬러4", color_rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
+                ImGui::Dummy(ImVec2(0, 20.0f));
+
+                // 탭 전환과 각 탭의 독립적인 상태
+                ImGui::TextColored(ImVec4(0.36f, 0.41f, 0.94f, 1.0f), ICON_MD_TAB " Tabs");
+                ImGui::Separator();
+                static int selectedTab = 0;
+                const char* tabs[] = { "일반", "설정", "정보" };
+                ImGui::BubbleTabs("WidgetExampleTabs", tabs, IM_ARRAYSIZE(tabs), &selectedTab);
+                ImGui::Spacing();
+                if (selectedTab == 0) {
+                    static bool enabled = true;
+                    ImGui::Checkbox("활성화", &enabled);
+                    ImGui::TextUnformatted("일반 설정을 표시합니다.");
+                } else if (selectedTab == 1) {
+                    static float value = 0.5f;
+                    ImGui::SliderFloat("값", &value, 0.0f, 1.0f);
+                } else {
+                    ImGui::TextUnformatted("버블을 눌러 탭을 전환합니다.");
+                }
 
                 ImGui::EndChild();
                 ImGui::EndCollapsingHeader();
             }
-
-            if (ImGui::BeginCollapsingHeader(ICON_MD_JOYSTICK " Joystick Example ")) {
-                // [조이스틱 샘플]
-                ImVec2 joy;
-                ImGui::Joystic(&joy);
-                ImGui::Dummy(ImVec2(0, 20));
-                ImGui::EndCollapsingHeader();
-            }
-
-            if (ImGui::BeginCollapsingHeader(ICON_MD_STEPPERS " Status Step Example ", false)) {
-                const char* status_labels[] = {
-                    "시스템 시작",
-                    "시스템 초기화",
-                    "시스템 준비",
-                    "시스템 동작",
-                };
-
-                static int current_account_status = 2;
-
-                ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
-                ImGui::BeginChild("상태바", ImVec2(0, 230), true);
-
-                // 1. 스테이터스 바 렌더링 (상단 위치)
-                ImGui::StatusStepBar("##AccountStatusStepBar", &current_account_status, status_labels, 4);
-
-                ImGui::Dummy(ImVec2(0, 10.0f)); // 바 위젯과의 여백 확보
-
-                // 2. InputInt 위젯 가로 중앙 정렬 처리
-                float input_width = 140.0f; // InputInt의 너비 지정
-                float avail_width = ImGui::GetContentRegionAvail().x;
-                float offset_x = (avail_width - input_width) * 0.5f;
-
-                if (offset_x > 0.0f)
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
-
-                ImGui::PushItemWidth(input_width);
-                if (ImGui::InputNum("##상태", &current_account_status)) {
-                    current_account_status = std::max(0, std::min(current_account_status, 3));
-                }
-                ImGui::PopItemWidth();
-
-                ImGui::EndChild();
-                ImGui::PopStyleVar();
-
-                ImGui::EndCollapsingHeader();
-            }
-
-            if (ImGui::BeginCollapsingHeader(ICON_MD_IMAGE " Image Example ")) {
-                // 토클 이미지 보이기
-                static bool show_image = false;
-                if (ImGui::Toggle("이미지 보이기", &show_image)) {
-                    ImGui::NotifyInfo("이미지가 표시됩니다.");
-                }
-                ImGui::SameLine();
-                ImGui::Text("이미지 보이기");
-
-
-                ImGui::BeginChild("child", ImVec2(0, 400), true);
-                if (show_image) {
-                    ImVec2 avail = ImGui::GetContentRegionAvail();
-
-
-                }
-                ImGui::EndChild();
-                ImGui::EndCollapsingHeader();
-
-            }
-
-            if (ImGui::BeginCollapsingHeader(ICON_MD_COLORS " Theme Example ")) {
-
-                static int current_theme = 1;
-
-                ImGui::BeginChild("ThemeSelector", ImVec2(0, 150), true);
-                if (ImGui::ThemeSelector(&ImGui::theme_id))
-                {
-                    // 테마가 변경되었을 때 실행할 로직
-                    if (ImGui::theme_id == 0) {
-                        ImGui::ThemeWhite();
-                    }
-                    else {
-                        ImGui::ThemeDark();
-                    }
-
-                }
-                ImGui::EndChild();
-
-                ImGui::EndCollapsingHeader();
-            }
-
             ImGui::End();
         });
     }

@@ -625,6 +625,9 @@ namespace ImGui
 
         if (selected_page >= page_count) selected_page = 0;
 
+        // 하단 버튼 공간을 확보하고 메뉴 항목만 스크롤한다.
+        ImGui::BeginChild("##sidebar_items", ImVec2(0, -54.0f * scale), ImGuiChildFlags_None);
+
         // 사이드 패널 선택 애니메이션
         static float indicator_y = 0.0f;
         static bool indicator_initialized = false;
@@ -703,6 +706,26 @@ namespace ImGui
                 ImVec2(indicator_x + width, y + 42.0f * scale - inset),
                 ImGui::GetColorU32(accent), width * 0.5f);
         }
+        ImGui::EndChild();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        if (ImGui::Button("##sidebar_toggle", ImVec2(-FLT_MIN, 48.0f * scale)))
+            sidebar_open = !sidebar_open;
+        const ImVec2 toggle_min = ImGui::GetItemRectMin();
+        const ImVec2 toggle_max = ImGui::GetItemRectMax();
+        const char* toggle_icon = sidebar_open ? ICON_MD_MENU_OPEN : ICON_MD_MENU;
+        const ImVec2 toggle_icon_size = ImGui::CalcTextSize(toggle_icon);
+        const float toggle_x = toggle_min.x + (44.0f * scale - toggle_icon_size.x) * 0.5f;
+        const float toggle_y = toggle_min.y + (toggle_max.y - toggle_min.y - toggle_icon_size.y) * 0.5f;
+        ImDrawList* toggle_draw = ImGui::GetWindowDrawList();
+        toggle_draw->PushClipRect(toggle_min, toggle_max, true);
+        toggle_draw->AddText(ImVec2(toggle_x, toggle_y), ImGui::GetColorU32(ImGuiCol_TextDisabled), toggle_icon);
+        if (sidebar_expansion > 0.0f)
+            toggle_draw->AddText(ImVec2(toggle_min.x + 44.0f * scale, toggle_y),
+                                 ImGui::GetColorU32(ImGuiCol_TextDisabled, sidebar_expansion), "사이드바 접기");
+        toggle_draw->PopClipRect();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+            ImGui::SetTooltip("%s", sidebar_open ? "사이드바 접기" : "사이드바 펼치기");
+        ImGui::PopStyleColor();
         ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(2);
         ImGui::EndChild();
@@ -743,42 +766,6 @@ namespace ImGui
             auto draw_tab = SIDETAP_BAR[selected_page].draw;
             if (draw_tab) draw_tab();
         }
-    // 도킹된 창 위에서도 사이드바 경계 핸들이 보이고 클릭되게 한다.
-    if (page_count > 0) {
-        const ImVec2 handle_size = ImVec2(26.0f, 36.0f) * scale;
-        const ImVec2 handle_pos = pos + ImVec2(16.0f * scale + sidebar_width - handle_size.x * 0.5f,
-                                               body_y + 72.0f * scale);
-        ImGui::SetNextWindowPos(handle_pos);
-        ImGui::SetNextWindowSize(handle_size);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        ImGui::Begin("##sidebar_handle", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
-                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground);
-        if (ImGui::InvisibleButton("##toggle", handle_size))
-            sidebar_open = !sidebar_open;
-        const bool handle_hovered = ImGui::IsItemHovered();
-        static float handle_hover = 0.0f;
-        handle_hover += ((handle_hovered ? 1.0f : 0.0f) - handle_hover) *
-                        (1.0f - std::exp(-12.0f * ImGui::GetIO().DeltaTime));
-        const ImVec2 handle_min = ImGui::GetItemRectMin();
-        const ImVec2 handle_max = ImGui::GetItemRectMax();
-        ImDrawList* handle_draw = ImGui::GetWindowDrawList();
-        const ImVec4 hover_bg = ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered);
-        if (handle_hover > 0.01f)
-            handle_draw->AddRectFilled(handle_min + ImVec2(3, 2) * scale, handle_max - ImVec2(3, 2) * scale,
-                                       ImGui::GetColorU32(ImVec4(hover_bg.x, hover_bg.y, hover_bg.z, hover_bg.w * handle_hover)), 6.0f * scale);
-        const ImVec2 handle_center = (handle_min + handle_max) * 0.5f;
-        const float direction = sidebar_open ? -1.0f : 1.0f;
-        const ImU32 handle_color = ImGui::GetColorU32(ImLerp(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled),
-                                                              ImGui::GetStyleColorVec4(ImGuiCol_Text), handle_hover));
-        handle_draw->AddLine(handle_center + ImVec2(-direction * 2.0f, -4.0f) * scale,
-                             handle_center + ImVec2(direction * 2.0f, 0) * scale, handle_color, 1.5f * scale);
-        handle_draw->AddLine(handle_center + ImVec2(direction * 2.0f, 0) * scale,
-                             handle_center + ImVec2(-direction * 2.0f, 4.0f) * scale, handle_color, 1.5f * scale);
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
-            ImGui::SetTooltip("%s", sidebar_open ? "사이드바 접기" : "사이드바 펼치기");
-        ImGui::End();
-        ImGui::PopStyleVar();
-    }
     // 별도 오버레이 창으로 도킹된 콘텐츠 위에 설정 버튼을 유지한다.
     const float floating_size = 52.0f * scale;
     const float floating_margin = 20.0f * scale;

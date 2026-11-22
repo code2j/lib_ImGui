@@ -10049,7 +10049,7 @@ bool    ImGui::BeginTabBarEx(ImGuiTabBar* tab_bar, const ImRect& tab_bar_bb, ImG
     // Draw separator
     // (it would be misleading to draw this in EndTabBar() suggesting that it may be drawn over tabs, as tab bar are appendable)
     const ImU32 col = GetColorU32((flags & ImGuiTabBarFlags_DockNode) ? ImGuiCol_Border : (flags & ImGuiTabBarFlags_IsFocused) ? ImGuiCol_TabSelected : ImGuiCol_TabDimmedSelected);
-    if (g.Style.TabBarBorderSize > 0.0f)
+    if (g.Style.TabBarBorderSize > 0.0f && !(flags & ImGuiTabBarFlags_DockNode))
     {
         const float y = tab_bar->BarRect.Max.y;
         window->DrawList->AddRectFilled(ImVec2(tab_bar->SeparatorMinX, y - g.Style.TabBarBorderSize), ImVec2(tab_bar->SeparatorMaxX, y), col);
@@ -10367,6 +10367,37 @@ static void ImGui::TabBarLayout(ImGuiTabBar* tab_bar)
     }
     tab_bar->ScrollingRectMinX = tab_bar->BarRect.Min.x + sections[0].Width + sections[0].Spacing;
     tab_bar->ScrollingRectMaxX = tab_bar->BarRect.Max.x - sections[2].Width - sections[1].Spacing;
+
+    // Draw the selection bubble before tab labels, so it can slide beneath them.
+    if (tab_bar->Flags & ImGuiTabBarFlags_DockNode)
+    {
+        ImGuiTabItem* selected = TabBarFindTabByID(tab_bar, tab_bar->VisibleTabId);
+        if (selected && selected->Width > 0.0f)
+        {
+            ImGuiStorage* storage = &g.CurrentWindow->StateStorage;
+            const ImGuiID x_id = ImHashStr("##dock_bubble_x", 0, tab_bar->ID);
+            const ImGuiID w_id = ImHashStr("##dock_bubble_w", 0, tab_bar->ID);
+            const ImGuiID init_id = ImHashStr("##dock_bubble_init", 0, tab_bar->ID);
+            const float target_x = TabBarGetTabPos(tab_bar, selected).x - tab_bar->BarRect.Min.x;
+            float x = target_x, width = selected->Width;
+            if (storage->GetBool(init_id) && tab_bar->PrevFrameVisible + 1 == g.FrameCount)
+            {
+                const float t = 1.0f - expf(-14.0f * g.IO.DeltaTime);
+                x = ImLerp(storage->GetFloat(x_id), x, t);
+                width = ImLerp(storage->GetFloat(w_id), width, t);
+            }
+            storage->SetBool(init_id, true);
+            storage->SetFloat(x_id, x);
+            storage->SetFloat(w_id, width);
+            const float inset_y = ImMin(3.0f, tab_bar->BarRect.GetHeight() * 0.15f);
+            ImDrawList* draw = g.CurrentWindow->DrawList;
+            draw->PushClipRect(tab_bar->BarRect.Min, tab_bar->BarRect.Max, true);
+            draw->AddRectFilled(ImVec2(tab_bar->BarRect.Min.x + x + 2.0f, tab_bar->BarRect.Min.y + inset_y),
+                                ImVec2(tab_bar->BarRect.Min.x + x + width - 2.0f, tab_bar->BarRect.Max.y - inset_y),
+                                GetColorU32(ImGuiCol_HeaderActive), tab_bar->BarRect.GetHeight() * 0.5f);
+            draw->PopClipRect();
+        }
+    }
 
     // Actual layout in host window (we don't do it in BeginTabBar() so as not to waste an extra frame)
     ImGuiWindow* window = g.CurrentWindow;
@@ -11067,14 +11098,8 @@ bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, 
             const float inset_y = ImMin(3.0f, bb.GetHeight() * 0.15f);
             ImVec2 tab_min(bb.Min.x + inset_x, bb.Min.y + inset_y);
             ImVec2 tab_max(bb.Max.x - inset_x, bb.Max.y - inset_y);
-            if (tab_contents_visible || hovered || held)
-                display_draw_list->AddRectFilled(tab_min, tab_max, tab_col, ImMin(6.0f, (tab_max.y - tab_min.y) * 0.5f));
-            if (tab_contents_visible && tab_max.x > tab_min.x)
-            {
-                const float accent_inset = ImMin(8.0f, (tab_max.x - tab_min.x) * 0.25f);
-                const ImU32 accent = GetColorU32(tab_bar_focused ? ImGuiCol_TabSelectedOverline : ImGuiCol_TabDimmedSelectedOverline);
-                display_draw_list->AddRectFilled(ImVec2(tab_min.x + accent_inset, bb.Max.y - 2.0f), ImVec2(tab_max.x - accent_inset, bb.Max.y), accent, 1.0f);
-            }
+            if (!tab_contents_visible && (hovered || held))
+                display_draw_list->AddRectFilled(tab_min, tab_max, tab_col, (tab_max.y - tab_min.y) * 0.5f);
         }
         else
             TabItemBackground(display_draw_list, bb, flags, tab_col);
