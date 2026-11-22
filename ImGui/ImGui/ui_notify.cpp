@@ -1,5 +1,5 @@
 #include "ui_notify.h"
-#include "ui_font_icon.h"
+#include "ui_icon.h"
 #include "imgui_internal.h"
 #include <vector>
 #include <string>
@@ -196,7 +196,7 @@ namespace ImGui
         const auto vp_size = viewport->WorkSize;
 
         // 항상 "window" 창의 위치를 기준으로 알림을 표시함
-        const ImGuiWindow* menu_window = ImGui::FindWindowByName("window");
+        const ImGuiWindow* menu_window = ImGui::FindWindowByName("###WickedMenu");
         const ImVec2 anchor_pos = menu_window ? menu_window->Pos : vp_pos;
         const ImVec2 anchor_size = menu_window ? menu_window->Size : vp_size;
         if (menu_window && menu_window->Viewport)

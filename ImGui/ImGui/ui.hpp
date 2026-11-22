@@ -17,7 +17,7 @@
 #include "implot.h"
 
 #include "ui_ini.h"
-#include "ui_font_icon.h"
+#include "ui_icon.h"
 #include "ui_3d.h"
 #include "ui_logger.h"
 #include "ui_notify.h"

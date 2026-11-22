@@ -1,4 +1,5 @@
-#include "ui.hpp"
+#include "imgui.h"
+#include "ui_style.h"
 
 
 namespace ImGui
@@ -14,7 +15,7 @@ namespace ImGui
         style.ItemInnerSpacing  = ImVec2(6.00, 6.00); // Item 내부 요소 간의 간격 (Inner Spacing)
         style.TouchExtraPadding = ImVec2(0.00, 0.00); // 터치 조작을 위한 추가 여백 (Padding)
         style.IndentSpacing     = 25;                 // 들여쓰기 (Indent) 간격
-        style.ScrollbarSize     = 0;                 // Scrollbar 두께/크기
+        style.ScrollbarSize     = 0;                  // Scrollbar 두께/크기
         style.GrabMinSize       = 10;                 // 슬라이더 등 Grab(손잡이)의 최소 크기
         style.WindowBorderSize  = 0;                  // Window 테두리 (Border) 두께
         style.ChildBorderSize   = 1;                  // Child 창 테두리 (Border) 두께
@@ -29,7 +30,6 @@ namespace ImGui
         style.GrabRounding      = 3;                  // Grab(손잡이) 모서리 둥글기 (Rounding)
         style.LogSliderDeadzone = 4;                  // Logarithmic Slider의 데드존(Deadzone) 크기
         style.TabRounding       = 6;                  // Tab 모서리 둥글기 (Rounding)
-        style.TabBarBorderSize  = 0;
         // style.WindowMenuButtonPosition = ImGuiDir_None; // 탭 최소화 버튼 제거
 
 
@@ -43,17 +43,17 @@ namespace ImGui
 
     void ThemeWhite()
     {
-        if (ImGui::theme_id != 0) return;
+        ImGui::StyleColorsLight();
 
         auto& colors = ImGui::GetStyle().Colors;
 
-        ImVec4 color_bg                 = ImColor(251, 251, 251); // v
-        ImVec4 color_surf               = ImColor(235, 235, 237);
-        ImVec4 color_surf_variant       = ImColor(246, 246, 246);
+        ImVec4 color_bg                 = ImColor(246, 248, 252); // v
+        ImVec4 color_surf               = ImColor(232, 237, 245);
+        ImVec4 color_surf_variant       = ImColor(255, 255, 255);
 
-        ImVec4 color_primary            = ImColor(93, 105, 240);
-        ImVec4 color_primary_hover      = ImColor(73, 85, 185);
-        ImVec4 color_primary_active     = ImColor(63, 74, 162);
+        ImVec4 color_primary            = ImVec4(0.30f, 0.46f, 0.78f, 0.72f);
+        ImVec4 color_primary_hover      = ImVec4(0.38f, 0.55f, 0.86f, 0.85f);
+        ImVec4 color_primary_active     = ImVec4(0.23f, 0.37f, 0.67f, 0.90f);
 
 
         ImVec4 color_red                = ImColor(181, 65, 60);
@@ -65,8 +65,8 @@ namespace ImGui
 
 
         ImVec4 color_tab_hovered        = ImColor(200, 200, 200);
-        ImVec4 color_tab_focused        = ImColor(235, 235, 237); // v
-        ImVec4 color_tab_active         = ImColor(235, 235, 237);
+        ImVec4 color_tab_focused        = ImColor(232, 237, 245); // v
+        ImVec4 color_tab_active         = ImColor(232, 237, 245);
 
         ImVec4 color_border             = ImColor(213, 213, 217); // v
 
@@ -93,8 +93,8 @@ namespace ImGui
         colors[ImGuiCol_BorderShadow]          = color_transparent;
         // [Frame]
         colors[ImGuiCol_FrameBg]               = color_surf_variant;
-        colors[ImGuiCol_FrameBgHovered]        = color_transparent;
-        colors[ImGuiCol_FrameBgActive]         = color_transparent;
+        colors[ImGuiCol_FrameBgHovered]        = ImColor(226, 234, 247);
+        colors[ImGuiCol_FrameBgActive]         = ImColor(211, 223, 243);
         // [Title]
         colors[ImGuiCol_TitleBg]               = color_bg;
         colors[ImGuiCol_TitleBgActive]         = color_bg;
@@ -127,11 +127,10 @@ namespace ImGui
         colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.44, 0.54, 0.64, 1.00);
         // [Tab]
         colors[ImGuiCol_Tab]                   = color_bg;
-        colors[ImGuiCol_TabHovered]            = color_primary_hover;
-        colors[ImGuiCol_TabSelected]           = color_tab_active;
-        colors[ImGuiCol_TabSelectedOverline]   = color_transparent;
+        colors[ImGuiCol_TabHovered]            = ImColor(180, 200, 232);
+        colors[ImGuiCol_TabSelected]           = ImColor(206, 221, 245);
         colors[ImGuiCol_TabDimmed]             = color_bg;
-        colors[ImGuiCol_TabDimmedSelected]     = color_tab_active;
+        colors[ImGuiCol_TabDimmedSelected]     = ImColor(222, 231, 245);
         // [Plot]
         colors[ImGuiCol_PlotLines]             = color_primary;
         colors[ImGuiCol_PlotLinesHovered]      = color_primary_hover;
@@ -144,10 +143,9 @@ namespace ImGui
         colors[ImGuiCol_TableRowBg]            = color_transparent;
         colors[ImGuiCol_TableRowBgAlt]         = ImColor(242, 242, 244);
         // [Nav]
-        colors[ImGuiCol_NavCursor];
         colors[ImGuiCol_NavHighlight]          = ImVec4(0.46, 0.56, 0.66, 1.00);
-        colors[ImGuiCol_NavWindowingHighlight] = color_green;
-        colors[ImGuiCol_NavWindowingDimBg]     = color_red;
+        colors[ImGuiCol_NavWindowingHighlight] = color_primary;
+        colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.20f, 0.25f, 0.35f, 0.20f);
         colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80, 0.80, 0.80, 0.35);
         // [Docking]
         colors[ImGuiCol_DockingPreview]        = color_primary_active;
@@ -157,7 +155,7 @@ namespace ImGui
 
     void ThemeDark()
     {
-        if (ImGui::theme_id != 1) return;
+        ImGui::StyleColorsDark();
         auto& colors = ImGui::GetStyle().Colors;
 
         ImVec4 color_bg                 = ImColor(24, 27, 34);
@@ -165,9 +163,9 @@ namespace ImGui
         ImVec4 color_surf_variant       = ImColor(36, 41, 51);
 
 
-        ImVec4 color_primary            = ImColor(93, 105, 240);
-        ImVec4 color_primary_hover      = ImColor(73, 85, 185);
-        ImVec4 color_primary_active     = ImColor(63, 74, 162);
+        ImVec4 color_primary            = ImVec4(0.30f, 0.46f, 0.78f, 0.72f);
+        ImVec4 color_primary_hover      = ImVec4(0.38f, 0.55f, 0.86f, 0.85f);
+        ImVec4 color_primary_active     = ImVec4(0.23f, 0.37f, 0.67f, 0.90f);
 
 
         ImVec4 color_frame_hover        = ImColor(46, 52, 64);
@@ -240,11 +238,10 @@ namespace ImGui
         colors[ImGuiCol_ResizeGripActive]      = color_scrollbar_active;
         // [Tab]
         colors[ImGuiCol_Tab]                   = color_bg;
-        colors[ImGuiCol_TabHovered]            = color_primary_hover;
-        colors[ImGuiCol_TabSelected]           = theme_tab_active;
-        colors[ImGuiCol_TabSelectedOverline]   = color_transparent;
+        colors[ImGuiCol_TabHovered]            = ImColor(74, 99, 146);
+        colors[ImGuiCol_TabSelected]           = ImColor(62, 88, 137);
         colors[ImGuiCol_TabDimmed]             = color_bg;
-        colors[ImGuiCol_TabDimmedSelected]     = theme_tab_active;
+        colors[ImGuiCol_TabDimmedSelected]     = ImColor(47, 63, 91);
         // [Plot]
         colors[ImGuiCol_PlotLines]             = color_primary;
         colors[ImGuiCol_PlotLinesHovered]      = color_primary_hover;
@@ -257,7 +254,6 @@ namespace ImGui
         colors[ImGuiCol_TableRowBg]            = color_transparent;
         colors[ImGuiCol_TableRowBgAlt]         = ImColor(255, 255, 255, 7);
         // [Nav]
-        colors[ImGuiCol_NavCursor];
         colors[ImGuiCol_NavHighlight]          = ImColor(166, 180, 209);
         colors[ImGuiCol_NavWindowingHighlight] = ImColor(206, 215, 234, 179);
         colors[ImGuiCol_NavWindowingDimBg]     = ImColor(10, 13, 20, 153);

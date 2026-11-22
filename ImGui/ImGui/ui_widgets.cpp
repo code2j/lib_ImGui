@@ -1,10 +1,11 @@
-#pragma once
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "ui_widgets.h"
 #include "imgui_internal.h"
 #include <cstdint>
+#include <algorithm>
+#include <cmath>
 
-#include "ui.hpp"
+#include "ui_icon.h"
 
 static const float DRAGDROP_HOLD_TO_OPEN_TIMER = 0.70f;    // Time for drag-hold to activate items accepting the ImGuiButtonFlags_PressedOnDragDropHold button behavior.
 static const float DRAG_MOUSE_THRESHOLD_FACTOR = 0.50f;
@@ -31,6 +32,64 @@ static const char* Items_SingleStringGetter(void* data, int idx)
     return *p ? p : NULL;
 }
 
+
+bool ImGui::BubbleTabs(const char* id, const char* const labels[], int count, int* selected)
+{
+    if (!id || !labels || !selected || count <= 0 || GetCurrentWindow()->SkipItems) return false;
+    *selected = std::clamp(*selected, 0, count - 1);
+    ImGuiWindow* window = GetCurrentWindow();
+    const ImGuiID storageId = window->GetID(id);
+    ImGuiStorage* storage = GetStateStorage();
+    const ImGuiID xId = ImHashStr("x", 0, storageId), yId = ImHashStr("y", 0, storageId);
+    const ImGuiID wId = ImHashStr("w", 0, storageId), hId = ImHashStr("h", 0, storageId);
+    const ImGuiID initId = ImHashStr("init", 0, storageId);
+    PushID(id);
+    PushStyleVar(ImGuiStyleVar_FrameRounding, 100.0f);
+    PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(18.0f, 7.0f));
+    PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+    PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+    PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0, 0));
+    PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));
+    const ImVec2 origin = GetCursorScreenPos();
+    ImDrawList* draw = GetWindowDrawList();
+    ImDrawListSplitter layers;
+    layers.Split(draw, 2);
+    layers.SetCurrentChannel(draw, 1);
+    ImVec2 targetMin, targetMax;
+    bool changed = false;
+    for (int i = 0; i < count; ++i) {
+        if (i > 0) {
+            const float width = CalcTextSize(labels[i], nullptr, true).x + GetStyle().FramePadding.x * 2.0f;
+            if (GetItemRectMax().x + GetStyle().ItemSpacing.x + width <= window->WorkRect.Max.x) SameLine();
+        }
+        PushID(i);
+        if (Button(labels[i])) { changed |= *selected != i; *selected = i; }
+        PopID();
+        if (*selected == i) {
+            const ImVec2 min = GetItemRectMin(), max = GetItemRectMax();
+            targetMin = ImVec2(min.x - origin.x, min.y - origin.y);
+            targetMax = ImVec2(max.x - origin.x, max.y - origin.y);
+        }
+    }
+    // A click can select an earlier tab after it was rendered only on the same iteration.
+    float x = targetMin.x, y = targetMin.y, w = targetMax.x - targetMin.x, h = targetMax.y - targetMin.y;
+    if (storage->GetBool(initId)) {
+        const float t = 1.0f - std::exp(-14.0f * GetIO().DeltaTime);
+        x = ImLerp(storage->GetFloat(xId), x, t); y = ImLerp(storage->GetFloat(yId), y, t);
+        w = ImLerp(storage->GetFloat(wId), w, t); h = ImLerp(storage->GetFloat(hId), h, t);
+    }
+    storage->SetBool(initId, true);
+    storage->SetFloat(xId, x); storage->SetFloat(yId, y);
+    storage->SetFloat(wId, w); storage->SetFloat(hId, h);
+    layers.SetCurrentChannel(draw, 0);
+    draw->AddRectFilled(ImVec2(origin.x + x, origin.y + y), ImVec2(origin.x + x + w, origin.y + y + h),
+                        GetColorU32(ImGuiCol_HeaderActive), 100.0f);
+    layers.Merge(draw);
+    PopStyleColor(3);
+    PopStyleVar(3);
+    PopID();
+    return changed;
+}
 
 static ImVector<ImGuiID> s_CollapsingHeaderIdStack;
 
@@ -814,7 +873,14 @@ bool ImGui::_drag_(const char* label, ImGuiDataType data_type, void* p_data, flo
             else if (clamp_range_dir == 0)
                 clamp_enabled = DataTypeIsZero(data_type, p_min) ? ((flags & ImGuiSliderFlags_ClampZeroRange) != 0) : true;
         }
-        return TempInputScalar(frame_bb, id, label, data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
+        if (label_size.x > 0.0f)
+            RenderText(ImVec2(pos.x, frame_bb.Min.y + style.FramePadding.y), label);
+
+        PushOverrideID(id);
+        const bool value_changed = TempInputScalar(frame_bb, id, "", data_type, p_data, format, clamp_enabled ? p_min : NULL, clamp_enabled ? p_max : NULL);
+        PopID();
+        IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Inputable);
+        return value_changed;
     }
 
     // Draw frame
@@ -827,7 +893,7 @@ bool ImGui::_drag_(const char* label, ImGuiDataType data_type, void* p_data, flo
     // --- 디자인 수정 부분: 활성화 시 커스텀 테두리 색상 적용 ---
     if (g.ActiveId == id)
     {
-        PushStyleColor(ImGuiCol_Border, ImVec4(0.364705882f, 0.411764706f, 0.941176471f, 1.00f));
+        PushStyleColor(ImGuiCol_Border, style.Colors[ImGuiCol_ButtonActive]);
 
         float active_border_size = style.FrameBorderSize > 0.0f ? style.FrameBorderSize : 1.0f;
         PushStyleVar(ImGuiStyleVar_FrameBorderSize, active_border_size);
@@ -1300,7 +1366,7 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
     // ==========================================
     // [레이아웃 계산] 라벨은 왼쪽, 위젯은 우측 끝
     // ==========================================
-    const float available_width = ImMax(1.0f, window->WorkRect.Max.x - pos.x);
+    const float available_width = ImMax(1.0f, ImMin(window->WorkRect.Max.x, window->ClipRect.Max.x) - pos.x);
     const float label_width = label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f;
     const float w = ImMax(1.0f, ImMin(ImGui::CalcItemWidth(), available_width - label_width));
     const float total_width = available_width;
@@ -1409,9 +1475,26 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
     int active_grab = storage->GetInt(id, 0);
     ImGuiID offset_id = id + 1;
 
-    float hitbox_radius = grab_width * 0.5f + 4.0f;
-    ImRect left_grab_bb(ImVec2(left_x - hitbox_radius, frame_bb.Min.y - 4.0f), ImVec2(left_x + hitbox_radius, frame_bb.Max.y + 4.0f));
-    ImRect right_grab_bb(ImVec2(right_x - hitbox_radius, frame_bb.Min.y - 4.0f), ImVec2(right_x + hitbox_radius, frame_bb.Max.y + 4.0f));
+    const float bubble_height = ImMax(value_height + 6.0f, 18.0f);
+    const float bubble_y = frame_bb.GetCenter().y;
+    char min_buf[64], max_buf[64];
+    auto update_bubbles = [&](ImRect& left, ImRect& right) {
+        DataTypeFormatString(min_buf, IM_COUNTOF(min_buf), data_type, p_min, format);
+        DataTypeFormatString(max_buf, IM_COUNTOF(max_buf), data_type, p_max, format);
+        const float left_width = ImMin(w * 0.5f, ImMax(bubble_height, g.Font->CalcTextSizeA(value_height, FLT_MAX, 0.0f, min_buf).x + 16.0f));
+        const float right_width = ImMin(w * 0.5f, ImMax(bubble_height, g.Font->CalcTextSizeA(value_height, FLT_MAX, 0.0f, max_buf).x + 16.0f));
+        float left_min = ImClamp(left_x - left_width * 0.5f, frame_bb.Min.x, frame_bb.Max.x - left_width);
+        float right_min = ImClamp(right_x - right_width * 0.5f, frame_bb.Min.x, frame_bb.Max.x - right_width);
+        if (left_min + left_width > right_min) {
+            const float middle = (left_min + left_width + right_min) * 0.5f;
+            left_min = ImClamp(middle - left_width, frame_bb.Min.x, frame_bb.Max.x - left_width - right_width);
+            right_min = left_min + left_width;
+        }
+        left = ImRect(left_min, bubble_y - bubble_height * 0.5f, left_min + left_width, bubble_y + bubble_height * 0.5f);
+        right = ImRect(right_min, bubble_y - bubble_height * 0.5f, right_min + right_width, bubble_y + bubble_height * 0.5f);
+    };
+    ImRect left_grab_bb, right_grab_bb;
+    update_bubbles(left_grab_bb, right_grab_bb);
 
     if (hovered && g.IO.MouseClicked[0])
     {
@@ -1493,7 +1576,7 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
     // ==========================================
     ImGui::RenderNavCursor(frame_bb, id);
 
-    float track_y = std::floor(frame_bb.Max.y - 9.0f + 0.5f);
+    float track_y = bubble_y;
     float lx = std::floor(left_x + 0.5f);
     float rx = std::floor(right_x + 0.5f);
 
@@ -1503,42 +1586,24 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
     ImU32 bg_track_col = ImGui::GetColorU32(ImGuiCol_ScrollbarGrab);
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
 
-    ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
+    ImU32 fill_track_col = ImGui::GetColorU32(active_grab ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_SliderGrab);
     window->DrawList->AddRectFilled(ImVec2(lx, track_min.y), ImVec2(rx, track_max.y), fill_track_col, track_height * 0.5f);
 
-    ImU32 grab_col = IM_COL32(255, 255, 255, 255);
-    ImU32 grab_border_col = ImGui::GetColorU32(ImGuiCol_Border);
-    float grab_border_thickness = 1.0f;
-    float tri_w = 7.0f, tri_h = 9.0f, corner_radius = 2.0f;
-
-    auto AddRoundedTriangle = [&](ImVec2 p1, ImVec2 p2, ImVec2 p3, float radius, ImU32 fill_col, ImU32 border_col, float border_thickness) {
-        auto build_path = [&]() {
-            ImVec2 pts[3] = { p1, p2, p3 };
-            for (int i = 0; i < 3; i++) {
-                ImVec2 prev = pts[(i + 2) % 3], curr = pts[i], next = pts[(i + 1) % 3];
-                ImVec2 v1(prev.x - curr.x, prev.y - curr.y), v2(next.x - curr.x, next.y - curr.y);
-                float len1 = std::sqrt(v1.x * v1.x + v1.y * v1.y), len2 = std::sqrt(v2.x * v2.x + v2.y * v2.y);
-                if (len1 > 0.0f) { v1.x /= len1; v1.y /= len1; }
-                if (len2 > 0.0f) { v2.x /= len2; v2.y /= len2; }
-                float angle1 = std::atan2(v1.y, v1.x), angle2 = std::atan2(v2.y, v2.x);
-                float diff = angle2 - angle1;
-                while (diff < -IM_PI) diff += IM_PI * 2.0f;
-                while (diff > IM_PI) diff -= IM_PI * 2.0f;
-                window->DrawList->PathArcTo(curr, radius, angle1, angle1 + diff, 6);
-            }
-        };
-        build_path(); window->DrawList->PathFillConvex(fill_col);
-        if (border_thickness > 0.0f) {
-            build_path(); window->DrawList->PathStroke(border_col, ImDrawFlags_Closed, border_thickness);
-        }
+    update_bubbles(left_grab_bb, right_grab_bb);
+    auto draw_bubble = [&](const ImRect& rect, const char* text) {
+        const ImU32 fill = GetColorU32(ImVec4(0.96f, 0.97f, 0.99f, 1.0f));
+        const ImU32 border = GetColorU32(ImVec4(0.78f, 0.80f, 0.84f, 1.0f));
+        const ImU32 text_color = GetColorU32(ImVec4(0.13f, 0.15f, 0.19f, 1.0f));
+        window->DrawList->AddRectFilled(rect.Min, rect.Max, fill, bubble_height * 0.5f);
+        window->DrawList->AddRect(rect.Min, rect.Max, border, bubble_height * 0.5f);
+        const float text_width = g.Font->CalcTextSizeA(value_height, FLT_MAX, 0.0f, text).x;
+        const ImVec4 clip(rect.Min.x, rect.Min.y, rect.Max.x, rect.Max.y);
+        window->DrawList->AddText(g.Font, value_height,
+            ImVec2(rect.GetCenter().x - text_width * 0.5f, rect.GetCenter().y - value_height * 0.5f),
+            text_color, text, NULL, 0.0f, &clip);
     };
-
-    AddRoundedTriangle(ImVec2(lx - tri_w, track_y - tri_h), ImVec2(lx + tri_w, track_y), ImVec2(lx - tri_w, track_y + tri_h), corner_radius, grab_col, grab_border_col, grab_border_thickness);
-    AddRoundedTriangle(ImVec2(rx + tri_w, track_y - tri_h), ImVec2(rx + tri_w, track_y + tri_h), ImVec2(rx - tri_w, track_y), corner_radius, grab_col, grab_border_col, grab_border_thickness);
-
-    // ==========================================
-    // 4. 라벨 표시 (가장 좌측) 및 커스텀 말풍선 툴팁
-    // ==========================================
+    draw_bubble(left_grab_bb, min_buf);
+    draw_bubble(right_grab_bb, max_buf);
 
     // 라벨 렌더링
     if (label_size.x > 0.0f) {
@@ -1546,17 +1611,6 @@ bool ImGui::_slider4_(const char *label, ImGuiDataType data_type, void *p_min, v
         if (label != label_display_end)
             ImGui::RenderText(ImVec2(pos.x, frame_bb.Min.y + style.FramePadding.y), label, label_display_end);
     }
-
-    char min_buf[64], max_buf[64], range_buf[140];
-    DataTypeFormatString(min_buf, IM_COUNTOF(min_buf), data_type, p_min, format);
-    DataTypeFormatString(max_buf, IM_COUNTOF(max_buf), data_type, p_max, format);
-    ImFormatString(range_buf, IM_COUNTOF(range_buf), "%s ~ %s", min_buf, max_buf);
-    const float value_width = g.Font->CalcTextSizeA(value_height, FLT_MAX, 0.0f, range_buf).x;
-    const float value_left = ImMax(pos.x, frame_bb.Max.x - value_width);
-    const ImVec4 clip_rect(pos.x, pos.y, frame_bb.Max.x, pos.y + value_height);
-    window->DrawList->AddText(g.Font, value_height,
-        ImVec2(value_left, pos.y),
-        GetColorU32(ImGuiCol_TextDisabled), range_buf, NULL, 0.0f, &clip_rect);
 
     return value_changed;
 }
@@ -1705,14 +1759,12 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
         format = DataTypeGetInfo(data_type)->PrintFmt;
     char value_buf[64];
 
-    // [수정] 슬라이더 위젯의 너비 계산 (기본 아이템 너비 사용)
-    const float w = CalcItemWidth();
-
-    // [수정] 전체 가용 영역 및 위젯이 배치될 오른쪽 좌표 계산
-    const float min_width = (label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f) + w;
-    const float total_width = ImMax(min_width, window->WorkRect.Max.x - pos.x);
-
-    // 슬라이더 프레임을 오른쪽 끝에 배치
+    // Keep the frame inside both the child work area and its actual clip rectangle.
+    const float right_edge = ImMin(window->WorkRect.Max.x, window->ClipRect.Max.x);
+    const float available_width = ImMax(1.0f, right_edge - pos.x);
+    const float label_width = label_size.x > 0.0f ? label_size.x + style.ItemInnerSpacing.x : 0.0f;
+    const float w = ImMin(CalcItemWidth(), ImMax(1.0f, available_width - label_width));
+    const float total_width = available_width;
     const float frame_x = pos.x + total_width - w;
     const float frame_height = label_size.y + style.FramePadding.y * 2.0f;
     const ImRect frame_bb(ImVec2(frame_x, pos.y), ImVec2(frame_x + w, pos.y + frame_height));
@@ -1759,21 +1811,30 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
     if (v_min_val != v_max_val)
         t = (float)ImClamp((v_clamped - v_min_val) / (v_max_val - v_min_val), 0.0, 1.0);
 
-    const float track_y = std::floor(frame_bb.Max.y - 9.0f + 0.5f);
-    float grab_padding = 2.0f;
-    float grab_radius = 6.0f;
-    float grab_w = grab_radius * 2.0f;
-    float internal_min_x = slider_bb.Min.x + grab_padding + grab_w * 0.5f;
-    float internal_max_x = slider_bb.Max.x - grab_padding - grab_w * 0.5f;
-
-    float grab_center_x = ImLerp(internal_min_x, internal_max_x, t);
-    ImVec2 current_grab_center = ImVec2(grab_center_x, track_y);
-
-    float grab_hitbox_radius = grab_radius + 4.0f;
-    ImRect interact_grab_bb(
-        current_grab_center.x - grab_hitbox_radius, frame_bb.Min.y - 4.0f,
-        current_grab_center.x + grab_hitbox_radius, frame_bb.Max.y + 4.0f
-    );
+    const float track_y = std::floor(frame_bb.GetCenter().y + 0.5f);
+    const float value_height = g.FontSize * 0.85f;
+    const float bubble_padding_x = 8.0f;
+    const float bubble_height = ImMax(value_height + 6.0f, 18.0f);
+    DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
+    auto bubble_width_for_value = [&]() {
+        const float text_width = g.Font->CalcTextSizeA(value_height, FLT_MAX, 0.0f, value_buf).x;
+        return ImMin(frame_bb.GetWidth(), ImMax(bubble_height, text_width + bubble_padding_x * 2.0f));
+    };
+    auto bubble_rect = [&](float center_x, float width) {
+        const float left = ImClamp(center_x - width * 0.5f, frame_bb.Min.x, frame_bb.Max.x - width);
+        return ImRect(left, track_y - bubble_height * 0.5f, left + width, track_y + bubble_height * 0.5f);
+    };
+    // Match SliderBehavior's grab geometry for integer and floating point ranges.
+    const float slider_width = ImMax(0.0f, slider_bb.GetWidth() - 4.0f);
+    float behavior_grab_width = style.GrabMinSize;
+    if (data_type != ImGuiDataType_Float && data_type != ImGuiDataType_Double)
+        behavior_grab_width = ImMax(behavior_grab_width, slider_width / (float)(std::abs(v_max_val - v_min_val) + 1.0));
+    behavior_grab_width = ImMin(behavior_grab_width, slider_width);
+    const float internal_min_x = slider_bb.Min.x + 2.0f + behavior_grab_width * 0.5f;
+    const float internal_max_x = slider_bb.Max.x - 2.0f - behavior_grab_width * 0.5f;
+    const float grab_center_x = ImLerp(internal_min_x, internal_max_x, t);
+    ImRect interact_grab_bb = bubble_rect(grab_center_x, bubble_width_for_value());
+    interact_grab_bb.Expand(3.0f);
 
     const bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags);
     bool is_clicking_outside_grab = hovered && IsMouseClicked(0, ImGuiInputFlags_None, id) && !interact_grab_bb.Contains(g.IO.MousePos);
@@ -1829,7 +1890,17 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
     }
 
     ImRect grab_bb;
+    // The visible bubble can be wider than SliderBehavior's internal grab.
+    // Preserve where it was clicked instead of snapping its center to the mouse.
+    const bool bubble_just_activated = g.ActiveId == id && g.ActiveIdIsJustActivated &&
+        g.ActiveIdSource == ImGuiInputSource_Mouse && !is_clicking_outside_grab;
+    if (bubble_just_activated) {
+        g.SliderGrabClickOffset = g.IO.MousePos.x - grab_center_x;
+        g.ActiveIdIsJustActivated = false;
+    }
     const bool value_changed = SliderBehavior(slider_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
+    if (bubble_just_activated)
+        g.ActiveIdIsJustActivated = true;
 
     if (is_clicking_outside_grab)
     {
@@ -1845,17 +1916,6 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
     // ==========================================
     RenderNavCursor(frame_bb, id);
 
-    auto GetMappedGrabCenter = [&](const ImRect& g_bb) -> ImVec2 {
-        float g_w = g_bb.GetWidth();
-        float internal_min_c = slider_bb.Min.x + grab_padding + g_w * 0.5f;
-        float internal_max_c = slider_bb.Max.x - grab_padding - g_w * 0.5f;
-        float t_render = 0.0f;
-        if (internal_max_c > internal_min_c)
-            t_render = ImClamp((g_bb.GetCenter().x - internal_min_c) / (internal_max_c - internal_min_c), 0.0f, 1.0f);
-        float mapped_x = ImLerp(slider_bb.Min.x, slider_bb.Max.x, t_render);
-        return ImVec2(mapped_x, track_y);
-    };
-
     float track_height = 4.0f;
     ImVec2 track_min = ImVec2(frame_bb.Min.x, track_y - track_height * 0.5f);
     ImVec2 track_max = ImVec2(frame_bb.Max.x, track_y + track_height * 0.5f);
@@ -1863,25 +1923,24 @@ bool ImGui::_slider2_(const char* label, ImGuiDataType data_type, void* p_data, 
     ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab);
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
 
-    ImVec2 grab_center = GetMappedGrabCenter(grab_bb);
+    ImVec2 grab_center = ImVec2(grab_bb.GetCenter().x, track_y);
 
-    ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
+    ImU32 fill_track_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_SliderGrab);
     if (grab_center.x > frame_bb.Min.x)
     {
         ImVec2 fill_max = ImVec2(grab_center.x, track_max.y);
         window->DrawList->AddRectFilled(track_min, fill_max, fill_track_col, track_height * 0.5f);
     }
 
-    window->DrawList->AddCircleFilled(grab_center, grab_radius, GetColorU32(ImVec4(1, 1, 1, 1)));
-    window->DrawList->AddCircle(grab_center, grab_radius, GetColorU32(ImGuiCol_Border));
-
     DataTypeFormatString(value_buf, IM_COUNTOF(value_buf), data_type, p_data, format);
-    const float value_height = g.FontSize * 0.85f;
     const float value_width = g.Font->CalcTextSizeA(value_height, FLT_MAX, 0.0f, value_buf).x;
-    const ImVec4 clip_rect(frame_bb.Min.x, pos.y, frame_bb.Max.x, pos.y + value_height);
+    const ImRect bubble = bubble_rect(grab_center.x, bubble_width_for_value());
+    window->DrawList->AddRectFilled(bubble.Min, bubble.Max, GetColorU32(ImVec4(0.96f, 0.97f, 0.99f, 1.0f)), bubble_height * 0.5f);
+    window->DrawList->AddRect(bubble.Min, bubble.Max, GetColorU32(ImVec4(0.78f, 0.80f, 0.84f, 1.0f)), bubble_height * 0.5f);
+    const ImVec4 bubble_clip(bubble.Min.x, bubble.Min.y, bubble.Max.x, bubble.Max.y);
     window->DrawList->AddText(g.Font, value_height,
-        ImVec2(ImMax(frame_bb.Min.x, frame_bb.Max.x - value_width), pos.y),
-        GetColorU32(ImGuiCol_TextDisabled), value_buf, NULL, 0.0f, &clip_rect);
+        ImVec2(bubble.GetCenter().x - value_width * 0.5f, bubble.GetCenter().y - value_height * 0.5f),
+        GetColorU32(ImVec4(0.13f, 0.15f, 0.19f, 1.0f)), value_buf, NULL, 0.0f, &bubble_clip);
 
     // [수정] 라벨(텍스트)을 가장 왼쪽 위치(pos.x)에 렌더링
     if (label_size.x > 0.0f)
@@ -2075,7 +2134,7 @@ bool ImGui::_slider3(const char* label, ImGuiDataType data_type, void* p_data, c
 
     ImVec2 grab_center = GetMappedGrabCenter(grab_bb);
 
-    ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
+    ImU32 fill_track_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_SliderGrab);
     if (grab_center.x > frame_bb.Min.x)
     {
         ImVec2 fill_max = ImVec2(grab_center.x, track_max.y);
@@ -2381,7 +2440,7 @@ bool ImGui::_slider5_(const char *label, ImGuiDataType data_type, void *p_min, v
     ImU32 bg_track_col = GetColorU32(ImGuiCol_ScrollbarGrab);
     window->DrawList->AddRectFilled(track_min, track_max, bg_track_col, track_height * 0.5f);
 
-    ImU32 fill_track_col = ImGui::GetColorU32(ImVec4(0.3647f, 0.4117f, 0.9411f, 1.0f));
+    ImU32 fill_track_col = ImGui::GetColorU32(active_grab ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_SliderGrab);
     window->DrawList->AddRectFilled(ImVec2(lx, track_min.y), ImVec2(rx, track_max.y), fill_track_col, track_height * 0.5f);
 
     ImU32 grab_col = IM_COL32(255, 255, 255, 255);
@@ -2428,7 +2487,7 @@ bool ImGui::_slider5_(const char *label, ImGuiDataType data_type, void *p_min, v
     DataTypeFormatString(val_max_buf, sizeof(val_max_buf), data_type, p_max, format);
 
     // [수정] 텍스트가 가용 폭(w)의 우측 끝에 정확히 정렬됨
-    char value_buf[128];
+    char value_buf[160];
     snprintf(value_buf, sizeof(value_buf), "%s " ICON_MD_ARROW_RANGE " %s", val_min_buf, val_max_buf);
 
     const ImVec2 value_size = ImGui::CalcTextSize(value_buf);
@@ -2620,14 +2679,14 @@ bool ImGui::StatusStepBar(const char *str_id, int *current_step, const char **st
     ImDrawList* draw_list = window->DrawList;
 
     // 색상 정의
-    ImVec4 active_col_v     = ImGui::theme_id ? ImColor(87, 242, 135):ImColor(98, 192, 115);    // 부드러운 그린 (활성)
-    ImVec4 inactive_col_v   = ImGui::theme_id ? ImColor(36, 36, 49) : ImColor(200, 200, 200);   // 다크 그레이 (비활성) [dark/white]
-    ImVec4 hover_col_v      = ImGui::theme_id ? ImColor(44, 44, 47) : ImColor(180, 180, 180);   // 호버 색상
+    ImVec4 active_col_v     = (ImGui::GetStyleColorVec4(ImGuiCol_WindowBg).x < 0.5f) ? ImColor(87, 242, 135):ImColor(98, 192, 115);    // 부드러운 그린 (활성)
+    ImVec4 inactive_col_v   = (ImGui::GetStyleColorVec4(ImGuiCol_WindowBg).x < 0.5f) ? ImColor(36, 36, 49) : ImColor(200, 200, 200);   // 다크 그레이 (비활성) [dark/white]
+    ImVec4 hover_col_v      = (ImGui::GetStyleColorVec4(ImGuiCol_WindowBg).x < 0.5f) ? ImColor(44, 44, 47) : ImColor(180, 180, 180);   // 호버 색상
 
 
-    ImU32 text_active_col   = ImGui::theme_id ? IM_COL32(240, 240, 240, 255) : IM_COL32(40, 40, 45, 255); // [dark/white]
-    ImU32 text_inactive_col = ImGui::theme_id ? IM_COL32(130, 130, 130, 255) : IM_COL32(190, 190, 190, 255);
-    ImU32 icon_col          = ImGui::theme_id ? IM_COL32(20, 20, 20, 255)    : IM_COL32(240, 240, 240, 240);
+    ImU32 text_active_col   = (ImGui::GetStyleColorVec4(ImGuiCol_WindowBg).x < 0.5f) ? IM_COL32(240, 240, 240, 255) : IM_COL32(40, 40, 45, 255); // [dark/white]
+    ImU32 text_inactive_col = (ImGui::GetStyleColorVec4(ImGuiCol_WindowBg).x < 0.5f) ? IM_COL32(130, 130, 130, 255) : IM_COL32(190, 190, 190, 255);
+    ImU32 icon_col          = (ImGui::GetStyleColorVec4(ImGuiCol_WindowBg).x < 0.5f) ? IM_COL32(20, 20, 20, 255)    : IM_COL32(240, 240, 240, 240);
 
     float delta_time = GetIO().DeltaTime;
     float anim_speed = 10.0f; // 애니메이션 속도
@@ -2943,109 +3002,6 @@ bool ImGui::Joystic(ImVec2* out)
     return value_changed;
 }
 
-bool ImGui::TransformControl(Eigen::Matrix4d* matrix)
-{
-    if (!matrix) {
-        return false;
-    }
-
-    bool is_changed = false;
-
-    ImGui::PushID(matrix);
-
-    // 위젯 내부에서 상태를 유지할 변수
-    static float translation[3]  = { 0.0f, 0.0f, 0.0f };
-    static float rotation_deg[3] = { 0.0f, 0.0f, 0.0f };
-
-
-    // -------------------------------------------------------------
-    // 초기화 버튼
-    // -------------------------------------------------------------
-    if (ImGui::Button("Reset All", ImVec2(-1, 0))) {
-        for(int i = 0; i < 3; ++i) {
-            translation[i] = 0.0f;
-            rotation_deg[i] = 0.0f;
-        }
-        is_changed = true;
-    }
-
-    ImGui::Spacing();
-
-
-    // -------------------------------------------------------------
-    // 이동 (Translation) 컨트롤
-    // -------------------------------------------------------------
-    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Translation (X, Y, Z)");
-    ImGui::PushItemWidth(-1);
-    if (ImGui::DragFloat3("##Trans", translation, 0.01f, 0.0f, 0.0f, "%.3f")) {
-        is_changed = true;
-    }
-    ImGui::PopItemWidth();
-
-    ImGui::Spacing();
-
-
-    // -------------------------------------------------------------
-    // 회전 (Rotation) 컨트롤
-    // -------------------------------------------------------------
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f), "Rotation [Deg] (Roll, Pitch, Yaw)");
-    ImGui::PushItemWidth(-1);
-    if (ImGui::DragFloat3("##Rot", rotation_deg, 0.5f, 0.0f, 0.0f, "%.1f")) {
-        is_changed = true;
-    }
-    ImGui::PopItemWidth();
-
-
-    // -------------------------------------------------------------
-    // 변경 시 Matrix 업데이트
-    // -------------------------------------------------------------
-    if (is_changed) {
-        double roll_rad  = rotation_deg[0] * (M_PI / 180.0);
-        double pitch_rad = rotation_deg[1] * (M_PI / 180.0);
-        double yaw_rad   = rotation_deg[2] * (M_PI / 180.0);
-
-        Eigen::AngleAxisd rollAngle(roll_rad, Eigen::Vector3d::UnitX());
-        Eigen::AngleAxisd pitchAngle(pitch_rad, Eigen::Vector3d::UnitY());
-        Eigen::AngleAxisd yawAngle(yaw_rad, Eigen::Vector3d::UnitZ());
-
-        Eigen::Matrix3d rotation_matrix = (yawAngle * pitchAngle * rollAngle).matrix();
-
-        // 포인터 접근(->)을 통한 행렬 조작
-        matrix->setIdentity();
-        matrix->block<3, 3>(0, 0) = rotation_matrix;
-        matrix->block<3, 1>(0, 3) = Eigen::Vector3d(translation[0], translation[1], translation[2]);
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-
-
-    // -------------------------------------------------------------
-    // 결과 행렬 출력
-    // -------------------------------------------------------------
-    ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "Current Matrix (4x4)");
-    if (ImGui::BeginTable("MatrixTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame)) {
-        for (int i = 0; i < 4; ++i) {
-            ImGui::TableNextRow();
-            for (int j = 0; j < 4; ++j) {
-                ImGui::TableSetColumnIndex(j);
-                // 괄호와 역참조 연산자(*matrix)를 사용하여 요소 접근
-                if (j == 3 && i != 3) {
-                    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%8.3f", (*matrix)(i, j));
-                } else {
-                    ImGui::Text("%8.3f", (*matrix)(i, j));
-                }
-            }
-        }
-        ImGui::EndTable();
-    }
-
-    ImGui::PopID();
-
-    return is_changed;
-}
-
 bool ImGui::ThemeSelector(int* current_theme)
 {
     bool value_changed = false;
@@ -3062,7 +3018,7 @@ bool ImGui::ThemeSelector(int* current_theme)
             "Light Mode",
             ImColor(251, 251, 251),  // Bg
             ImColor(235, 235, 237),   // Panel
-            ImColor(93, 105, 240),    // Primary
+            IM_COL32(77, 117, 199, 184), // Primary
             ImColor(246, 246, 246),   // Secondary
             ImColor(40, 40, 45)       // Text
         },
@@ -3070,7 +3026,7 @@ bool ImGui::ThemeSelector(int* current_theme)
             "Dark Mode",
             ImColor(7, 7, 9),       // Bg
             ImColor(12, 12, 14),   // Panel
-            ImColor(93, 105, 240), // Primary
+            IM_COL32(77, 117, 199, 184), // Primary
             ImColor(11, 11, 12),   // Secondary
             ImColor(228, 228, 230) // Text
         }
@@ -3204,83 +3160,117 @@ void ImGui::Help(const char *desc)
     }
 }
 
-// int ImGui::RadialMenu(const char* id, const char* const items[], int count, float radius, float dead_zone, float hold_seconds)
-// {
-//     if (count <= 0 || !items || radius <= 0.0f) return -1;
-//     dead_zone = std::max(0.0f, std::min(dead_zone, radius));
-//     ImGuiStorage* state = GetStateStorage();
-//     PushID(id);
-//     const ImGuiID open_id = GetID("##radial_open");
-//     const ImGuiID pending_id = GetID("##radial_pending");
-//     const ImGuiID time_id = GetID("##radial_start");
-//     const ImGuiID x_id = GetID("##radial_x");
-//     const ImGuiID y_id = GetID("##radial_y");
-//     if (IsWindowHovered() && IsMouseClicked(ImGuiMouseButton_Right)) {
-//         const ImVec2 mouse = GetMousePos();
-//         state->SetBool(pending_id, true);
-//         state->SetBool(open_id, false);
-//         state->SetFloat(time_id, static_cast<float>(GetTime()));
-//         state->SetFloat(x_id, mouse.x);
-//         state->SetFloat(y_id, mouse.y);
-//     }
-//     if (state->GetBool(pending_id)) {
-//         if (!IsMouseDown(ImGuiMouseButton_Right) || IsKeyPressed(ImGuiKey_Escape)) {
-//             state->SetBool(pending_id, false);
-//         } else {
-//             const float elapsed = static_cast<float>(GetTime()) - state->GetFloat(time_id);
-//             const float progress = hold_seconds <= 0.0f ? 1.0f : std::min(1.0f, elapsed / hold_seconds);
-//             const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
-//             ImDrawList* draw = GetForegroundDrawList();
-//             constexpr float pi = 3.14159265358979323846f;
-//             const float progress_angle = -pi * 0.5f + 2.0f * pi * progress;
-//             if (progress < 1.0f) {
-//                 draw->PathArcTo(center, 17.0f, progress_angle, pi * 1.5f, 48);
-//                 draw->PathStroke(IM_COL32(30, 35, 45, 200), 0, 4.0f);
-//             }
-//             if (progress > 0.0f) {
-//                 draw->PathArcTo(center, 17.0f, -pi * 0.5f, progress_angle, 48);
-//                 draw->PathStroke(IM_COL32(100, 170, 255, 255), 0, 4.0f);
-//             }
-//             if (progress >= 1.0f) {
-//                 state->SetBool(pending_id, false);
-//                 state->SetBool(open_id, true);
-//             }
-//         }
-//     }
-//     int result = -1;
-//     if (state->GetBool(open_id)) {
-//         constexpr float pi = 3.14159265358979323846f;
-//         const float step = 2.0f * pi / count;
-//         const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
-//         const ImVec2 mouse = GetMousePos();
-//         const float dx = mouse.x - center.x, dy = mouse.y - center.y;
-//         int selected = -1;
-//         if (dx * dx + dy * dy >= dead_zone * dead_zone) {
-//             float angle = std::atan2(dy, dx) + pi * 0.5f + step * 0.5f;
-//             angle = std::fmod(angle + 2.0f * pi, 2.0f * pi);
-//             selected = static_cast<int>(angle / step) % count;
-//         }
-//         ImDrawList* draw = GetForegroundDrawList();
-//         for (int i = 0; i < count; ++i) {
-//             const float angle = -pi * 0.5f + i * step;
-//             draw->PathLineTo(center);
-//             draw->PathArcTo(center, radius, angle - step * 0.5f, angle + step * 0.5f, 32);
-//             draw->PathFillConvex(i == selected ? IM_COL32(75, 130, 210, 240) : IM_COL32(35, 40, 50, 230));
-//             const ImVec2 size = CalcTextSize(items[i]);
-//             draw->AddText(ImVec2(center.x + std::cos(angle) * radius * 0.6f - size.x * 0.5f,
-//                                  center.y + std::sin(angle) * radius * 0.6f - size.y * 0.5f),
-//                           IM_COL32_WHITE, items[i]);
-//         }
-//         draw->AddCircle(center, radius, IM_COL32(220, 220, 220, 220), 64, 2.0f);
-//         draw->AddCircleFilled(center, dead_zone, IM_COL32(25, 28, 35, 255));
-//         if (IsKeyPressed(ImGuiKey_Escape)) state->SetBool(open_id, false);
-//         else if (IsMouseReleased(ImGuiMouseButton_Right)) {
-//             result = selected;
-//             state->SetBool(open_id, false);
-//         }
-//     }
-//     PopID();
-//     return result;
-// }
-
-
+namespace ImGui {
+    int RadialMenu(const char* id, const char* const items[], int count, float radius, float dead_zone, float hold_seconds, bool can_open)
+    {
+        if (count <= 0 || !items || radius <= 0.0f) return -1;
+        dead_zone = std::max(0.0f, std::min(dead_zone, radius));
+        ImGuiStorage* state = GetStateStorage();
+        PushID(id);
+        const ImGuiID open_id = GetID("##radial_open");
+        const ImGuiID pending_id = GetID("##radial_pending");
+        const ImGuiID time_id = GetID("##radial_start");
+        const ImGuiID x_id = GetID("##radial_x");
+        const ImGuiID y_id = GetID("##radial_y");
+        const ImGuiID stage_id = GetID("##radial_stage");
+        const ImGuiID transition_id = GetID("##radial_transition");
+        const ImGuiID visibility_id = GetID("##radial_visibility");
+        if (!state->GetBool(open_id) && !state->GetBool(pending_id) && can_open && IsWindowHovered() && IsMouseClicked(ImGuiMouseButton_Right)) {
+            const ImVec2 mouse = GetMousePos();
+            state->SetBool(pending_id, true);
+            state->SetBool(open_id, false);
+            state->SetFloat(time_id, static_cast<float>(GetTime()));
+            state->SetFloat(x_id, mouse.x);
+            state->SetFloat(y_id, mouse.y);
+            state->SetInt(stage_id, 0);
+        }
+        if (state->GetBool(pending_id)) {
+            if (!IsMouseDown(ImGuiMouseButton_Right) || IsKeyPressed(ImGuiKey_Escape)) {
+                state->SetBool(pending_id, false);
+            } else {
+                const float elapsed = static_cast<float>(GetTime()) - state->GetFloat(time_id);
+                const float progress = hold_seconds <= 0.0f ? 1.0f : std::min(1.0f, elapsed / hold_seconds);
+                const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
+                ImDrawList* draw = GetForegroundDrawList();
+                constexpr float pi = 3.14159265358979323846f;
+                const float progress_angle = -pi * 0.5f + 2.0f * pi * progress;
+                if (progress < 1.0f) {
+                    draw->PathArcTo(center, 17.0f, progress_angle, pi * 1.5f, 48);
+                    draw->PathStroke(IM_COL32(30, 35, 45, 200), 0, 4.0f);
+                }
+                if (progress > 0.0f) {
+                    draw->PathArcTo(center, 17.0f, -pi * 0.5f, progress_angle, 48);
+                    draw->PathStroke(GetColorU32(ImGuiCol_Button), 0, 4.0f);
+                }
+                if (progress >= 1.0f) {
+                    state->SetBool(pending_id, false);
+                    state->SetBool(open_id, true);
+                }
+            }
+        }
+        int result = -1;
+        const bool is_open = state->GetBool(open_id);
+        float visibility = state->GetFloat(visibility_id, 0.0f);
+        visibility = std::clamp(visibility + (is_open ? 1.0f : -1.0f) * GetIO().DeltaTime / 0.16f, 0.0f, 1.0f);
+        state->SetFloat(visibility_id, visibility);
+        if (visibility > 0.0f) {
+            constexpr float pi = 3.14159265358979323846f;
+            const float fade = visibility * visibility * (3.0f - 2.0f * visibility);
+            const auto with_alpha = [fade](ImU32 color) {
+                const unsigned alpha = (color >> IM_COL32_A_SHIFT) & 0xff;
+                return (color & ~IM_COL32_A_MASK) | (static_cast<ImU32>(alpha * fade) << IM_COL32_A_SHIFT);
+            };
+            const bool hand_stage = state->GetInt(stage_id) == 1;
+            const char* hand_items[] = {"왼쪽", "오른쪽"};
+            const char* const* shown_items = hand_stage ? hand_items : items;
+            const int shown_count = hand_stage ? 2 : count;
+            const float animation = hand_stage ? std::min(1.0f, (static_cast<float>(GetTime()) - state->GetFloat(transition_id)) / 0.2f) : 1.0f;
+            const float shown_radius = radius * (0.65f + 0.35f * (1.0f - (1.0f - animation) * (1.0f - animation))) * (0.75f + 0.25f * fade);
+            const float step = 2.0f * pi / shown_count;
+            const ImVec2 center(state->GetFloat(x_id), state->GetFloat(y_id));
+            const ImVec2 mouse = GetMousePos();
+            const float dx = mouse.x - center.x, dy = mouse.y - center.y;
+            int selected = -1;
+            if (dx * dx + dy * dy >= dead_zone * dead_zone) {
+                float angle = std::atan2(dy, dx) + pi * 0.5f + step * 0.5f;
+                angle = std::fmod(angle + 2.0f * pi, 2.0f * pi);
+                selected = static_cast<int>(angle / step) % shown_count;
+            }
+            ImDrawList* draw = GetForegroundDrawList();
+            for (int i = 0; i < shown_count; ++i) {
+                const float angle = -pi * 0.5f + i * step;
+                draw->PathLineTo(center);
+                draw->PathArcTo(center, shown_radius, angle - step * 0.5f, angle + step * 0.5f, 32);
+                draw->PathFillConvex(with_alpha(is_open && i == selected ? GetColorU32(ImGuiCol_Button) : IM_COL32(35, 40, 50, 230)));
+                const ImVec2 size = CalcTextSize(shown_items[i]);
+                draw->AddText(ImVec2(center.x + std::cos(angle) * shown_radius * 0.6f - size.x * 0.5f,
+                                     center.y + std::sin(angle) * shown_radius * 0.6f - size.y * 0.5f),
+                              with_alpha(IM_COL32_WHITE), shown_items[i]);
+            }
+            for (int i = 0; i < shown_count; ++i) {
+                const float angle = -pi * 0.5f + (i - 0.5f) * step;
+                const float x = std::cos(angle), y = std::sin(angle);
+                draw->AddLine(ImVec2(center.x + x * dead_zone, center.y + y * dead_zone),
+                              ImVec2(center.x + x * shown_radius, center.y + y * shown_radius),
+                              with_alpha(GetColorU32(ImGuiCol_Border)), 1.0f);
+            }
+            draw->AddCircle(center, shown_radius, with_alpha(IM_COL32(220, 220, 220, 220)), 64, 2.0f);
+            draw->AddCircleFilled(center, dead_zone * (0.75f + 0.25f * fade), with_alpha(IM_COL32(25, 28, 35, 255)));
+            if (is_open && IsKeyPressed(ImGuiKey_Escape)) state->SetBool(open_id, false);
+            else if (is_open && !hand_stage && IsMouseReleased(ImGuiMouseButton_Right)) {
+                if (selected == 1) {
+                    state->SetInt(stage_id, 1);
+                    state->SetFloat(transition_id, static_cast<float>(GetTime()));
+                } else {
+                    result = selected;
+                    state->SetBool(open_id, false);
+                }
+            } else if (is_open && hand_stage && animation >= 1.0f && IsMouseClicked(ImGuiMouseButton_Left)) {
+                if (selected >= 0) result = selected + 1;
+                state->SetBool(open_id, false);
+            }
+        }
+        PopID();
+        return result;
+    }
+}
