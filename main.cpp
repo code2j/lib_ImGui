@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     while (!ImGui::ShouldClose()) {
         ImGui::Context([&]()
         {
-            ImGui::Begin(ICON_MD_WIDGETS " Wedgets");
+            ImGui::Begin(" " ICON_MD_WIDGETS " Wedgets ");
             const float availableHeight = ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing();
             const float widgetsHeight = availableHeight > 1.0f ? availableHeight : 1.0f;
             if (ImGui::BeginCollapsingHeader(ICON_MD_WIDGETS " Widgets Example ")) {

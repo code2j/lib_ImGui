@@ -775,16 +775,16 @@ namespace ImGui
                 if (!node || !node->HostWindow) {
                     // 처음에는 호스트를 생성해 복원된 창이 비활성 탭에 유지되도록 한다.
                     ImGui::SetCursorScreenPos(dockspace_pos);
-                    ImGui::DockSpace(all_dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_None);
+                    ImGui::DockSpace(all_dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_NoWindowMenuButton);
                 }
-                ImGui::DockSpace(all_dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_KeepAliveOnly);
+                ImGui::DockSpace(all_dockspaces[i], ImVec2(0, 0), ImGuiDockNodeFlags_KeepAliveOnly | ImGuiDockNodeFlags_NoWindowMenuButton);
             }
         // 선택된 탭의 도킹 영역과 내용을 표시한다.
         ImGui::SetCursorScreenPos(dockspace_pos);
         if (page_count > 0)
-            ImGui::DockSpace(all_dockspaces[selected_page], ImVec2(0, 0), ImGuiDockNodeFlags_None);
+            ImGui::DockSpace(all_dockspaces[selected_page], ImVec2(0, 0), ImGuiDockNodeFlags_NoWindowMenuButton);
         else
-            ImGui::DockSpace(ImGui::GetID("DefaultDockSpace"), ImVec2(0, 0), ImGuiDockNodeFlags_None);
+            ImGui::DockSpace(ImGui::GetID("DefaultDockSpace"), ImVec2(0, 0), ImGuiDockNodeFlags_NoWindowMenuButton);
         ImGui::PopStyleColor();
         ImGui::End();
         if (page_count > 0) {
