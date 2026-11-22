@@ -814,7 +814,7 @@ namespace ImGui
         settings_open = true;
     }
     // 버튼과 패널이 같은 애니메이션 값을 사용해 전환 중 빈 프레임이 생기지 않게 한다.
-    const float animation_step = ImGui::GetIO().DeltaTime / (settings_open ? 0.30f : 0.22f);
+    const float animation_step = ImGui::GetIO().DeltaTime / (settings_open ? 0.42f : 0.30f);
     settings_open_progress = ImClamp(settings_open_progress + (settings_open ? animation_step : -animation_step), 0.0f, 1.0f);
     const bool hovered = ImGui::IsItemHovered();
     floating_hover += ((hovered ? 1.0f : 0.0f) - floating_hover) * (1.0f - std::exp(-10.0f * ImGui::GetIO().DeltaTime));
@@ -848,7 +848,20 @@ namespace ImGui
         // 버튼의 중심에서 패널이 자라나며 우하단 모서리에 정착한다.
         const ImVec2 button_center = pos + size - ImVec2(floating_margin + floating_size * 0.5f, floating_margin + floating_size * 0.5f);
         const ImVec2 panel_corner = pos + size - ImVec2(floating_margin, floating_margin);
-        const ImVec2 animated_size = ImLerp(ImVec2(floating_size, floating_size), ImVec2(280.0f, 330.0f) * scale, t);
+        // 먼저 가로로 펼친 뒤 세로로 확장해 버튼이 패널로 변하는 느낌을 준다.
+        const float width_t = 1.0f - (1.0f - t) * (1.0f - t);
+        const float height_t = t * t * (3.0f - 2.0f * t);
+        // 테마 카드는 고정 픽셀 크기이므로 배율이 작아도 두 카드가 들어가야 한다.
+        const float panel_width = ImMax(328.0f * scale, 296.0f + 32.0f * scale);
+        static float measured_height = 0.0f;
+        static float measured_scale = 0.0f;
+        if (measured_scale != scale) {
+            measured_scale = scale;
+            measured_height = 0.0f;
+        }
+        const float panel_height = measured_height > 0.0f ? measured_height : 440.0f * scale;
+        const ImVec2 animated_size(ImLerp(floating_size, panel_width, width_t),
+                                   ImLerp(floating_size, panel_height, height_t));
         const ImVec2 animated_corner = ImLerp(button_center + ImVec2(floating_size, floating_size) * 0.5f, panel_corner, t);
         ImGui::SetNextWindowPos(animated_corner, ImGuiCond_Always, ImVec2(1, 1));
         ImGui::SetNextWindowSize(animated_size);
@@ -865,7 +878,21 @@ namespace ImGui
         ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 1.0f * scale);
         ImGui::Begin("##settings_panel", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar |
-                     ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus);
+                     ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                     ImGuiWindowFlags_NoBackground);
+        // 배경과 테두리를 매 프레임 다시 그려 크기, 둥글기, 색상이 함께 변하도록 한다.
+        ImDrawList* panel_draw = ImGui::GetWindowDrawList();
+        const ImVec2 panel_min = ImGui::GetWindowPos();
+        const ImVec2 panel_max = panel_min + ImGui::GetWindowSize();
+        const float rounding = ImLerp(floating_size * 0.5f, 12.0f * scale, t);
+        const ImVec4 morph_color = ImLerp(base, panel_bg, t);
+        panel_draw->PushClipRect(panel_min, panel_max, false);
+        panel_draw->AddRectFilled(panel_min, panel_max, ImGui::GetColorU32(morph_color), rounding);
+        const ImVec4 border = ImGui::GetStyleColorVec4(ImGuiCol_Border);
+        panel_draw->AddRect(panel_min + ImVec2(0.5f, 0.5f) * scale,
+                            panel_max - ImVec2(0.5f, 0.5f) * scale,
+                            ImGui::GetColorU32(ImLerp(base, border, t)), rounding, 0, scale);
+        panel_draw->PopClipRect();
             const float content_alpha = ImClamp((t - 0.55f) / 0.45f, 0.0f, 1.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * content_alpha);
             ImGui::TextUnformatted("Settings");
@@ -893,6 +920,9 @@ namespace ImGui
             }
             if (config_changed && ImGui::GetIO().IniFilename)
                 ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
+            // 마지막 항목까지의 실제 높이에 하단 여백을 더해 다음 프레임의 크기로 사용한다.
+            if (settings_open && settings_open_progress >= 1.0f)
+                measured_height = ImGui::GetCursorPosY() - ImGui::GetStyle().ItemSpacing.y + 16.0f * scale;
         ImGui::PopStyleVar();
         ImGui::End();
         ImGui::PopStyleVar(6);
