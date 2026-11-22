@@ -171,6 +171,7 @@ namespace
         bool open = false;
     };
     std::vector<SidebarTab> SIDETAP_BAR;
+    ImGuiID selected_dockspace = 0;
 
 
     // ==================================================
@@ -315,6 +316,7 @@ namespace ImGui
     void Destroy()
     {
         SIDETAP_BAR.clear();
+        ImGui3D::Destroy3D();
         DestroyAllTextures();
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
@@ -354,6 +356,8 @@ namespace ImGui
             }
 
             if (func) func();
+            if (ImGui::show_3d_viewport && selected_dockspace != 0)
+                ImGui::SetNextWindowDockID(selected_dockspace, ImGuiCond_FirstUseEver);
             ImGui3D::Show3D(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ",  ImGui::show_3d_viewport, draw_3d);
         }
 
@@ -781,10 +785,8 @@ namespace ImGui
             }
         // 선택된 탭의 도킹 영역과 내용을 표시한다.
         ImGui::SetCursorScreenPos(dockspace_pos);
-        if (page_count > 0)
-            ImGui::DockSpace(all_dockspaces[selected_page], ImVec2(0, 0), ImGuiDockNodeFlags_NoWindowMenuButton);
-        else
-            ImGui::DockSpace(ImGui::GetID("DefaultDockSpace"), ImVec2(0, 0), ImGuiDockNodeFlags_NoWindowMenuButton);
+        selected_dockspace = page_count > 0 ? all_dockspaces[selected_page] : ImGui::GetID("DefaultDockSpace");
+        ImGui::DockSpace(selected_dockspace, ImVec2(0, 0), ImGuiDockNodeFlags_NoWindowMenuButton);
         ImGui::PopStyleColor();
         ImGui::End();
         if (page_count > 0) {

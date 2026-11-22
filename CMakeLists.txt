@@ -18,6 +18,8 @@ add_subdirectory(ImGui)
 # 메인 실행 파일
 # ==================================================================
 if(${PROJECT_IS_TOP_LEVEL})
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(URDFDOM REQUIRED IMPORTED_TARGET urdfdom)
     add_executable(main
             main.cpp
     )
@@ -34,7 +36,7 @@ if(${PROJECT_IS_TOP_LEVEL})
     install(TARGETS main DESTINATION lib/${PROJECT_NAME})
 
     target_link_libraries(main
-            ImGui
+            ImGui PkgConfig::URDFDOM
     )
 endif()
 ament_package()

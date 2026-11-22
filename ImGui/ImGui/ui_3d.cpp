@@ -78,6 +78,7 @@ namespace ImGui3D
 
 
 
+        ImGui::SetNextWindowSize(ImVec2(720, 480), ImGuiCond_FirstUseEver);
         ImGui::Begin(title);
         ImGui::BeginChild("##3D Window", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding);
 
@@ -201,7 +202,8 @@ namespace ImGui3D
     void Destroy3D()
     {
         StopCameraControl();
-        UnloadRenderTexture(view_texture);
+        if (view_texture.id) UnloadRenderTexture(view_texture);
+        view_texture = {};
 
     }
 
