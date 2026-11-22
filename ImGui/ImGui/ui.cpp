@@ -826,8 +826,9 @@ namespace ImGui
     // 포커스 변경으로 창 정렬이 바뀌어도 버튼이 가려지지 않도록 최상단에 그린다.
     ImDrawList* floating_draw = ImGui::GetForegroundDrawList();
     const float progress = settings_open_progress;
-    const float panel_alpha = progress * progress * progress * (progress * (progress * 6.0f - 15.0f) + 10.0f);
-    const float button_alpha = 1.0f - panel_alpha;
+    const float button_alpha = settings_open_progress > 0.0f ? 0.0f : 1.0f;
+    const float icon_fade = ImClamp(progress / 0.35f, 0.0f, 1.0f);
+    const float icon_alpha = 1.0f - icon_fade * icon_fade * (3.0f - 2.0f * icon_fade);
     const float pressed = ImGui::IsItemActive() ? 1.5f : 0.0f;
     const float radius = (22.0f + 2.0f * eased - pressed) * scale;
     floating_draw->AddCircleFilled(center + ImVec2(0, 2.0f * scale), radius,
@@ -836,7 +837,7 @@ namespace ImGui
     floating_draw->AddCircle(center, radius - scale,
                             ImGui::GetColorU32(ImVec4(1, 1, 1, (0.12f + 0.22f * eased) * button_alpha)), 0, scale);
     const ImVec2 settings_icon_size = ImGui::CalcTextSize(ICON_MD_SETTINGS);
-    floating_draw->AddText(center - settings_icon_size * 0.5f, ImGui::GetColorU32(ImGuiCol_Text, button_alpha), ICON_MD_SETTINGS);
+    floating_draw->AddText(center - settings_icon_size * 0.5f, ImGui::GetColorU32(ImGuiCol_Text, icon_alpha), ICON_MD_SETTINGS);
     if (hovered && !settings_open && settings_open_progress == 0.0f) ImGui::SetTooltip("워크스페이스 설정");
     ImGui::End();
     ImGui::PopStyleColor();
@@ -860,12 +861,13 @@ namespace ImGui
             measured_height = 0.0f;
         }
         const float panel_height = measured_height > 0.0f ? measured_height : 440.0f * scale;
-        const ImVec2 animated_size(ImLerp(floating_size, panel_width, width_t),
-                                   ImLerp(floating_size, panel_height, height_t));
-        const ImVec2 animated_corner = ImLerp(button_center + ImVec2(floating_size, floating_size) * 0.5f, panel_corner, t);
+        const float button_diameter = radius * 2.0f;
+        const ImVec2 animated_size(ImLerp(button_diameter, panel_width, width_t),
+                                   ImLerp(button_diameter, panel_height, height_t));
+        const ImVec2 animated_corner = ImLerp(button_center + ImVec2(radius, radius), panel_corner, t);
         ImGui::SetNextWindowPos(animated_corner, ImGuiCond_Always, ImVec2(1, 1));
         ImGui::SetNextWindowSize(animated_size);
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * t);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16) * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, ImLerp(floating_size * 0.5f, 12.0f * scale, t));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10) * scale);
@@ -884,8 +886,8 @@ namespace ImGui
         ImDrawList* panel_draw = ImGui::GetWindowDrawList();
         const ImVec2 panel_min = ImGui::GetWindowPos();
         const ImVec2 panel_max = panel_min + ImGui::GetWindowSize();
-        const float rounding = ImLerp(floating_size * 0.5f, 12.0f * scale, t);
-        const ImVec4 morph_color = ImLerp(base, panel_bg, t);
+        const float rounding = ImLerp(radius, 12.0f * scale, t);
+        const ImVec4 morph_color = ImLerp(color, panel_bg, t);
         panel_draw->PushClipRect(panel_min, panel_max, false);
         panel_draw->AddRectFilled(panel_min, panel_max, ImGui::GetColorU32(morph_color), rounding);
         const ImVec4 border = ImGui::GetStyleColorVec4(ImGuiCol_Border);
