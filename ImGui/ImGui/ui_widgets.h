@@ -16,30 +16,32 @@ namespace ImGui
     // Widget: Help Marker
     // ====================================================
     void Help(const char* desc);
+
     // ====================================================
     // Widget: Button
     // ====================================================
     bool IconButton(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags);
+
     // ====================================================
     // Widget: Check Box
     // ====================================================
     bool Check(const char* label, bool* v);
+
     // ====================================================
     // Widget: Radio Button
     // ====================================================
     bool Radio(const char* label, int* v, int v_button);
+
     // ====================================================
     // Widget: Toggle Button
     // ====================================================
     bool Toggle(const char* str_id, bool* v);
+
     // ====================================================
     // Widget: Input Text
     // ====================================================
     bool InputTextLine(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = NULL, void* user_data = NULL);
     bool InputTextLines(const char* label, char* buf, size_t buf_size, const ImVec2& size = ImVec2(0, 0), ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = NULL, void* user_data = NULL);
-
-
-
 
     // ====================================================
     // Widget: Numeric Input
@@ -56,13 +58,11 @@ namespace ImGui
     bool Drag(const char* label, float*  v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
     bool Drag(const char* label, double* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
 
-
     // ====================================================
     // Widget: Color Edit
     // ====================================================
     bool ColorEdit3X(const char* label, float col[3], ImGuiColorEditFlags flags = 0);
     bool ColorEdit4X(const char* label, float col[4], ImGuiColorEditFlags flags = 0);
-
 
     // ====================================================
     // Widget: List Box
@@ -70,69 +70,32 @@ namespace ImGui
     bool List(const char* label, int* current_item, const char* const items[], int items_count, int height_in_items = -1);
     bool List(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx), void* user_data, int items_count, int height_in_items = -1);
 
-
     // ====================================================
     // Widget: Combo Box
     // ====================================================
     bool _dropdown_(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx), void* user_data, int items_count, int popup_max_height_in_items = -1);
     bool DropDown(const char* label, int* current_item, const char* items_separated_by_zeros, int popup_max_height_in_items = -1);
 
-
-    // ====================================================
-    // Widget: Slider (원본)
-    // ====================================================
-    bool SliderFloatX(const char* label, int*    v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
-    bool SliderFloatX(const char* label, float*  v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
-    bool SliderFloatX(const char* label, double* v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
-
-
     // ====================================================
     // Widget: Slider (얇은 막대, 값 표시 x)
     // ====================================================
+    bool _slider_(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags);
     bool Slider(const char* label, int*    v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
     bool Slider(const char* label, float*  v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
     bool Slider(const char* label, double* v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
 
-
-    // ====================================================
-    // Widget: Slider (얇은 막대, 값 표시 o)
-    // ====================================================
-    bool SliderX(const char* label, int*    v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
-    bool SliderX(const char* label, float*  v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
-    bool SliderX(const char* label, double* v, float v_min, float v_max, const char* format = "%.1f", ImGuiSliderFlags flags = 0);
-
-
     // ====================================================
     // Widget: Slider Range (얇은 막대, 값 표시 x)
     // ====================================================
+    bool _sliderange_(const char *label, ImGuiDataType data_type, void *p_min, void *p_max, const void *p_bound_min, const void *p_bound_max, const char *format = NULL);
     bool SliderRange(const char* label, int*    v_min, int*    v_max, float v_bound_min, float v_bound_max, const char* format = "%.1f");
     bool SliderRange(const char* label, float*  v_min, float*  v_max, float v_bound_min, float v_bound_max, const char* format = "%.1f");
     bool SliderRange(const char* label, double* v_min, double* v_max, float v_bound_min, float v_bound_max, const char* format = "%.1f");
-
-
-    // ====================================================
-    // Widget: Slider Range (얇은 막대, 값 표시 o)
-    // ====================================================
-    bool SliderRangeX(const char* label, int*    v_min, int*    v_max, float v_bound_min, float v_bound_max, const char* format = "%.1f");
-    bool SliderRangeX(const char* label, float*  v_min, float*  v_max, float v_bound_min, float v_bound_max, const char* format = "%.1f");
-    bool SliderRangeX(const char* label, double* v_min, double* v_max, float v_bound_min, float v_bound_max, const char* format = "%.1f");
-
-
-    // ====================================================
-    // Slider 구현
-    // ====================================================
-    bool _slider1_(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format , ImGuiSliderFlags flags);
-    bool _slider2_(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags);
-    bool _slider3(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags);
-    bool _slider4_(const char *label, ImGuiDataType data_type, void *p_min, void *p_max, const void *p_bound_min, const void *p_bound_max, const char *format = NULL);
-    bool _slider5_(const char *label, ImGuiDataType data_type, void *p_min, void *p_max, const void *p_bound_min, const void *p_bound_max, const char *format);
-
 
     // ====================================================
     // Status Step Bar
     // ====================================================
     bool StatusStepBar(const char* str_id, int* current_step, const char** step_labels, int num_steps);
-
 
     // ====================================================
     // Joystick
