@@ -1,0 +1,161 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="uon_7dof">
+  <!--Joint kinematics adapted from test_solver/data/robot/urdf/uon_7dof.urdf; visual meshes exported from uon_7dof.blend in its saved pose. Inertial and collision placeholders omitted.-->
+  <link name="world">
+    </link>
+  <link name="base">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/uon_7dof/base.obj" />
+      </geometry>
+      <material name="robot_gray">
+        <color rgba="0.55 0.60 0.66 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="link1">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/uon_7dof/joint1.obj" />
+      </geometry>
+      <material name="robot_gray">
+        <color rgba="0.55 0.60 0.66 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="link2">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/uon_7dof/joint2.obj" />
+      </geometry>
+      <material name="robot_gray">
+        <color rgba="0.55 0.60 0.66 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="link3">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/uon_7dof/joint3.obj" />
+      </geometry>
+      <material name="robot_gray">
+        <color rgba="0.55 0.60 0.66 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="link4">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/uon_7dof/joint4.obj" />
+      </geometry>
+      <material name="robot_gray">
+        <color rgba="0.55 0.60 0.66 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="link5">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/uon_7dof/joint5.obj" />
+      </geometry>
+      <material name="robot_gray">
+        <color rgba="0.55 0.60 0.66 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="link6">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/uon_7dof/joint6.obj" />
+      </geometry>
+      <material name="robot_gray">
+        <color rgba="0.55 0.60 0.66 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="link7">
+    <visual>
+      <!-- Preserve the saved Blender pose after aligning the joint to its origin. -->
+      <origin xyz="0.00000035 0.00092001 0.00000137" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/uon_7dof/joint7.obj" />
+      </geometry>
+      <material name="robot_gray">
+        <color rgba="0.55 0.60 0.66 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="flange">
+    </link>
+  <joint name="base" type="fixed">
+    <parent link="world" />
+    <child link="base" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <dynamics damping="0" friction="0" />
+  </joint>
+  <joint name="joint1" type="revolute">
+    <parent link="base" />
+    <child link="link1" />
+    <origin xyz="0 0 0.2925" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-6.283185" upper="6.283185" effort="100" velocity="1.710423" />
+    <dynamics damping="0" friction="0" />
+  </joint>
+  <joint name="joint2" type="revolute">
+    <parent link="link1" />
+    <child link="link2" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit lower="-2.007129" upper="2.007129" effort="100" velocity="1.710423" />
+    <dynamics damping="0" friction="0" />
+  </joint>
+  <joint name="joint3" type="revolute">
+    <parent link="link2" />
+    <child link="link3" />
+    <origin xyz="0 0 0.244" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-6.283185" upper="6.283185" effort="100" velocity="1.745329" />
+    <dynamics damping="0" friction="0" />
+  </joint>
+  <joint name="joint4" type="revolute">
+    <parent link="link3" />
+    <child link="link4" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit lower="-1.919862" upper="1.919862" effort="100" velocity="2.268928" />
+    <dynamics damping="0" friction="0" />
+  </joint>
+  <joint name="joint5" type="revolute">
+    <parent link="link4" />
+    <child link="link5" />
+    <origin xyz="0 0 0.227" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-6.283185" upper="6.283185" effort="100" velocity="2.443461" />
+    <dynamics damping="0" friction="0" />
+  </joint>
+  <joint name="joint6" type="revolute">
+    <parent link="link5" />
+    <child link="link6" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit lower="-1.745329" upper="1.745329" effort="100" velocity="3.141593" />
+    <dynamics damping="0" friction="0" />
+  </joint>
+  <joint name="joint7" type="revolute">
+    <parent link="link6" />
+    <child link="link7" />
+    <!-- Blender joint7 world origin, relative to the zero-pose parent frame. -->
+    <origin xyz="-0.00000035 -0.00092001 0.09999863" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-6.283185" upper="6.283185" effort="100" velocity="3.141593" />
+    <dynamics damping="0" friction="0" />
+  </joint>
+  <joint name="flange" type="fixed">
+    <parent link="link7" />
+    <child link="flange" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <dynamics damping="0" friction="0" />
+  </joint>
+</robot>
