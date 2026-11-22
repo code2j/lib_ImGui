@@ -358,6 +358,14 @@ namespace ImGui
         }
 
 
+        // 다른 창이 클릭으로 앞으로 이동한 뒤에도 오버레이의 순서를 유지한다.
+        ImGuiWindow* settings_button = ImGui::FindWindowByName("##floating_settings");
+        ImGuiWindow* settings_panel = ImGui::FindWindowByName("##settings_panel");
+        if (settings_button && settings_button->Active)
+            ImGui::BringWindowToDisplayFront(settings_button);
+        if (settings_panel && settings_panel->Active)
+            ImGui::BringWindowToDisplayFront(settings_panel);
+
         // ImGui, Raylib 렌더링
         ImGui::Render();
         update_input_region();
@@ -533,11 +541,28 @@ namespace ImGui
                             ImGui::GetColorU32(ImGuiCol_ChildBg), 12.0f * scale,
                             ImDrawFlags_RoundCornersTop);
         const ImVec4 accent_color = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-        const ImU32 accent_line = ImGui::GetColorU32(ImVec4(accent_color.x, accent_color.y, accent_color.z, 0.85f));
-        draw->AddRectFilledMultiColor(pos + ImVec2(0, header_height - 3.0f * scale),
-                                     pos + ImVec2(size.x, header_height),
-                                     accent_line, ImGui::GetColorU32(ImVec4(accent_color.x, accent_color.y, accent_color.z, 0.0f)),
-                                     ImGui::GetColorU32(ImVec4(accent_color.x, accent_color.y, accent_color.z, 0.0f)), accent_line);
+        // 포인터의 가로 위치를 따라 빛이 이동하고, 창 밖에서는 서서히 사라진다.
+        static float highlight_x = 0.5f;
+        static float highlight_alpha = 0.0f;
+        const ImVec2 mouse = ImGui::GetIO().MousePos;
+        const bool mouse_inside = mouse.x >= pos.x && mouse.x < pos.x + size.x &&
+                                  mouse.y >= pos.y && mouse.y < pos.y + size.y;
+        const float blend = 1.0f - std::exp(-5.0f * ImGui::GetIO().DeltaTime);
+        if (mouse_inside && size.x > 0.0f)
+            highlight_x = ImLerp(highlight_x, ImClamp((mouse.x - pos.x) / size.x, 0.0f, 1.0f), blend);
+        highlight_alpha = ImLerp(highlight_alpha, mouse_inside ? 1.0f : 0.0f, blend);
+        if (highlight_alpha > 0.001f) {
+            const float center = pos.x + highlight_x * size.x;
+            const float radius = 160.0f * scale;
+            const float top = pos.y + header_height - 3.0f * scale;
+            const float bottom = pos.y + header_height;
+            const ImU32 clear = ImGui::GetColorU32(ImVec4(accent_color.x, accent_color.y, accent_color.z, 0.0f));
+            const ImU32 glow = ImGui::GetColorU32(ImVec4(accent_color.x, accent_color.y, accent_color.z, 0.38f * highlight_alpha));
+            draw->PushClipRect(pos, pos + ImVec2(size.x, header_height), true);
+            draw->AddRectFilledMultiColor(ImVec2(center - radius, top), ImVec2(center, bottom), clear, glow, glow, clear);
+            draw->AddRectFilledMultiColor(ImVec2(center, top), ImVec2(center + radius, bottom), glow, clear, clear, glow);
+            draw->PopClipRect();
+        }
         draw->AddLine(pos + ImVec2(0, header_height), pos + ImVec2(size.x, header_height),
                       ImGui::GetColorU32(ImGuiCol_Border));
 
@@ -777,13 +802,20 @@ namespace ImGui
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
     ImGui::Begin("##floating_settings", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground);
-    // 다른 창이 포커스를 얻어도 버튼이 도킹 영역 뒤로 숨지 않게 한다.
-    ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
     static float settings_open_progress = 0.0f;
     static bool settings_open = false;
+    // 바깥 클릭은 애니메이션과 그리기 전에 처리해 같은 프레임부터 닫는다.
+    if (settings_open && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        ImGuiWindow* panel = ImGui::FindWindowByName("##settings_panel");
+        if (panel && panel->WasActive && !ImGui::IsMouseHoveringRect(panel->Pos, panel->Pos + panel->Size, false))
+            settings_open = false;
+    }
     if (ImGui::InvisibleButton("##window_setting", ImVec2(floating_size, floating_size))) {
         settings_open = true;
     }
+    // 버튼과 패널이 같은 애니메이션 값을 사용해 전환 중 빈 프레임이 생기지 않게 한다.
+    const float animation_step = ImGui::GetIO().DeltaTime / (settings_open ? 0.30f : 0.22f);
+    settings_open_progress = ImClamp(settings_open_progress + (settings_open ? animation_step : -animation_step), 0.0f, 1.0f);
     const bool hovered = ImGui::IsItemHovered();
     floating_hover += ((hovered ? 1.0f : 0.0f) - floating_hover) * (1.0f - std::exp(-10.0f * ImGui::GetIO().DeltaTime));
     const float eased = floating_hover * floating_hover * (3.0f - 2.0f * floating_hover);
@@ -791,8 +823,11 @@ namespace ImGui
     const ImVec4 base = ImGui::GetStyleColorVec4(ImGuiCol_Button);
     const ImVec4 highlight = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
     const ImVec4 color = ImLerp(base, highlight, eased);
-    ImDrawList* floating_draw = ImGui::GetWindowDrawList();
-    const float button_alpha = 1.0f - ImClamp(settings_open_progress * 3.0f, 0.0f, 1.0f);
+    // 포커스 변경으로 창 정렬이 바뀌어도 버튼이 가려지지 않도록 최상단에 그린다.
+    ImDrawList* floating_draw = ImGui::GetForegroundDrawList();
+    const float progress = settings_open_progress;
+    const float panel_alpha = progress * progress * progress * (progress * (progress * 6.0f - 15.0f) + 10.0f);
+    const float button_alpha = 1.0f - panel_alpha;
     const float pressed = ImGui::IsItemActive() ? 1.5f : 0.0f;
     const float radius = (22.0f + 2.0f * eased - pressed) * scale;
     floating_draw->AddCircleFilled(center + ImVec2(0, 2.0f * scale), radius,
@@ -807,8 +842,6 @@ namespace ImGui
     ImGui::PopStyleColor();
     ImGui::PopStyleVar(2);
 
-    const float animation_step = ImGui::GetIO().DeltaTime / (settings_open ? 0.30f : 0.22f);
-    settings_open_progress = ImClamp(settings_open_progress + (settings_open ? animation_step : -animation_step), 0.0f, 1.0f);
     if (settings_open_progress > 0.0f) {
         const float p = settings_open_progress;
         const float t = p * p * p * (p * (p * 6.0f - 15.0f) + 10.0f);
@@ -827,18 +860,12 @@ namespace ImGui
         const float luminance = window_bg.x * 0.2126f + window_bg.y * 0.7152f + window_bg.z * 0.0722f;
         const ImVec4 panel_bg = ImLerp(window_bg, luminance < 0.5f ? ImVec4(1, 1, 1, 1) : ImVec4(1, 1, 1, 1), luminance < 0.5f ? 0.07f : 0.65f);
         // 패널을 별도 표시 레이어에 두어 바깥 창이 포커스를 얻어도 가려지지 않게 한다.
-        ImGui::PushStyleColor(ImGuiCol_PopupBg, panel_bg);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, panel_bg);
         ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, ImLerp(floating_size * 0.5f, 12.0f * scale, t));
         ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 1.0f * scale);
         ImGui::Begin("##settings_panel", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar |
-                     ImGuiWindowFlags_Tooltip);
-        ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
-        const ImVec2 panel_min = ImGui::GetWindowPos();
-        const ImVec2 panel_max = panel_min + ImGui::GetWindowSize();
-        if (settings_open && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-            !ImGui::IsMouseHoveringRect(panel_min, panel_max))
-            settings_open = false;
+                     ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus);
             const float content_alpha = ImClamp((t - 0.55f) / 0.45f, 0.0f, 1.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * content_alpha);
             ImGui::TextUnformatted("Settings");
