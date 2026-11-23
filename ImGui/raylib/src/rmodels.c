@@ -1436,8 +1436,28 @@ void UpdateMeshBuffer(Mesh mesh, int index, const void *data, int dataSize, int 
 }
 
 // Draw a 3d mesh with material and transform
+static DrawMeshMaterialHook drawMeshMaterialHook = NULL;
+static DrawMeshCaptureHook drawMeshCaptureHook = NULL;
+
+void SetDrawMeshCaptureHook(DrawMeshCaptureHook hook)
+{
+    drawMeshCaptureHook = hook;
+}
+
+void SetDrawMeshMaterialHook(DrawMeshMaterialHook hook)
+{
+    drawMeshMaterialHook = hook;
+}
+
 void DrawMesh(Mesh mesh, Material material, Matrix transform)
 {
+    if (drawMeshCaptureHook && drawMeshCaptureHook(mesh, material, transform)) return;
+    MaterialMap hookMaps[MAX_MATERIAL_MAPS];
+    if (drawMeshMaterialHook && material.maps) {
+        memcpy(hookMaps, material.maps, sizeof(hookMaps));
+        material.maps = hookMaps;
+        drawMeshMaterialHook(&material);
+    }
 #if defined(GRAPHICS_API_OPENGL_11) || defined(GRAPHICS_API_OPENGL_SOFTWARE)
     #define GL_VERTEX_ARRAY         0x8074
     #define GL_NORMAL_ARRAY         0x8075
@@ -5550,6 +5570,11 @@ static Model LoadGLTF(const char *fileName)
                 model.materials[j].maps[MATERIAL_MAP_ALBEDO].color.g = (unsigned char)(data->materials[i].pbr_metallic_roughness.base_color_factor[1]*255);
                 model.materials[j].maps[MATERIAL_MAP_ALBEDO].color.b = (unsigned char)(data->materials[i].pbr_metallic_roughness.base_color_factor[2]*255);
                 model.materials[j].maps[MATERIAL_MAP_ALBEDO].color.a = (unsigned char)(data->materials[i].pbr_metallic_roughness.base_color_factor[3]*255);
+
+                // Preserve glTF factors even when no texture is present.
+                model.materials[j].params[3] = 1.0f;
+                model.materials[j].maps[MATERIAL_MAP_ROUGHNESS].value = data->materials[i].pbr_metallic_roughness.roughness_factor;
+                model.materials[j].maps[MATERIAL_MAP_METALNESS].value = data->materials[i].pbr_metallic_roughness.metallic_factor;
 
                 // Load metallic/roughness texture
                 if (data->materials[i].pbr_metallic_roughness.metallic_roughness_texture.texture)

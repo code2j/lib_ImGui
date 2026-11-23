@@ -6,7 +6,7 @@
   <link name="base">
     <visual>
       <geometry>
-        <mesh filename="meshes/uon_7dof/base.obj" />
+        <mesh filename="meshes/uon_7dof/base.glb" />
       </geometry>
       <material name="robot_gray">
         <color rgba="0.55 0.60 0.66 1" />
@@ -16,7 +16,7 @@
   <link name="link1">
     <visual>
       <geometry>
-        <mesh filename="meshes/uon_7dof/joint1.obj" />
+        <mesh filename="meshes/uon_7dof/joint1.glb" />
       </geometry>
       <material name="robot_gray">
         <color rgba="0.55 0.60 0.66 1" />
@@ -26,7 +26,7 @@
   <link name="link2">
     <visual>
       <geometry>
-        <mesh filename="meshes/uon_7dof/joint2.obj" />
+        <mesh filename="meshes/uon_7dof/joint2.glb" />
       </geometry>
       <material name="robot_gray">
         <color rgba="0.55 0.60 0.66 1" />
@@ -36,7 +36,7 @@
   <link name="link3">
     <visual>
       <geometry>
-        <mesh filename="meshes/uon_7dof/joint3.obj" />
+        <mesh filename="meshes/uon_7dof/joint3.glb" />
       </geometry>
       <material name="robot_gray">
         <color rgba="0.55 0.60 0.66 1" />
@@ -46,7 +46,7 @@
   <link name="link4">
     <visual>
       <geometry>
-        <mesh filename="meshes/uon_7dof/joint4.obj" />
+        <mesh filename="meshes/uon_7dof/joint4.glb" />
       </geometry>
       <material name="robot_gray">
         <color rgba="0.55 0.60 0.66 1" />
@@ -56,7 +56,7 @@
   <link name="link5">
     <visual>
       <geometry>
-        <mesh filename="meshes/uon_7dof/joint5.obj" />
+        <mesh filename="meshes/uon_7dof/joint5.glb" />
       </geometry>
       <material name="robot_gray">
         <color rgba="0.55 0.60 0.66 1" />
@@ -66,7 +66,7 @@
   <link name="link6">
     <visual>
       <geometry>
-        <mesh filename="meshes/uon_7dof/joint6.obj" />
+        <mesh filename="meshes/uon_7dof/joint6.glb" />
       </geometry>
       <material name="robot_gray">
         <color rgba="0.55 0.60 0.66 1" />
@@ -78,7 +78,7 @@
       <!-- Preserve the saved Blender pose after aligning the joint to its origin. -->
       <origin xyz="0.00000035 0.00092001 0.00000137" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/uon_7dof/joint7.obj" />
+        <mesh filename="meshes/uon_7dof/joint7.glb" />
       </geometry>
       <material name="robot_gray">
         <color rgba="0.55 0.60 0.66 1" />

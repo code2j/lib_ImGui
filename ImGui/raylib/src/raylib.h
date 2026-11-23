@@ -1617,6 +1617,11 @@ RLAPI void DrawBillboardPro(Camera camera, Texture2D texture, Rectangle rec, Vec
 RLAPI void UploadMesh(Mesh *mesh, bool dynamic);                                            // Upload mesh vertex data in GPU and provide VAO/VBO ids
 RLAPI void UpdateMeshBuffer(Mesh mesh, int index, const void *data, int dataSize, int offset); // Update mesh vertex data in GPU for a specific buffer index
 RLAPI void UnloadMesh(Mesh mesh);                                                           // Unload mesh data from CPU and GPU
+// Optional per-mesh material override, scoped by the caller.
+typedef void (*DrawMeshMaterialHook)(Material *material);
+typedef bool (*DrawMeshCaptureHook)(Mesh mesh, Material material, Matrix transform);
+RLAPI void SetDrawMeshCaptureHook(DrawMeshCaptureHook hook);
+RLAPI void SetDrawMeshMaterialHook(DrawMeshMaterialHook hook);
 RLAPI void DrawMesh(Mesh mesh, Material material, Matrix transform);                        // Draw a 3d mesh with material and transform
 RLAPI void DrawMeshInstanced(Mesh mesh, Material material, const Matrix *transforms, int instances); // Draw multiple mesh instances with material and different transforms
 RLAPI BoundingBox GetMeshBoundingBox(Mesh mesh);                                            // Compute mesh bounding box limits

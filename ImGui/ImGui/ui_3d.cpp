@@ -6,6 +6,8 @@
 #include "ui_icon.h"
 #include <vector>
 #include <cmath>
+#include <unordered_set>
+#include <utility>
 
 
 namespace {
@@ -18,6 +20,12 @@ namespace {
     bool camera_control = false;
     bool camera_pan = false;
     bool viewport_clicked = false;
+    Model cube_model{}, sphere_model{}, cylinder_model{};
+    std::unordered_set<ImGui3D::ModelGroup*>& ModelGroups()
+    {
+        static std::unordered_set<ImGui3D::ModelGroup*> groups;
+        return groups;
+    }
     void StopCameraControl()
     {
         camera_control = false;
@@ -37,6 +45,8 @@ namespace {
 
 namespace ImGui3D
 {
+    void BeginPreviewCapture();
+    void EndPreviewCapture();
     bool Get3DClick(Vector2& position)
     {
         position = viewport_mouse_pos;
@@ -47,6 +57,44 @@ namespace ImGui3D
     {
         position = viewport_mouse_pos;
         return is_viewport_hovered && !camera_control && !camera_pan;
+    }
+
+    ModelGroup::ModelGroup() { ModelGroups().insert(this); }
+    ModelGroup::~ModelGroup() { Clear(); ModelGroups().erase(this); }
+    Model* ModelGroup::Find(const std::string& path)
+    {
+        auto it = models_.find(path);
+        return it == models_.end() ? nullptr : &it->second;
+    }
+    Model* ModelGroup::Load(const std::string& path)
+    {
+        if (Model* existing = Find(path)) return existing;
+        Model model = LoadModel(path.c_str());
+        if (!IsModelValid(model)) { UnloadModel(model); return nullptr; }
+        try { return &models_.emplace(path, model).first->second; }
+        catch (...) { UnloadModel(model); throw; }
+    }
+    void ModelGroup::Clear()
+    {
+        for (auto& entry : models_) UnloadModel(entry.second);
+        models_.clear();
+    }
+    void ModelGroup::Swap(ModelGroup& other) { models_.swap(other.models_); }
+
+    Model& GetPrimitive(Primitive primitive)
+    {
+        switch (primitive) {
+        case Primitive::Box:
+            if (!cube_model.meshCount) cube_model = LoadModelFromMesh(GenMeshCube(1, 1, 1));
+            return cube_model;
+        case Primitive::Sphere:
+            if (!sphere_model.meshCount) sphere_model = LoadModelFromMesh(GenMeshSphere(1, 20, 24));
+            return sphere_model;
+        case Primitive::Cylinder:
+            if (!cylinder_model.meshCount) cylinder_model = LoadModelFromMesh(GenMeshCylinder(1, 1, 24));
+            return cylinder_model;
+        }
+        return cube_model;
     }
 
     void DrawAxes(float length, float thickness)
@@ -64,13 +112,13 @@ namespace ImGui3D
         DrawCylinderEx(origin, (Vector3){ 0.0f, 0.0f, length }, thickness, thickness, sides, BLUE);
     }
 
-    void Show3D(const char* title, bool open, std::function<void()> func)
+    bool BeginScene(const char* title, bool open, bool block_viewport_input)
     {
         viewport_clicked = false;
         if (!open) {
             is_viewport_hovered = false;
             StopCameraControl();
-            return;
+            return false;
         }
 
         if (!view_texture.id)
@@ -89,7 +137,7 @@ namespace ImGui3D
             StopCameraControl();
             ImGui::EndChild();
             ImGui::End();
-            return;
+            return false;
         }
         float availAspect = availSize.x / availSize.y;
 
@@ -115,7 +163,7 @@ namespace ImGui3D
         ImGui::Image(tex_id, imageSize, ImVec2(0, 1), ImVec2(1, 0));
 
         // 렌더링 영역 클릭 여부 & 클릭 좌표 위치 계산
-        is_viewport_hovered = ImGui::IsItemHovered();
+        is_viewport_hovered = ImGui::IsItemHovered() && !block_viewport_input;
         ImVec2 imMousePosGlobal = ImGui::GetMousePos();
         viewport_mouse_pos.x = (imMousePosGlobal.x - imagePos.x) * (WIDTH_3D / imageSize.x);
         viewport_mouse_pos.y = (imMousePosGlobal.y - imagePos.y) * (HEIGHT_3D / imageSize.y);
@@ -189,8 +237,14 @@ namespace ImGui3D
         BeginMode3D(ImGui3D::camera);
             DrawGrid(10, 1);        // 그리드
             DrawAxes(0.1, 0.01);    // 월드 축
-            if (func) func();
-            ImGui3D::RenderFrame();
+        BeginPreviewCapture();
+        return true;
+    }
+
+    void EndScene()
+    {
+        RenderFrame();
+        EndPreviewCapture();
         EndMode3D();
         DrawFPS(10, 10);
         EndTextureMode();
@@ -201,6 +255,12 @@ namespace ImGui3D
 
     void Destroy3D()
     {
+        for (ModelGroup* group : ModelGroups()) group->Clear();
+        DestroyPreviewRenderer();
+        if (cube_model.meshCount) UnloadModel(cube_model);
+        if (sphere_model.meshCount) UnloadModel(sphere_model);
+        if (cylinder_model.meshCount) UnloadModel(cylinder_model);
+        cube_model = {}; sphere_model = {}; cylinder_model = {};
         StopCameraControl();
         if (view_texture.id) UnloadRenderTexture(view_texture);
         view_texture = {};
@@ -232,8 +292,12 @@ namespace ImGui3D
     {
         for (const auto& command : commands) {
             switch (command.shape) {
-                case Shape::Cube: DrawCubeV(command.first, command.second, command.color); break;
-                case Shape::Sphere: DrawSphere(command.first, command.radius, command.color); break;
+                case Shape::Cube:
+                    DrawModelEx(GetPrimitive(Primitive::Box), command.first, {0, 1, 0}, 0, command.second, command.color);
+                    break;
+                case Shape::Sphere:
+                    DrawModel(GetPrimitive(Primitive::Sphere), command.first, command.radius, command.color);
+                    break;
                 case Shape::Line: DrawLine3D(command.first, command.second, command.color); break;
             }
         }

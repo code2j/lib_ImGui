@@ -209,7 +209,7 @@ namespace ImGui
 
     void Init(const char* title, int width, int height);
     void Destroy();
-    bool Context(std::function<void()> func, std::function<void()> draw_3d);
+    bool Context(std::function<void()> func);
     void LoadConfig(const char* path);
     bool ShouldClose(bool force_close);
     void AddTab(const char* label, std::function<void()> draw, std::function<void()> sidebar_content);
@@ -327,7 +327,9 @@ namespace ImGui
         ImGui::ShutdownLogger();
     }
 
-    bool Context(std::function<void()> func, std::function<void()> draw_3d)
+    ImGuiID GetSelectedDockspace() { return selected_dockspace; }
+
+    bool Context(std::function<void()> func)
     {
         if (ShouldClose()) {
             return false;
@@ -356,9 +358,6 @@ namespace ImGui
             }
 
             if (func) func();
-            if (ImGui::show_3d_viewport && selected_dockspace != 0)
-                ImGui::SetNextWindowDockID(selected_dockspace, ImGuiCond_FirstUseEver);
-            ImGui3D::Show3D(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ",  ImGui::show_3d_viewport, draw_3d);
         }
 
 
@@ -911,7 +910,7 @@ namespace ImGui
             ImGui::TextUnformatted("Menu");
             ImGui::Separator();
             bool config_changed = false;
-            config_changed |= ImGui::MenuItem(ICON_MD_DEPLOYED_CODE "  3D Viewport", nullptr, &ImGui::show_3d_viewport);
+            config_changed |= ImGui::MenuItem(ICON_MD_DEPLOYED_CODE "  3D Viewport", nullptr, &ImGui::open_viewport);
             config_changed |= ImGui::MenuItem(ICON_MD_SUBJECT "  Log", nullptr, &ImGui::show_log_window);
             config_changed |= ImGui::MenuItem(ICON_MD_TUNE "  Style Editor", nullptr, &ImGui::show_style_edit);
             config_changed |= ImGui::MenuItem(ICON_MD_POSITION_TOP_RIGHT "  System HUD", nullptr, &ImGui::show_system_hud);

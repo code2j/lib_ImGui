@@ -22,7 +22,7 @@ def save_texture(path, width, height, values):
         values.tofile(output)
 
 
-directory = Path(__file__).resolve().parent
+directory = Path(__file__).resolve().parents[2] / "ImGui/ImGui/resources"
 forest = Path(bpy.utils.resource_path("LOCAL")) / "datafiles/studiolights/world/forest.exr"
 image = bpy.data.images.load(str(forest), check_existing=False)
 width, height = image.size

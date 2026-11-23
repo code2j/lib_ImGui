@@ -33,7 +33,7 @@ namespace ImGui
     // 상태 플래그
     // ==================================================
     inline bool should_close_app   = false; // 앱 닫기 여부
-    inline bool show_3d_viewport   = false; // 3d 뷰포트 보이기 여부
+    inline bool open_viewport   = false; // 3d 뷰포트 보이기 여부
     inline bool show_log_window    = false; // 로거 표시 여부
     inline bool show_style_edit    = false; // 컬러 에디터 표시 여부
     inline bool show_system_hud    = false; // hud 표시 여부
@@ -53,7 +53,8 @@ namespace ImGui
     void Init(const char* title, int width = 1280, int height = 720);
     void Destroy();
     bool ShouldClose(bool force_close = false);
-    bool Context(std::function<void()> func, std::function<void()> draw_3d = {});
+    bool Context(std::function<void()> func);
+    ImGuiID GetSelectedDockspace();
     void LoadConfig(const char* path);
     void AddTab(const char* label, std::function<void()> draw = {}, std::function<void()> sidebar_content = {});
 

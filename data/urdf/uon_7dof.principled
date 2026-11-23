@@ -1,8 +1,0 @@
-# Blender uon_7dof.blend: all eight meshes use the same Principled BSDF inputs.
-# material_name linear_base_rgba metallic roughness ior specular_ior_level
-robot_gray 0.024157632 0.024157632 0.024157632 1.0 0.0 0.5 1.5 0.5
-
-# Blender Material Preview default studio environment (linear RGBA float32).
-environment forest_env.rgba32f
-# Blender OCIO AgX sRGB view transform, 48-cube logarithmic HDR lookup.
-agx agx_view.rgba32f
