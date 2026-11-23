@@ -401,7 +401,7 @@ void ResetPreviewTextures()
     environment_texture = {}; agx_texture = {};
     default_textures_initialized = false;
 }
-void DestroyPreviewRenderer()
+void DestroyShader()
 {
     ResetPreviewTextures();
     if (toon_shader.id) UnloadShader(toon_shader);

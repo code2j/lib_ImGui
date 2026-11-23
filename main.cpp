@@ -72,14 +72,6 @@ void ApplyPose(const urdf::Pose& pose)
     if (std::isfinite(angle) && angle != 0.0f) rlRotatef(angle * RAD2DEG, axis.x, axis.y, axis.z);
 }
 
-Color VisualColor(const urdf::Visual& visual)
-{
-    if (!visual.material) return WHITE;
-    const auto& c = visual.material->color;
-    auto component = [](double value) { return (unsigned char)(std::clamp(value, 0.0, 1.0) * 255.0 + 0.5); };
-    return {component(c.r), component(c.g), component(c.b), component(c.a)};
-}
-
 void CollectJointControls(const urdf::LinkConstSharedPtr& link)
 {
     for (const auto& child : link->child_links) {
@@ -124,7 +116,6 @@ void DrawLink(const urdf::LinkConstSharedPtr& link, const fs::path& directory)
         if (!visual || !visual->geometry) continue;
         rlPushMatrix();
         ApplyPose(visual->origin);
-        const Color color = VisualColor(*visual);
         PrincipledMaterial default_material;
         if (visual->material) {
             const auto& c = visual->material->color;

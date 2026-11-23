@@ -29,13 +29,13 @@ namespace ImGui3D
         float base[4] = {0.8f, 0.8f, 0.8f, 1.0f};
         float metallic = 0, roughness = 0.5f, ior = 1.5f, specular_ior_level = 0.5f;
     };
-    void DestroyPreviewRenderer();
-    // Applies to subsequent model draws; nullptr restores the default material.
+    void DestroyShader();
     void SetMaterial(const PrincipledMaterial* material = nullptr);
 
     void Cube(Vector3 position = {0, 0, 0}, Vector3 size = {1, 1, 1}, Color color = WHITE);
     void Sphere(Vector3 center = {0, 0, 0}, float radius = 0.5f, Color color = WHITE);
     void Line(Vector3 start, Vector3 end, Color color = WHITE);
+
     void ClearFrame();
     void RenderFrame();
     inline Camera camera = {

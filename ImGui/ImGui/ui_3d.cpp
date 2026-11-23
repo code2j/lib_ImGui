@@ -256,7 +256,7 @@ namespace ImGui3D
     void Destroy3D()
     {
         for (ModelGroup* group : ModelGroups()) group->Clear();
-        DestroyPreviewRenderer();
+        DestroyShader();
         if (cube_model.meshCount) UnloadModel(cube_model);
         if (sphere_model.meshCount) UnloadModel(sphere_model);
         if (cylinder_model.meshCount) UnloadModel(cylinder_model);
