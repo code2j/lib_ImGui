@@ -3,247 +3,20 @@
 #include <chrono>
 #include <mutex>
 #include <thread>
-#include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/image.hpp>
-#include <sensor_msgs/image_encodings.hpp>
 #include <limits>
 #include <cmath>
 
-#include <fstream>
 #include <string>
 #include <sstream>
 #include <algorithm>
 #include <cstdio>
 #include <cstdint>
-#include <urdf_parser/urdf_parser.h>
-#include <filesystem>
 #include <cstdlib>
-#include <unordered_map>
 #include <vector>
 
 
 
 
-namespace {
-namespace fs = std::filesystem;
-urdf::ModelInterfaceSharedPtr robot;
-ImGui3D::ModelGroup meshes;
-struct JointControl {
-    urdf::JointConstSharedPtr joint;
-    float value = 0.0f;
-    float lower = 0.0f;
-    float upper = 0.0f;
-};
-std::vector<JointControl> joint_controls;
-std::unordered_map<std::string, size_t> joint_indices;
-using ImGui3D::PrincipledMaterial;
-fs::path MeshPath(const std::string& filename, const fs::path& directory)
-{
-    if (filename.rfind("package://", 0) == 0) {
-        const std::string relative = filename.substr(10);
-        const auto slash = relative.find('/');
-        if (slash == std::string::npos) return {};
-        const char* env = std::getenv("AMENT_PREFIX_PATH");
-        const std::string prefixes = env ? env : "";
-        size_t start = 0;
-        while (start <= prefixes.size()) {
-            const auto end = prefixes.find(':', start);
-            const std::string prefix = prefixes.substr(start, end == std::string::npos ? end : end - start);
-            if (!prefix.empty()) {
-                fs::path result = fs::path(prefix) / "share" / relative;
-                if (fs::is_regular_file(result)) return fs::absolute(result).lexically_normal();
-            }
-            if (end == std::string::npos) break;
-            start = end + 1;
-        }
-        return {};
-    }
-    if (filename.rfind("file://", 0) == 0) return fs::path(filename.substr(7)).lexically_normal();
-    if (filename.find("://") != std::string::npos) return {};
-    return fs::absolute(directory / filename).lexically_normal();
-}
-
-void ApplyPose(const urdf::Pose& pose)
-{
-    rlTranslatef((float)pose.position.x, (float)pose.position.y, (float)pose.position.z);
-    const Quaternion q = {(float)pose.rotation.x, (float)pose.rotation.y, (float)pose.rotation.z, (float)pose.rotation.w};
-    Vector3 axis; float angle;
-    QuaternionToAxisAngle(q, &axis, &angle);
-    if (std::isfinite(angle) && angle != 0.0f) rlRotatef(angle * RAD2DEG, axis.x, axis.y, axis.z);
-}
-
-void CollectJointControls(const urdf::LinkConstSharedPtr& link)
-{
-    for (const auto& child : link->child_links) {
-        if (!child || !child->parent_joint) continue;
-        const auto& joint = child->parent_joint;
-        if (joint->type == urdf::Joint::REVOLUTE || joint->type == urdf::Joint::CONTINUOUS ||
-            joint->type == urdf::Joint::PRISMATIC) {
-            float lower = joint->type == urdf::Joint::PRISMATIC ? -1.0f : -PI;
-            float upper = joint->type == urdf::Joint::PRISMATIC ? 1.0f : PI;
-            if (joint->type != urdf::Joint::CONTINUOUS && joint->limits) {
-                lower = (float)joint->limits->lower;
-                upper = (float)joint->limits->upper;
-            }
-            if (!std::isfinite(lower) || !std::isfinite(upper) || lower > upper) {
-                lower = joint->type == urdf::Joint::PRISMATIC ? -1.0f : -PI;
-                upper = joint->type == urdf::Joint::PRISMATIC ? 1.0f : PI;
-            }
-            joint_indices[joint->name] = joint_controls.size();
-            joint_controls.push_back({joint, std::clamp(0.0f, lower, upper), lower, upper});
-        }
-        CollectJointControls(child);
-    }
-}
-
-void ApplyJointMotion(const urdf::Joint& joint)
-{
-    const auto it = joint_indices.find(joint.name);
-    if (it == joint_indices.end()) return;
-    const float value = joint_controls[it->second].value;
-    Vector3 axis = {(float)joint.axis.x, (float)joint.axis.y, (float)joint.axis.z};
-    if (Vector3LengthSqr(axis) < 1e-12f) return;
-    axis = Vector3Normalize(axis);
-    if (joint.type == urdf::Joint::PRISMATIC)
-        rlTranslatef(axis.x * value, axis.y * value, axis.z * value);
-    else
-        rlRotatef(value * RAD2DEG, axis.x, axis.y, axis.z);
-}
-
-void DrawLink(const urdf::LinkConstSharedPtr& link, const fs::path& directory)
-{
-    for (const auto& visual : link->visual_array) {
-        if (!visual || !visual->geometry) continue;
-        rlPushMatrix();
-        ApplyPose(visual->origin);
-        PrincipledMaterial default_material;
-        if (visual->material) {
-            const auto& c = visual->material->color;
-            default_material.base[0] = (float)std::clamp(c.r, 0.0f, 1.0f);
-            default_material.base[1] = (float)std::clamp(c.g, 0.0f, 1.0f);
-            default_material.base[2] = (float)std::clamp(c.b, 0.0f, 1.0f);
-            default_material.base[3] = (float)std::clamp(c.a, 0.0f, 1.0f);
-        }
-        const PrincipledMaterial* principled = &default_material;
-        ImGui3D::SetMaterial(principled);
-        switch (visual->geometry->type) {
-        case urdf::Geometry::BOX: {
-            const auto& box = static_cast<const urdf::Box&>(*visual->geometry);
-            DrawModelEx(ImGui3D::GetPrimitive(ImGui3D::Primitive::Box), {0, 0, 0}, {0, 1, 0}, 0,
-                          {(float)box.dim.x, (float)box.dim.y, (float)box.dim.z}, WHITE);
-            break;
-        }
-        case urdf::Geometry::SPHERE: {
-            const auto& sphere = static_cast<const urdf::Sphere&>(*visual->geometry);
-            DrawModelEx(ImGui3D::GetPrimitive(ImGui3D::Primitive::Sphere), {0, 0, 0}, {0, 1, 0}, 0, Vector3Scale({1, 1, 1}, (float)sphere.radius), WHITE);
-            break;
-        }
-        case urdf::Geometry::CYLINDER: {
-            const auto& cylinder = static_cast<const urdf::Cylinder&>(*visual->geometry);
-            DrawModelEx(ImGui3D::GetPrimitive(ImGui3D::Primitive::Cylinder), {0, 0, (float)-cylinder.length * 0.5f}, {1, 0, 0}, 90,
-                          {(float)cylinder.radius, (float)cylinder.length, (float)cylinder.radius}, WHITE);
-            break;
-        }
-        case urdf::Geometry::MESH: {
-            const auto& mesh = static_cast<const urdf::Mesh&>(*visual->geometry);
-            Model* model = meshes.Find(MeshPath(mesh.filename, directory).string());
-            if (model) DrawModelEx(*model, {0, 0, 0}, {0, 1, 0}, 0,
-                {(float)mesh.scale.x, (float)mesh.scale.y, (float)mesh.scale.z}, WHITE);
-            break;
-        }
-        }
-        ImGui3D::SetMaterial();
-        rlPopMatrix();
-    }
-    for (const auto& child : link->child_links) {
-        if (!child || !child->parent_joint) continue;
-        rlPushMatrix();
-        ApplyPose(child->parent_joint->parent_to_joint_origin_transform);
-        ApplyJointMotion(*child->parent_joint);
-        DrawLink(child, directory);
-        rlPopMatrix();
-    }
-}
-fs::path robot_directory;
-}
-
-namespace Urdf {
-void ClearUrdf();
-bool LoadUrdf(const std::string& path, std::string& error)
-{
-    error.clear();
-    try {
-        const fs::path file = fs::absolute(path).lexically_normal();
-        if (!fs::is_regular_file(file)) { error = "URDF 파일을 찾을 수 없습니다: " + file.string(); return false; }
-        auto parsed = urdf::parseURDFFile(file.string());
-        if (!parsed || !parsed->getRoot()) { error = "URDF를 해석할 수 없습니다: " + file.string(); return false; }
-        std::vector<urdf::LinkSharedPtr> links;
-        parsed->getLinks(links);
-        ImGui3D::ModelGroup loaded;
-        for (const auto& link : links) for (const auto& visual : link->visual_array) {
-            if (!visual || !visual->geometry || visual->geometry->type != urdf::Geometry::MESH) continue;
-            const auto& mesh = static_cast<const urdf::Mesh&>(*visual->geometry);
-            const fs::path mesh_file = MeshPath(mesh.filename, file.parent_path());
-            if (mesh_file.empty() || !fs::is_regular_file(mesh_file)) {
-                error = "메시 파일을 찾을 수 없습니다: " + mesh.filename;
-                return false;
-            }
-            const std::string extension = mesh_file.extension().string();
-            if (extension != ".obj" && extension != ".gltf" && extension != ".glb") {
-                error = "지원하지 않는 메시 형식입니다 (OBJ, glTF, GLB 지원): " + mesh_file.string();
-                return false;
-            }
-            const std::string key = mesh_file.string();
-            if (!loaded.Load(key)) { error = "메시 로드 실패: " + key; return false; }
-        }
-        ClearUrdf();
-        robot = std::move(parsed);
-        robot_directory = file.parent_path();
-        meshes.Swap(loaded);
-        CollectJointControls(robot->getRoot());
-        return true;
-    } catch (const std::exception& ex) { error = std::string("URDF 로드 실패: ") + ex.what(); return false; }
-}
-void ClearUrdf() {
-    meshes.Clear();
-    joint_controls.clear();
-    joint_indices.clear();
-    robot.reset();
-    robot_directory.clear();
-}
-
-
-void ShowJointControls()
-{
-    if (!robot || joint_controls.empty()) return;
-    ImGui::SetNextWindowSize(ImVec2(410, 360), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("관절 조작")) {
-        if (ImGui::Button("초기 위치"))
-            for (auto& control : joint_controls)
-                control.value = std::clamp(0.0f, control.lower, control.upper);
-        ImGui::Separator();
-        for (auto& control : joint_controls) {
-            ImGui::PushID(control.joint->name.c_str());
-            ImGui::TextUnformatted(control.joint->name.c_str());
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            if (control.joint->type == urdf::Joint::PRISMATIC)
-                ImGui::SliderFloat("##value", &control.value, control.lower, control.upper, "%.3f m");
-            else
-                ImGui::SliderAngle("##value", &control.value, control.lower * RAD2DEG, control.upper * RAD2DEG, "%.1f deg");
-            ImGui::PopID();
-        }
-    }
-    ImGui::End();
-}
-void DrawUrdf()
-{
-    if (!robot || !robot->getRoot()) return;
-    rlPushMatrix();
-    rlRotatef(-90.0f, 1, 0, 0);
-    DrawLink(robot->getRoot(), robot_directory);
-    rlPopMatrix();
-}
-}
 
 
 int main(int argc, char **argv) {
@@ -254,37 +27,9 @@ int main(int argc, char **argv) {
     ImGui::AddTab(ICON_MD_HOME "  메인 ");
     ImGui::AddTab(ICON_MD_BUILD " 테스트 ");
 
-    char urdf_path[2048];
-    std::snprintf(urdf_path, sizeof(urdf_path), "%s/data/urdf/uon_7dof.urdf", ROOT_PATH);
-    std::string urdf_message;
-    Urdf::LoadUrdf(urdf_path, urdf_message);
-
-
-
     while (!ImGui::ShouldClose()) {
         ImGui::Context([&]()
         {
-            // URDF 로더 & URDF 제어 윈도우
-            ImGui::SetNextWindowSize(ImVec2(520, 180), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSizeConstraints(ImVec2(360, 175), ImVec2(FLT_MAX, FLT_MAX));
-            ImGui::Begin("URDF Loader");
-            ImGui::InputText("URDF 경로", urdf_path, sizeof(urdf_path));
-            if (ImGui::Button("URDF 로드")) {
-                if (Urdf::LoadUrdf(urdf_path, urdf_message)) {
-                    urdf_message = "URDF를 불러왔습니다.";
-                    ImGui::open_viewport = true;
-                }
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("모델 지우기")) {
-                Urdf::ClearUrdf();
-                urdf_message = "모델을 지웠습니다.";
-            }
-            ImGui::TextWrapped("%s", urdf_message.c_str());
-            ImGui::End();
-            Urdf::ShowJointControls();
-
-
             // 위젯 예시 윈도우
             ImGui::Begin(" " ICON_MD_WIDGETS " Wedgets ");
             const float availableHeight = ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing();
@@ -448,7 +193,6 @@ int main(int argc, char **argv) {
 
             // 3D 뷰포트 윈도우
             if (ImGui3D::BeginScene(" " ICON_MD_DEPLOYED_CODE " 3D Viewport ", ImGui::open_viewport)) {
-                Urdf::DrawUrdf();
                 ImGui3D::EndScene();
             }
         });
